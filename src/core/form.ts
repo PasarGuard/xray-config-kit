@@ -5,14 +5,51 @@ import type { Inbound, Issue, Security, Transport, ValidateOptions } from "./typ
 const placeholderUuid = "00000000-0000-4000-8000-000000000000";
 const placeholderKey32 = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
-export type CreateDefaultInboundOptions = {
-  readonly protocol: Exclude<Inbound["protocol"], "unmanaged">;
+type CreateDefaultInboundBaseOptions<Protocol extends Exclude<Inbound["protocol"], "unmanaged">> = {
+  readonly protocol: Protocol;
   readonly tag?: string;
   readonly port?: number;
   readonly listen?: string;
+};
+
+export type CreateDefaultInboundOptions =
+  | (CreateDefaultInboundBaseOptions<"vmess"> & {
+      readonly transport?: Transport["type"];
+      readonly security?: "none" | "tls";
+    })
+  | (CreateDefaultInboundBaseOptions<"vless"> & {
+      readonly transport?: Transport["type"];
+      readonly security?: Security["type"];
+    })
+  | (CreateDefaultInboundBaseOptions<"trojan"> & {
+      readonly transport?: Transport["type"];
+      readonly security?: Security["type"];
+    })
+  | (CreateDefaultInboundBaseOptions<"shadowsocks"> & {
+      readonly transport?: Transport["type"];
+      readonly security?: "none" | "tls";
+    })
+  | (CreateDefaultInboundBaseOptions<"hysteria"> & {
+      readonly security?: "none" | "tls";
+    })
+  | CreateDefaultInboundBaseOptions<"http">
+  | CreateDefaultInboundBaseOptions<"mixed">
+  | CreateDefaultInboundBaseOptions<"socks">
+  | CreateDefaultInboundBaseOptions<"dokodemo-door">
+  | CreateDefaultInboundBaseOptions<"tunnel">
+  | CreateDefaultInboundBaseOptions<"tun">
+  | CreateDefaultInboundBaseOptions<"wireguard">;
+
+type UnsafeCreateDefaultInboundOptions = CreateDefaultInboundBaseOptions<Exclude<Inbound["protocol"], "unmanaged">> & {
   readonly transport?: Transport["type"];
   readonly security?: Security["type"];
 };
+
+type CreateDefaultInboundOptionsFor<Protocol extends Exclude<Inbound["protocol"], "unmanaged">> =
+  Extract<CreateDefaultInboundOptions, { readonly protocol: Protocol }>;
+
+type ExactCreateDefaultInboundOptions<Options extends CreateDefaultInboundOptions> =
+  Options & Record<Exclude<keyof Options, keyof CreateDefaultInboundOptionsFor<Options["protocol"]>>, never>;
 
 export type InboundFormCapabilities = {
   readonly protocols: Record<string, boolean>;
@@ -62,12 +99,52 @@ function defaultSecurity(type: Security["type"] = "none"): Security {
   return { type: "none" };
 }
 
-export function createDefaultInbound(options: CreateDefaultInboundOptions): Inbound {
-  const tag = options.tag ?? `${options.protocol}-inbound`;
-  const port = options.port ?? 443;
-  const listen = options.listen ?? "";
+function defaultNonRealitySecurity(type: "none" | "tls" = "none"): Extract<Security, { type: "none" | "tls" }> {
+  if (type === "tls") return { type: "tls", serverName: "" };
+  return { type: "none" };
+}
 
-  if (options.protocol === "vmess") {
+function assertCreateDefaultInboundOptions(options: CreateDefaultInboundOptions): void {
+  const unsafe = options as UnsafeCreateDefaultInboundOptions;
+  const protocol = unsafe.protocol;
+  const hasStreamSecurity = unsafe.security !== undefined;
+  const hasTransport = unsafe.transport !== undefined;
+
+  if (
+    protocol === "http" ||
+    protocol === "mixed" ||
+    protocol === "socks" ||
+    protocol === "dokodemo-door" ||
+    protocol === "tunnel" ||
+    protocol === "tun" ||
+    protocol === "wireguard"
+  ) {
+    if (hasStreamSecurity) throw new TypeError(`${protocol} default inbound does not support stream security options.`);
+    if (hasTransport) throw new TypeError(`${protocol} default inbound does not support transport options.`);
+  }
+
+  if (protocol === "vmess" && unsafe.security === "reality") {
+    throw new TypeError("VMess default inbound supports only none or TLS security.");
+  }
+
+  if ((protocol === "shadowsocks" || protocol === "hysteria") && unsafe.security === "reality") {
+    throw new TypeError(`${protocol} default inbound supports only none or TLS security.`);
+  }
+
+  if (protocol === "hysteria" && hasTransport) {
+    throw new TypeError("Hysteria default inbound uses the hysteria transport and does not accept a transport option.");
+  }
+}
+
+export function createDefaultInbound<const Options extends CreateDefaultInboundOptions>(options: ExactCreateDefaultInboundOptions<Options>): Inbound {
+  const typedOptions = options as CreateDefaultInboundOptions;
+  assertCreateDefaultInboundOptions(typedOptions);
+
+  const tag = typedOptions.tag ?? `${typedOptions.protocol}-inbound`;
+  const port = typedOptions.port ?? 443;
+  const listen = typedOptions.listen ?? "";
+
+  if (typedOptions.protocol === "vmess") {
     return {
       kind: "inbound",
       protocol: "vmess",
@@ -75,12 +152,12 @@ export function createDefaultInbound(options: CreateDefaultInboundOptions): Inbo
       listen,
       port,
       clients: [{ protocol: "vmess", id: placeholderUuid, security: "auto", email: "user" }],
-      security: options.security === "tls" ? { type: "tls", serverName: "" } : { type: "none" },
-      transport: defaultTransport(options.transport)
+      security: typedOptions.security === "tls" ? { type: "tls", serverName: "" } : { type: "none" },
+      transport: defaultTransport(typedOptions.transport)
     };
   }
 
-  if (options.protocol === "vless") {
+  if (typedOptions.protocol === "vless") {
     return {
       kind: "inbound",
       protocol: "vless",
@@ -88,13 +165,13 @@ export function createDefaultInbound(options: CreateDefaultInboundOptions): Inbo
       listen,
       port,
       clients: [{ protocol: "vless", id: placeholderUuid, email: "user" }],
-      security: defaultSecurity(options.security),
-      transport: defaultTransport(options.transport),
+      security: defaultSecurity(typedOptions.security),
+      transport: defaultTransport(typedOptions.transport),
       decryption: "none"
     };
   }
 
-  if (options.protocol === "trojan") {
+  if (typedOptions.protocol === "trojan") {
     return {
       kind: "inbound",
       protocol: "trojan",
@@ -102,13 +179,14 @@ export function createDefaultInbound(options: CreateDefaultInboundOptions): Inbo
       listen,
       port,
       clients: [{ protocol: "trojan", password: "change-me-trojan-password", email: "user" }],
-      security: defaultSecurity(options.security === "reality" ? "reality" : options.security ?? "tls"),
-      transport: defaultTransport(options.transport)
+      security: defaultSecurity(typedOptions.security === "reality" ? "reality" : typedOptions.security ?? "tls"),
+      transport: defaultTransport(typedOptions.transport)
     };
   }
 
-  if (options.protocol === "shadowsocks") {
-    return {
+  if (typedOptions.protocol === "shadowsocks") {
+    const usesStreamSettings = typedOptions.security !== undefined || typedOptions.transport !== undefined;
+    const inbound: Extract<Inbound, { protocol: "shadowsocks" }> = {
       kind: "inbound",
       protocol: "shadowsocks",
       tag,
@@ -119,9 +197,15 @@ export function createDefaultInbound(options: CreateDefaultInboundOptions): Inbo
       network: "tcp,udp",
       clients: [{ protocol: "shadowsocks", password: "change-me-client-password", email: "user" }]
     };
+    if (!usesStreamSettings) return inbound;
+    return {
+      ...inbound,
+      security: defaultNonRealitySecurity(typedOptions.security),
+      transport: defaultTransport(typedOptions.transport)
+    };
   }
 
-  if (options.protocol === "hysteria") {
+  if (typedOptions.protocol === "hysteria") {
     return {
       kind: "inbound",
       protocol: "hysteria",
@@ -130,29 +214,29 @@ export function createDefaultInbound(options: CreateDefaultInboundOptions): Inbo
       port,
       version: 2,
       clients: [{ protocol: "hysteria", auth: "change-me-hysteria-auth", email: "user" }],
-      security: options.security === "none" ? { type: "none" } : { type: "tls", serverName: "" },
+      security: typedOptions.security === "none" ? { type: "none" } : { type: "tls", serverName: "" },
       transport: { type: "hysteria", version: 2, udpIdleTimeout: 60 }
     };
   }
 
-  if (options.protocol === "http") {
+  if (typedOptions.protocol === "http") {
     return {
       kind: "inbound",
       protocol: "http",
       tag,
       listen: "127.0.0.1",
-      port: options.port ?? 8080,
+      port: typedOptions.port ?? 8080,
       accounts: [{ user: "user", pass: "change-me-http-password" }]
     };
   }
 
-  if (options.protocol === "mixed" || options.protocol === "socks") {
+  if (typedOptions.protocol === "mixed" || typedOptions.protocol === "socks") {
     return {
       kind: "inbound",
-      protocol: options.protocol,
+      protocol: typedOptions.protocol,
       tag,
       listen: "127.0.0.1",
-      port: options.port ?? 1080,
+      port: typedOptions.port ?? 1080,
       auth: "password",
       accounts: [{ user: "user", pass: "change-me-socks-password" }],
       udp: true,
@@ -160,20 +244,20 @@ export function createDefaultInbound(options: CreateDefaultInboundOptions): Inbo
     };
   }
 
-  if (options.protocol === "dokodemo-door" || options.protocol === "tunnel") {
+  if (typedOptions.protocol === "dokodemo-door" || typedOptions.protocol === "tunnel") {
     return {
       kind: "inbound",
-      protocol: options.protocol,
+      protocol: typedOptions.protocol,
       tag,
       listen,
       port,
       address: "127.0.0.1",
-      targetPort: options.port ?? 80,
+      targetPort: typedOptions.port ?? 80,
       network: "tcp"
     };
   }
 
-  if (options.protocol === "tun") {
+  if (typedOptions.protocol === "tun") {
     return {
       kind: "inbound",
       protocol: "tun",
@@ -192,7 +276,7 @@ export function createDefaultInbound(options: CreateDefaultInboundOptions): Inbo
     protocol: "wireguard",
     tag,
     listen,
-    port: options.port ?? 51820,
+    port: typedOptions.port ?? 51820,
     secretKey: placeholderKey32,
     publicKey: placeholderKey32,
     address: ["10.0.0.1/24"],

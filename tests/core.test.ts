@@ -595,4 +595,15 @@ describe("xray-config-kit core", () => {
       { op: "added", path: "/c", after: 4 }
     ]);
   });
+
+  it("rejects unsupported stream defaults on local proxy inbounds", () => {
+    const createUnsafeDefaultInbound = (options: unknown) => createDefaultInbound(options as Parameters<typeof createDefaultInbound>[0]);
+
+    expect(() => createUnsafeDefaultInbound({ protocol: "mixed", security: "reality" }))
+      .toThrow("mixed default inbound does not support stream security options.");
+    expect(() => createUnsafeDefaultInbound({ protocol: "mixed", transport: "tcp" }))
+      .toThrow("mixed default inbound does not support transport options.");
+    expect(() => createUnsafeDefaultInbound({ protocol: "vmess", security: "reality" }))
+      .toThrow("VMess default inbound supports only none or TLS security.");
+  });
 });
