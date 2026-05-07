@@ -10,7 +10,10 @@ type CreateDefaultInboundBaseOptions<Protocol extends Exclude<Inbound["protocol"
   readonly tag?: string;
   readonly port?: number;
   readonly listen?: string;
+  readonly clientDefaults?: CreateDefaultInboundClientDefaults;
 };
+
+export type CreateDefaultInboundClientDefaults = "placeholder" | "empty";
 
 export type CreateDefaultInboundOptions =
   | (CreateDefaultInboundBaseOptions<"vmess"> & {
@@ -162,7 +165,9 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
       tag,
       listen,
       port,
-      clients: [{ protocol: "vmess", id: placeholderUuid, security: "auto", email: "user" }],
+      clients: typedOptions.clientDefaults === "empty"
+        ? []
+        : [{ protocol: "vmess", id: placeholderUuid, security: "auto", email: "user" }],
       security: typedOptions.security === "tls" ? { type: "tls", serverName: "" } : { type: "none" },
       transport: defaultTransport(typedOptions.transport)
     } as InboundForProtocol<Options["protocol"]>;
@@ -175,7 +180,9 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
       tag,
       listen,
       port,
-      clients: [{ protocol: "vless", id: placeholderUuid, email: "user" }],
+      clients: typedOptions.clientDefaults === "empty"
+        ? []
+        : [{ protocol: "vless", id: placeholderUuid, email: "user" }],
       security: defaultSecurity(typedOptions.security),
       transport: defaultTransport(typedOptions.transport),
       decryption: "none"
@@ -189,7 +196,9 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
       tag,
       listen,
       port,
-      clients: [{ protocol: "trojan", password: "change-me-trojan-password", email: "user" }],
+      clients: typedOptions.clientDefaults === "empty"
+        ? []
+        : [{ protocol: "trojan", password: "change-me-trojan-password", email: "user" }],
       security: defaultSecurity(typedOptions.security === "reality" ? "reality" : typedOptions.security ?? "tls"),
       transport: defaultTransport(typedOptions.transport)
     } as InboundForProtocol<Options["protocol"]>;
@@ -206,7 +215,9 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
       method: "2022-blake3-aes-256-gcm",
       password: "change-me-server-password",
       network: "tcp,udp",
-      clients: [{ protocol: "shadowsocks", password: "change-me-client-password", email: "user" }]
+      clients: typedOptions.clientDefaults === "empty"
+        ? []
+        : [{ protocol: "shadowsocks", password: "change-me-client-password", email: "user" }]
     };
     if (!usesStreamSettings) return inbound as InboundForProtocol<Options["protocol"]>;
     return {
@@ -224,7 +235,9 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
       listen,
       port,
       version: 2,
-      clients: [{ protocol: "hysteria", auth: "change-me-hysteria-auth", email: "user" }],
+      clients: typedOptions.clientDefaults === "empty"
+        ? []
+        : [{ protocol: "hysteria", auth: "change-me-hysteria-auth", email: "user" }],
       security: typedOptions.security === "none" ? { type: "none" } : { type: "tls", serverName: "" },
       transport: { type: "hysteria", version: 2, udpIdleTimeout: 60 }
     } as InboundForProtocol<Options["protocol"]>;

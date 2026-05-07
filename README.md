@@ -78,6 +78,12 @@ import {
 
 const capabilities = getInboundFormCapabilities({ xrayVersion: "26.5.3" });
 const draft = createDefaultInbound({ protocol: "vless", transport: "xhttp", security: "reality" });
+const panelDraft = createDefaultInbound({
+  protocol: "vless",
+  transport: "xhttp",
+  security: "reality",
+  clientDefaults: "empty",
+});
 const visible = getInboundFieldVisibility(draft, capabilities);
 const issues = validateInboundDraft(draft, { mode: "permissive" });
 ```

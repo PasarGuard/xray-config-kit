@@ -606,4 +606,19 @@ describe("xray-config-kit core", () => {
     expect(() => createUnsafeDefaultInbound({ protocol: "vmess", security: "reality" }))
       .toThrow("VMess default inbound supports only none or TLS security.");
   });
+
+  it("can create panel drafts with empty client arrays", () => {
+    const defaultDraft = createDefaultInbound({ protocol: "vless", transport: "tcp", security: "reality" });
+    const panelDraft = createDefaultInbound({
+      protocol: "vless",
+      transport: "tcp",
+      security: "reality",
+      clientDefaults: "empty"
+    });
+    const shadowsocksPanelDraft = createDefaultInbound({ protocol: "shadowsocks", clientDefaults: "empty" });
+
+    expect(defaultDraft.clients).toHaveLength(1);
+    expect(panelDraft.clients).toEqual([]);
+    expect(shadowsocksPanelDraft.clients).toEqual([]);
+  });
 });
