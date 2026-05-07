@@ -57,10 +57,20 @@ export {
   generateShadowsocksLink,
   generateSubscription,
   generateTrojanLink,
+  generateUriFromXrayJson,
+  generateUriFromXrayOutbound,
   generateVlessLink,
   generateVmessLink,
+  generateXrayConfigFromUri,
+  generateXrayOutboundFromUri,
   generateWireGuardConfig
 } from "./exporters/index.js";
+export {
+  uriToXrayConfig,
+  uriToXrayOutbound,
+  xrayJsonToUri,
+  xrayOutboundToUri
+} from "./exporters/uris.js";
 export type * from "./core/types.js";
 export type { Result } from "./core/result.js";
 export type {
@@ -111,3 +121,8 @@ export type {
   XrayGeneratedFormField,
   XrayOutboundFormMetadata
 } from "./adapters/xray/form-metadata.js";
+export type {
+  ClientUriProtocol,
+  UriToXrayJsonOptions,
+  XrayJsonToUriOptions
+} from "./exporters/uris.js";

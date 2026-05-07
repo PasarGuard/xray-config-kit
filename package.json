@@ -42,6 +42,10 @@
       "types": "./dist/exporters/subscriptions.d.ts",
       "default": "./dist/exporters/subscriptions.js"
     },
+    "./exporters/uris": {
+      "types": "./dist/exporters/uris.d.ts",
+      "default": "./dist/exporters/uris.js"
+    },
     "./exporters/wireguard": {
       "types": "./dist/exporters/wireguard.d.ts",
       "default": "./dist/exporters/wireguard.js"

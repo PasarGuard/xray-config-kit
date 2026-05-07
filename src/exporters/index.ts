@@ -17,6 +17,22 @@ import type {
   WireGuardConfigOptions
 } from "../core/types.js";
 
+export {
+  generateUriFromXrayJson,
+  generateUriFromXrayOutbound,
+  generateXrayConfigFromUri,
+  generateXrayOutboundFromUri,
+  uriToXrayConfig,
+  uriToXrayOutbound,
+  xrayJsonToUri,
+  xrayOutboundToUri
+} from "./uris.js";
+export type {
+  ClientUriProtocol,
+  UriToXrayJsonOptions,
+  XrayJsonToUriOptions
+} from "./uris.js";
+
 function encode(value: string): string {
   return encodeURIComponent(value);
 }

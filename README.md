@@ -20,7 +20,7 @@ Copy `.env.example` to `.env` and configure the required environment variables f
 - Advanced stream settings: explicit `sockopt`, `finalmask`, `quicParams`, and raw stream patches.
 - Importers: raw Xray JSON into editable typed nodes where supported, with unmanaged preservation for unknown sections.
 - Outbounds: typed core outbounds plus raw-preserving proxy outbounds for HTTP, SOCKS, Shadowsocks, VMess, VLESS, Trojan, Hysteria, WireGuard, and Loopback.
-- Exporters: VMess/VLESS/Trojan/Shadowsocks links, WireGuard config text, link subscriptions, and Xray JSON outbound subscriptions.
+- Exporters: VMess/VLESS/Trojan/Shadowsocks links, URI <-> Xray outbound JSON conversion, WireGuard config text, link subscriptions, and Xray JSON outbound subscriptions.
 - Frontend helpers: default inbound drafts, capability flags, field visibility, and draft validation.
 
 ## Example
@@ -30,6 +30,8 @@ import {
   buildXrayConfig,
   createProfile,
   generateClientLink,
+  generateUriFromXrayOutbound,
+  generateXrayOutboundFromUri,
   validateProfile,
 } from "xray-config-kit";
 
@@ -62,6 +64,8 @@ const link = generateClientLink(profile, {
   clientId: "alice",
   host: "edge.example.com",
 });
+const outbound = generateXrayOutboundFromUri(link);
+const uri = generateUriFromXrayOutbound(outbound, { remark: "alice" });
 ```
 
 ## Frontend Flow
@@ -190,6 +194,7 @@ Omitting `xrayVersion` uses the latest generated release. Requesting a version n
 - `xray-config-kit/adapters`: adapter registry and compatibility matrix.
 - `xray-config-kit/xray-json`: low-level Xray JSON helper types.
 - `xray-config-kit/exporters/client-links`: client link helpers.
+- `xray-config-kit/exporters/uris`: client URI <-> raw Xray outbound JSON helpers.
 - `xray-config-kit/exporters/subscriptions`: subscription helpers.
 - `xray-config-kit/exporters/wireguard`: WireGuard config helper.
 - `xray-config-kit/testing`: browser-safe golden fixture helpers.
