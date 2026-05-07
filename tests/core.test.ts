@@ -576,7 +576,7 @@ describe("xray-config-kit core", () => {
 
     const formCapabilities = getInboundFormCapabilities({ xrayVersion: latestGeneratedRelease.version });
     expect(formCapabilities.clientLinks).toMatchObject({ vless: true, wireguard: true, hysteria: false });
-    const draft = createDefaultInbound({ protocol: "vless", transport: "xhttp", security: "reality" });
+    const draft = createDefaultInbound({ protocol: "vless", port: 443, transport: "xhttp", security: "reality" });
     expect(getInboundFieldVisibility(draft, formCapabilities)).toMatchObject({
       clients: true,
       stream: true,
@@ -605,31 +605,33 @@ describe("xray-config-kit core", () => {
       .toThrow("mixed default inbound does not support transport options.");
     expect(() => createUnsafeDefaultInbound({ protocol: "vmess", security: "reality" }))
       .toThrow("VMess default inbound supports only none or TLS security.");
+    expect(() => createUnsafeDefaultInbound({ protocol: "shadowsocks", clientDefaults: "empty" }))
+      .toThrow("shadowsocks default inbound requires a port.");
   });
 
   it("can create panel drafts with empty client arrays", () => {
-    const defaultDraft = createDefaultInbound({ protocol: "vless", transport: "tcp", security: "reality" });
+    const defaultDraft = createDefaultInbound({ protocol: "vless", port: 443, transport: "tcp", security: "reality" });
     const panelDraft = createDefaultInbound({
       protocol: "vless",
+      port: 443,
       transport: "tcp",
       security: "reality",
       clientDefaults: "empty"
     });
-    const shadowsocksPanelDraft = createDefaultInbound({ protocol: "shadowsocks", clientDefaults: "empty" });
+    const shadowsocksPanelDraft = createDefaultInbound({ protocol: "shadowsocks", port: 1080, clientDefaults: "empty" });
 
     expect(defaultDraft.clients).toHaveLength(1);
     expect(panelDraft.clients).toEqual([]);
     expect(shadowsocksPanelDraft.clients).toEqual([]);
   });
 
-  it("builds minimal panel Shadowsocks drafts with default policy controls", () => {
+  it("builds minimal Shadowsocks drafts with default policy controls", () => {
     const profile = createProfile({
       log: { loglevel: "info" },
       inbounds: [
         createDefaultInbound({
           protocol: "shadowsocks",
           tag: "Shadowsocks TCP",
-          listen: "0.0.0.0",
           port: 1080,
           clientDefaults: "empty"
         })

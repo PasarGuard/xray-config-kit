@@ -5,13 +5,15 @@ import type { Inbound, Issue, Security, Transport, ValidateOptions } from "./typ
 const placeholderUuid = "00000000-0000-4000-8000-000000000000";
 const placeholderKey32 = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
+type CreateDefaultInboundPortOption<Protocol extends Exclude<Inbound["protocol"], "unmanaged">> =
+  Protocol extends "tun" ? { readonly port?: number } : { readonly port: number };
+
 type CreateDefaultInboundBaseOptions<Protocol extends Exclude<Inbound["protocol"], "unmanaged">> = {
   readonly protocol: Protocol;
   readonly tag?: string;
-  readonly port?: number;
   readonly listen?: string;
   readonly clientDefaults?: CreateDefaultInboundClientDefaults;
-};
+} & CreateDefaultInboundPortOption<Protocol>;
 
 export type CreateDefaultInboundClientDefaults = "placeholder" | "empty";
 
@@ -146,6 +148,10 @@ function assertCreateDefaultInboundOptions(options: CreateDefaultInboundOptions)
   if (protocol === "hysteria" && hasTransport) {
     throw new TypeError("Hysteria default inbound uses the hysteria transport and does not accept a transport option.");
   }
+
+  if (protocol !== "tun" && unsafe.port === undefined) {
+    throw new TypeError(`${protocol} default inbound requires a port.`);
+  }
 }
 
 export function createDefaultInbound<const Options extends CreateDefaultInboundOptions>(
@@ -156,7 +162,7 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
 
   const tag = typedOptions.tag ?? `${typedOptions.protocol}-inbound`;
   const port = typedOptions.port ?? 443;
-  const listen = typedOptions.listen ?? "";
+  const listen = typedOptions.listen ?? "0.0.0.0";
 
   if (typedOptions.protocol === "vmess") {
     return {
@@ -247,7 +253,7 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
       kind: "inbound",
       protocol: "http",
       tag,
-      listen: "127.0.0.1",
+      listen,
       port: typedOptions.port ?? 8080,
       accounts: [{ user: "user", pass: "change-me-http-password" }]
     } as InboundForProtocol<Options["protocol"]>;
@@ -258,7 +264,7 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
       kind: "inbound",
       protocol: typedOptions.protocol,
       tag,
-      listen: "127.0.0.1",
+      listen,
       port: typedOptions.port ?? 1080,
       auth: "password",
       accounts: [{ user: "user", pass: "change-me-socks-password" }],

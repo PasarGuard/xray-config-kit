@@ -77,16 +77,18 @@ import {
 } from "xray-config-kit";
 
 const capabilities = getInboundFormCapabilities({ xrayVersion: "26.5.3" });
-const draft = createDefaultInbound({ protocol: "vless", transport: "xhttp", security: "reality" });
+const draft = createDefaultInbound({ protocol: "vless", port: 443, transport: "xhttp", security: "reality" });
 const panelDraft = createDefaultInbound({
-  protocol: "vless",
-  transport: "xhttp",
-  security: "reality",
+  protocol: "shadowsocks",
+  tag: "Shadowsocks TCP",
+  port: 1080,
   clientDefaults: "empty",
 });
 const visible = getInboundFieldVisibility(draft, capabilities);
 const issues = validateInboundDraft(draft, { mode: "permissive" });
 ```
+
+`createProfile()` includes a `policy.levels["0"].statsUserOnline` default. Pass `includeDefaultPolicy: false` when the host panel should omit that top-level policy.
 
 Frontend code should own form drafts, validation display, live JSON preview, and diffs. It should not own raw Xray JSON as the primary state.
 
