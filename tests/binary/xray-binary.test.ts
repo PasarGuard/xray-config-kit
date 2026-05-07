@@ -51,6 +51,11 @@ describe("real Xray binary", () => {
     const built = buildXrayConfig(profile, {
       xrayVersion: process.env.XRAY_VERSION
     });
+    const buildErrors = built.issues.filter((issue) => issue.severity === "error");
+    if (buildErrors.length > 0) {
+      throw new Error(buildErrors.map((issue) => `${issue.code}: ${issue.message}`).join("\n"));
+    }
+
     const result = await testXrayConfig(built.config, {
       binaryPath: process.env.XRAY_BINARY,
       timeoutMs: 30_000

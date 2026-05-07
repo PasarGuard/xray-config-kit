@@ -13,6 +13,9 @@ export default {
   ],
   outputs: {
     manifest: "src/xray-json/parity-manifest.ts",
-    types: "src/xray-json/parity-types.ts"
+    types: "src/xray-json/parity-types.ts",
+    capabilities: "src/adapters/xray/generated-capabilities.ts",
+    ciMatrix: ".github/xray-ci-matrix.json",
+    testHelpers: "tests/helpers/xray-releases.ts"
   }
 } satisfies XrayParityGeneratorConfig;

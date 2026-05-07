@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { getXrayParityRelease, getXrayParityReleases, xrayParityManifest } from "../../src/index.js";
+import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
 describe("xray parity manifest", () => {
   it("tracks selected xray-core releases from infra/conf", () => {
@@ -10,7 +11,7 @@ describe("xray parity manifest", () => {
   });
 
   it("captures loader protocols, top-level sections, and stream aliases", () => {
-    const release = getXrayParityRelease({ releaseTag: "v26.5.3" });
+    const release = getXrayParityRelease({ releaseTag: latestGeneratedRelease.tag });
 
     expect(release.topLevelKeys).toContain("reverse");
     expect(release.topLevelKeys).toContain("transport");

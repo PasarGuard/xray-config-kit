@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { getXrayParityRelease, getXrayParityReleases } from "../../src/index.js";
+import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
 describe("xray json loader manifest coverage", () => {
   it("keeps inbound and outbound loader cache entries aligned with public protocol lists", () => {
@@ -13,7 +14,7 @@ describe("xray json loader manifest coverage", () => {
   });
 
   it("has struct definitions for every generated JSON loader target", () => {
-    const release = getXrayParityRelease({ releaseTag: "v26.5.3" });
+    const release = getXrayParityRelease({ releaseTag: latestGeneratedRelease.tag });
     const missing = Object.values(release.jsonLoaders)
       .flat()
       .filter((entry) => release.structs[entry.config] === undefined)
@@ -23,7 +24,7 @@ describe("xray json loader manifest coverage", () => {
   });
 
   it("captures transport header and finalmask loaders separately from stream network aliases", () => {
-    const release = getXrayParityRelease({ releaseTag: "v26.5.3" });
+    const release = getXrayParityRelease({ releaseTag: latestGeneratedRelease.tag });
     const tcpHeader = release.jsonLoaders["infra/conf/transport_internet.go:tcpHeaderLoader"] ?? [];
     const tcpMask = release.jsonLoaders["infra/conf/transport_internet.go:tcpmaskLoader"] ?? [];
     const udpMask = release.jsonLoaders["infra/conf/transport_internet.go:udpmaskLoader"] ?? [];

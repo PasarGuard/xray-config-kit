@@ -1,9 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import { getXrayParityRelease, validateStrictXrayConfig } from "../../src/index.js";
+import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
 describe("xray protocol loader coverage", () => {
-  it("accepts every inbound protocol registered by xray-core for v26.5.3", () => {
-    const release = getXrayParityRelease({ releaseTag: "v26.5.3" });
+  it("accepts every inbound protocol registered by xray-core for the latest generated release", () => {
+    const release = getXrayParityRelease({ releaseTag: latestGeneratedRelease.tag });
     for (const entry of release.inboundProtocols) {
       const result = validateStrictXrayConfig({
         inbounds: [
@@ -20,8 +21,8 @@ describe("xray protocol loader coverage", () => {
     }
   });
 
-  it("accepts every outbound protocol registered by xray-core for v26.5.3", () => {
-    const release = getXrayParityRelease({ releaseTag: "v26.5.3" });
+  it("accepts every outbound protocol registered by xray-core for the latest generated release", () => {
+    const release = getXrayParityRelease({ releaseTag: latestGeneratedRelease.tag });
     for (const entry of release.outboundProtocols) {
       const result = validateStrictXrayConfig({
         outbounds: [

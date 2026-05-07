@@ -12,7 +12,7 @@ Copy `.env.example` to `.env` and configure the required environment variables f
 
 ## Current Scope
 
-- Xray adapters: version-aware capability and compatibility behavior for 25.x and 26.x style configs, with CI binary checks against latest Xray-core.
+- Xray adapters: generated capability and compatibility behavior from selected Xray-core releases, with CI binary checks against those releases and upstream latest.
 - Xray-first parity layer: generated manifest from Xray `infra/conf` selected releases and strict Xray JSON validation.
 - Editable inbound models: VMess, VLESS, Trojan, Shadowsocks, Hysteria, HTTP, Mixed/SOCKS, Dokodemo/Tunnel, TUN, WireGuard.
 - Transports: TCP/RAW, gRPC, XHTTP/SplitHTTP, WebSocket, HTTPUpgrade, mKCP, Hysteria.
@@ -112,7 +112,7 @@ if (!result.ok) {
 }
 ```
 
-The parity manifest is generated from `xray-core/infra/conf` using the root `xray-parity.config.ts` codegen config:
+The parity manifest, strict types, adapter capabilities, test helpers, and CI matrix are generated from `xray-core/infra/conf` using the root `xray-parity.config.ts` codegen config:
 
 ```powershell
 bun run generate:parity
@@ -126,10 +126,15 @@ export default {
   releases: ["v25.10.15", "v26.4.25", "v26.5.3", "latest"],
   outputs: {
     manifest: "src/xray-json/parity-manifest.ts",
-    types: "src/xray-json/parity-types.ts"
+    types: "src/xray-json/parity-types.ts",
+    capabilities: "src/adapters/xray/generated-capabilities.ts",
+    ciMatrix: ".github/xray-ci-matrix.json",
+    testHelpers: "tests/helpers/xray-releases.ts"
   }
 };
 ```
+
+Omitting `xrayVersion` uses the latest generated release. Requesting a version newer than the generated parity data returns `XCK_XRAY_PARITY_VERSION_UNGENERATED`; fetch Xray-core tags and run `bun run generate:parity` to add the new release data. Non-exact in-range versions resolve to the nearest lower generated release and emit a compatibility warning.
 
 ## Exports
 

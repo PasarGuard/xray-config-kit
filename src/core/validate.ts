@@ -424,11 +424,13 @@ export function validateProfile(input: unknown, options: ValidateOptions = {}): 
 
   const profile = normalizeProfile(parsed.data as Profile);
   const issues = [
+    ...(adapter.issues ?? []),
     ...semanticIssues(profile, options),
     ...adapter.validateCompatibility(profile)
   ];
   const strict = options.mode !== "permissive";
-  const ok = strict ? !hasErrors(issues) : true;
+  const adapterHasErrors = (adapter.issues ?? []).some((issue) => issue.severity === "error");
+  const ok = adapterHasErrors ? false : strict ? !hasErrors(issues) : true;
 
   return {
     ok,

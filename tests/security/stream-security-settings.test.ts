@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { validateStrictXrayConfig } from "../../src/index.js";
+import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
 describe("xray stream security settings parity", () => {
   it("accepts current TLS and REALITY setting fields from xray-core", () => {
@@ -68,7 +69,7 @@ describe("xray stream security settings parity", () => {
           }
         }
       ]
-    }, { releaseTag: "v26.5.3" });
+    }, { releaseTag: latestGeneratedRelease.tag });
 
     expect(result.ok, result.issues.map((issue) => `${issue.path}: ${issue.message}`).join("; ")).toBe(true);
   });
@@ -93,7 +94,7 @@ describe("xray stream security settings parity", () => {
           }
         }
       ]
-    }, { releaseTag: "v26.5.3" });
+    }, { releaseTag: latestGeneratedRelease.tag });
 
     expect(result.ok).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([
@@ -118,7 +119,7 @@ describe("xray stream security settings parity", () => {
           }
         }
       ]
-    }, { releaseTag: "v26.5.3" });
+    }, { releaseTag: latestGeneratedRelease.tag });
 
     expect(result.ok).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([

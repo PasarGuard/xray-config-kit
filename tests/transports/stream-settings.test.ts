@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { getXrayParityRelease, validateStrictXrayConfig } from "../../src/index.js";
 import type { JsonObject } from "../../src/index.js";
+import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
 function inboundWithStream(streamSettings: JsonObject): JsonObject {
   return {
@@ -131,13 +132,13 @@ describe("xray stream transport settings parity", () => {
     ];
 
     for (const streamSettings of cases) {
-      const result = validateStrictXrayConfig(inboundWithStream(streamSettings), { releaseTag: "v26.5.3" });
+      const result = validateStrictXrayConfig(inboundWithStream(streamSettings), { releaseTag: latestGeneratedRelease.tag });
       expect(result.ok, `${streamSettings.network}: ${result.issues.map((issue) => issue.message).join("; ")}`).toBe(true);
     }
   });
 
   it("rejects unknown fields inside every nested stream struct captured by the manifest", () => {
-    const release = getXrayParityRelease({ releaseTag: "v26.5.3" });
+    const release = getXrayParityRelease({ releaseTag: latestGeneratedRelease.tag });
     const streamStructFields = release.streamFields.filter((field) => {
       const typeName = field.type.replace(/^\*/, "").replace(/^\[\]\*/, "").replace(/^\[\]/, "").split(".").pop();
       return typeName !== undefined && release.structs[typeName] !== undefined;

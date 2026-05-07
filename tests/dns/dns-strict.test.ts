@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { validateStrictXrayConfig } from "../../src/index.js";
 import { strictXrayConfigSchema } from "../../src/schemas/index.js";
+import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
 describe("xray dns strict parity", () => {
   it("accepts the DNSConfig fields declared by xray-core", () => {
@@ -31,7 +32,7 @@ describe("xray dns strict parity", () => {
         enableParallelQuery: true,
         useSystemHosts: false
       }
-    }, { releaseTag: "v26.5.3" });
+    }, { releaseTag: latestGeneratedRelease.tag });
 
     expect(result.ok, result.issues.map((issue) => issue.message).join("; ")).toBe(true);
     expect(strictXrayConfigSchema.safeParse(result.config).success).toBe(true);
@@ -43,7 +44,7 @@ describe("xray dns strict parity", () => {
         servers: [],
         panelResolver: true
       }
-    }, { releaseTag: "v26.5.3" });
+    }, { releaseTag: latestGeneratedRelease.tag });
 
     expect(result.ok).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toContain("/dns/panelResolver");
@@ -52,7 +53,7 @@ describe("xray dns strict parity", () => {
   it("requires dns to be an object when the section is present", () => {
     const result = validateStrictXrayConfig({
       dns: []
-    }, { releaseTag: "v26.5.3" });
+    }, { releaseTag: latestGeneratedRelease.tag });
 
     expect(result.ok).toBe(false);
     expect(result.issues).toMatchObject([

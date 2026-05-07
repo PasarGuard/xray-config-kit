@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { validateStrictXrayConfig } from "../../src/index.js";
+import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
 describe("xray strict security behavior", () => {
   it("reports legacy XTLS as a removed security mode", () => {
@@ -16,7 +17,7 @@ describe("xray strict security behavior", () => {
           }
         }
       ]
-    }, { releaseTag: "v26.5.3" });
+    }, { releaseTag: latestGeneratedRelease.tag });
 
     expect(result.ok).toBe(false);
     expect(result.issues.some((issue) => issue.code === "XCK_XRAY_STRICT_REMOVED_SECURITY")).toBe(true);

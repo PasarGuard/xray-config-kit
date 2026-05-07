@@ -13,10 +13,12 @@ import {
   getCapabilities,
   getInboundFieldVisibility,
   getInboundFormCapabilities,
+  getXrayParityRelease,
   importXrayConfig,
   validateProfile
 } from "../src/index.js";
 import { getProfileJsonSchema } from "../src/schemas/index.js";
+import { latestGeneratedRelease } from "./helpers/xray-releases.js";
 import type { Profile } from "../src/index.js";
 
 const key32 = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
@@ -103,7 +105,7 @@ function vmessProfile(): Profile {
 
 describe("xray-config-kit core", () => {
   it("builds VLESS REALITY TCP Xray JSON", () => {
-    const built = buildXrayConfig(realityProfile(), { xrayVersion: "26.5.3" });
+    const built = buildXrayConfig(realityProfile(), { xrayVersion: latestGeneratedRelease.version });
 
     expect(built.adapterId).toBe("xray@26.5");
     expect(built.issues.filter((issue) => issue.severity === "error")).toEqual([]);
@@ -121,7 +123,7 @@ describe("xray-config-kit core", () => {
 
   it("builds, imports, and links VMess WS TLS inbounds", () => {
     const profile = vmessProfile();
-    const built = buildXrayConfig(profile, { xrayVersion: "26.5.3" });
+    const built = buildXrayConfig(profile, { xrayVersion: latestGeneratedRelease.version });
 
     expect(built.issues.some((issue) => issue.code === "XCK_COMPAT_VMESS_DEPRECATED")).toBe(true);
     expect(built.config.inbounds?.[0]).toMatchObject({
@@ -197,7 +199,7 @@ describe("xray-config-kit core", () => {
       ]
     });
 
-    const built = buildXrayConfig(profile, { xrayVersion: "26.5.3" });
+    const built = buildXrayConfig(profile, { xrayVersion: latestGeneratedRelease.version });
     expect(built.config.inbounds?.[0]?.streamSettings).toMatchObject({
       network: "httpupgrade",
       httpupgradeSettings: {
@@ -248,7 +250,7 @@ describe("xray-config-kit core", () => {
       ]
     });
 
-    const built = buildXrayConfig(profile, { xrayVersion: "26.5.3" });
+    const built = buildXrayConfig(profile, { xrayVersion: latestGeneratedRelease.version });
     expect(built.config.inbounds?.[0]).toMatchObject({ protocol: "http", settings: {} });
     expect(built.config.inbounds?.[1]).toMatchObject({ protocol: "mixed", settings: { auth: "noauth", udp: true } });
     expect(built.config.inbounds?.[2]).toMatchObject({ protocol: "socks", settings: { auth: "noauth", udp: true } });
@@ -284,7 +286,7 @@ describe("xray-config-kit core", () => {
       ]
     });
 
-    const built = buildXrayConfig(profile, { xrayVersion: "26.5.3" });
+    const built = buildXrayConfig(profile, { xrayVersion: latestGeneratedRelease.version });
     expect(built.config.inbounds?.[0]).toMatchObject({
       protocol: "wireguard",
       settings: {
@@ -388,7 +390,7 @@ describe("xray-config-kit core", () => {
       ]
     });
 
-    const built = buildXrayConfig(profile, { xrayVersion: "26.5.3" });
+    const built = buildXrayConfig(profile, { xrayVersion: latestGeneratedRelease.version });
     expect(built.issues.filter((issue) => issue.severity === "error")).toEqual([]);
     expect(built.config.inbounds?.[0]?.streamSettings).toMatchObject({
       network: "hysteria",
@@ -480,7 +482,7 @@ describe("xray-config-kit core", () => {
       ]
     });
 
-    const validation = validateProfile(invalid, { xrayVersion: "26.5.3" });
+    const validation = validateProfile(invalid, { xrayVersion: latestGeneratedRelease.version });
 
     expect(validation.ok).toBe(false);
     expect(validation.issues.some((issue) => issue.code === "XCK_COMPAT_REALITY_TRANSPORT")).toBe(true);
@@ -553,7 +555,7 @@ describe("xray-config-kit core", () => {
   });
 
   it("exports capabilities, JSON Schema, analysis warnings, and diffs", () => {
-    const capabilities = getCapabilities({ xrayVersion: "26.5.3" });
+    const capabilities = getCapabilities({ xrayVersion: latestGeneratedRelease.version });
     expect(capabilities.protocols).toContain("vmess");
     expect(capabilities.protocols).toContain("wireguard");
     expect(capabilities.protocols).toContain("hysteria");
@@ -565,12 +567,14 @@ describe("xray-config-kit core", () => {
     expect(capabilities.compatibilityMatrix.quic?.supported).toBe(false);
 
     const xray25 = getCapabilities({ xrayVersion: "25.10.15" });
+    const xray25Release = getXrayParityRelease({ xrayVersion: "25.10.15" });
     expect(xray25.adapterId).toBe("xray@25.10");
-    expect(xray25.transports).toContain("quic");
-    expect(xray25.transports).toContain("http");
-    expect(xray25.compatibilityMatrix.quic?.supported).toBe(true);
+    expect(xray25.transports).toEqual(Object.keys(xray25Release.transportAliases).sort());
+    expect(xray25.compatibilityMatrix).toMatchObject(
+      Object.fromEntries(Object.keys(xray25Release.transportAliases).map((transport) => [transport, { supported: true }]))
+    );
 
-    const formCapabilities = getInboundFormCapabilities({ xrayVersion: "26.5.3" });
+    const formCapabilities = getInboundFormCapabilities({ xrayVersion: latestGeneratedRelease.version });
     expect(formCapabilities.clientLinks).toMatchObject({ vless: true, wireguard: true, hysteria: false });
     const draft = createDefaultInbound({ protocol: "vless", transport: "xhttp", security: "reality" });
     expect(getInboundFieldVisibility(draft, formCapabilities)).toMatchObject({

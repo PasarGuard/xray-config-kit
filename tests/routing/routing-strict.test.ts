@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { validateStrictXrayConfig } from "../../src/index.js";
+import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
 describe("xray routing strict parity", () => {
   it("accepts router fields and raw rule bodies that xray-core loads dynamically", () => {
@@ -26,7 +27,7 @@ describe("xray routing strict parity", () => {
         { protocol: "blackhole", tag: "block", settings: {} },
         { protocol: "freedom", tag: "direct", settings: {} }
       ]
-    }, { releaseTag: "v26.5.3" });
+    }, { releaseTag: latestGeneratedRelease.tag });
 
     expect(result.ok, result.issues.map((issue) => issue.message).join("; ")).toBe(true);
   });
@@ -42,7 +43,7 @@ describe("xray routing strict parity", () => {
         ],
         kitOnlyRoutingWrapper: true
       }
-    }, { releaseTag: "v26.5.3" });
+    }, { releaseTag: latestGeneratedRelease.tag });
 
     expect(result.ok).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toEqual(["/routing/kitOnlyRoutingWrapper"]);

@@ -54,14 +54,17 @@ export function asXrayConfig(value: JsonObject): XrayConfig {
 export {
   getXrayParityRelease,
   getXrayParityReleases,
+  resolveXrayParityRelease,
   validateStrictXrayConfig,
   xrayParityManifest
 } from "./parity.js";
 export type {
   StrictXrayValidationOptions,
   StrictXrayValidationResult,
+  XrayParityFeatureNotice,
   XrayParityLoaderEntry,
   XrayParityRelease,
+  XrayParityReleaseResolution,
   XrayParityStructField
 } from "./parity.js";
 export type {

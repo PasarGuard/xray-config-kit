@@ -1,16 +1,17 @@
 import { describe, expect, it } from "bun:test";
 import { validateStrictXrayConfig } from "../../src/index.js";
+import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
 describe("strict xray json error surface", () => {
   it("requires the root config, inbound list, and outbound list to use Xray JSON shapes", () => {
-    const root = validateStrictXrayConfig(null, { releaseTag: "v26.5.3" });
+    const root = validateStrictXrayConfig(null, { releaseTag: latestGeneratedRelease.tag });
     expect(root.ok).toBe(false);
     expect(root.issues.map((issue) => issue.code)).toContain("XCK_XRAY_STRICT_EXPECTED_OBJECT");
 
     const lists = validateStrictXrayConfig({
       inbounds: {},
       outbounds: {}
-    }, { releaseTag: "v26.5.3" });
+    }, { releaseTag: latestGeneratedRelease.tag });
 
     expect(lists.ok).toBe(false);
     expect(lists.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([
@@ -30,7 +31,7 @@ describe("strict xray json error surface", () => {
         { tag: "missing-out", settings: {} },
         { protocol: "not-xray-out", tag: "bad-out", settings: {} }
       ]
-    }, { releaseTag: "v26.5.3" });
+    }, { releaseTag: latestGeneratedRelease.tag });
 
     expect(result.ok).toBe(false);
     expect(result.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining([
@@ -67,7 +68,7 @@ describe("strict xray json error surface", () => {
           proxySettings: "not-object"
         }
       ]
-    }, { releaseTag: "v26.5.3" });
+    }, { releaseTag: latestGeneratedRelease.tag });
 
     expect(result.ok).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([
@@ -100,7 +101,7 @@ describe("strict xray json error surface", () => {
           }
         }
       ]
-    }, { releaseTag: "v26.5.3", mode: "permissive" });
+    }, { releaseTag: latestGeneratedRelease.tag, mode: "permissive" });
 
     expect(result.ok).toBe(true);
     expect(result.config).toBeDefined();

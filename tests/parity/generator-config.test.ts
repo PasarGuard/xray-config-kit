@@ -12,7 +12,10 @@ describe("xray parity generator config", () => {
     expect(xrayParityManifest.source.selectedTags).toEqual(["v25.10.15", "v26.4.25", "v26.5.3"]);
     expect(xrayParityManifest.source.tags).toEqual(["v25.10.15", "v26.4.25", "v26.5.3"]);
     expect(parityConfig.outputs).toEqual({
+      capabilities: "src/adapters/xray/generated-capabilities.ts",
+      ciMatrix: ".github/xray-ci-matrix.json",
       manifest: "src/xray-json/parity-manifest.ts",
+      testHelpers: "tests/helpers/xray-releases.ts",
       types: "src/xray-json/parity-types.ts"
     });
   });

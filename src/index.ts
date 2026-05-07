@@ -18,6 +18,7 @@ export {
 export {
   getXrayParityRelease,
   getXrayParityReleases,
+  resolveXrayParityRelease,
   validateStrictXrayConfig,
   xrayParityManifest
 } from "./xray-json/index.js";
@@ -67,6 +68,7 @@ export type {
 export type {
   StrictXrayValidationOptions,
   StrictXrayValidationResult,
+  XrayParityFeatureNotice,
   XrayParityGeneratedManifest,
   XrayParityGeneratedRelease,
   XrayParityInboundProtocol,
@@ -74,6 +76,7 @@ export type {
   XrayParityOutboundProtocol,
   XrayParityRelease,
   XrayParityReleaseByTag,
+  XrayParityReleaseResolution,
   XrayParityReleaseTag,
   XrayParitySecurityType,
   XrayParityStreamField,

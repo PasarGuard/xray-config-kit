@@ -29,6 +29,96 @@ export const xrayParityManifest = {
       "tag": "v25.10.15",
       "version": "25.10.15",
       "commit": "b69a376aa1b61ad94c9c05b2c2cd263567b8cc23",
+      "removedFeatures": [
+        {
+          "feature": "noise = { ... }",
+          "replacement": "noises = [ { ... } ]",
+          "source": "infra/conf/freedom.go",
+          "keys": [
+            "freedom noise"
+          ]
+        },
+        {
+          "feature": "\"serverNameToVerify\"",
+          "replacement": "\"verifyPeerCertInNames\"",
+          "source": "infra/conf/transport_internet.go",
+          "keys": []
+        },
+        {
+          "feature": "HTTP transport (without header padding, etc.)",
+          "replacement": "XHTTP stream-one H2 & H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "http-transport"
+          ]
+        },
+        {
+          "feature": "Legacy XTLS",
+          "replacement": "xtls-rprx-vision with TLS or REALITY",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "xtls"
+          ]
+        },
+        {
+          "feature": "QUIC transport (without web service, etc.)",
+          "replacement": "XHTTP stream-one H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "quic"
+          ]
+        },
+        {
+          "feature": "Flow for Trojan",
+          "source": "infra/conf/trojan.go",
+          "keys": [
+            "trojan flow"
+          ]
+        },
+        {
+          "feature": "Global transport config",
+          "replacement": "streamSettings in inbounds and outbounds",
+          "source": "infra/conf/xray.go",
+          "keys": [
+            "global transport"
+          ]
+        }
+      ],
+      "deprecatedFeatures": [
+        {
+          "feature": "\"host\" in \"headers\"",
+          "replacement": "independent \"host\"",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "xhttp headers host"
+          ]
+        },
+        {
+          "feature": "gRPC transport (with unnecessary costs, etc.)",
+          "replacement": "XHTTP stream-up H2",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "grpc"
+          ]
+        },
+        {
+          "feature": "HTTPUpgrade transport (with ALPN http/1.1, etc.)",
+          "replacement": "XHTTP H2 & H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "httpupgrade"
+          ]
+        },
+        {
+          "feature": "WebSocket transport (with ALPN http/1.1, etc.)",
+          "replacement": "XHTTP H2 & H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "websocket",
+            "ws"
+          ]
+        }
+      ],
       "topLevelKeys": [
         "api",
         "burstObservatory",
@@ -236,6 +326,73 @@ export const xrayParityManifest = {
         "reality",
         "tls",
         "xtls"
+      ],
+      "fingerprints": [
+        "360",
+        "android",
+        "chrome",
+        "edge",
+        "firefox",
+        "hello360_11_0",
+        "hello360_7_5",
+        "hello360_auto",
+        "helloandroid_11_okhttp",
+        "hellochrome_100",
+        "hellochrome_100_psk",
+        "hellochrome_102",
+        "hellochrome_106_shuffle",
+        "hellochrome_112_psk_shuf",
+        "hellochrome_114_padding_psk_shuf",
+        "hellochrome_115_pq",
+        "hellochrome_115_pq_psk",
+        "hellochrome_120",
+        "hellochrome_120_pq",
+        "hellochrome_131",
+        "hellochrome_58",
+        "hellochrome_62",
+        "hellochrome_70",
+        "hellochrome_72",
+        "hellochrome_83",
+        "hellochrome_87",
+        "hellochrome_96",
+        "hellochrome_auto",
+        "helloedge_106",
+        "helloedge_85",
+        "helloedge_auto",
+        "hellofirefox_102",
+        "hellofirefox_105",
+        "hellofirefox_120",
+        "hellofirefox_55",
+        "hellofirefox_56",
+        "hellofirefox_63",
+        "hellofirefox_65",
+        "hellofirefox_99",
+        "hellofirefox_auto",
+        "hellogolang",
+        "helloios_11_1",
+        "helloios_12_1",
+        "helloios_13",
+        "helloios_14",
+        "helloios_auto",
+        "helloqq_11_1",
+        "helloqq_auto",
+        "hellorandomized",
+        "hellorandomizedalpn",
+        "hellorandomizednoalpn",
+        "hellosafari_16_0",
+        "hellosafari_auto",
+        "ios",
+        "qq",
+        "random",
+        "randomized",
+        "randomizednoalpn",
+        "safari",
+        "unsafe"
+      ],
+      "alpn": [
+        "h3",
+        "h2",
+        "http/1.1"
       ],
       "jsonLoaders": {
         "infra/conf/transport_internet.go:kcpHeaderLoader": [
@@ -2908,6 +3065,160 @@ export const xrayParityManifest = {
       "tag": "v26.4.25",
       "version": "26.4.25",
       "commit": "b4f08981becb71eaa995fa98ed2098ade92566bb",
+      "removedFeatures": [
+        {
+          "feature": "noise = { ... }",
+          "replacement": "noises = [ { ... } ]",
+          "source": "infra/conf/freedom.go",
+          "keys": [
+            "freedom noise"
+          ]
+        },
+        {
+          "feature": "\"allowInsecure\"",
+          "replacement": "\"pinnedPeerCertSha256\"",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "allowInsecure"
+          ]
+        },
+        {
+          "feature": "\"verifyPeerCertInNames\"",
+          "replacement": "\"verifyPeerCertByName\"",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "verifyPeerCertInNames"
+          ]
+        },
+        {
+          "feature": "domain",
+          "replacement": "domains(server) & resolvers(client)",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "finalmask xdns domain"
+          ]
+        },
+        {
+          "feature": "HTTP transport (without header padding, etc.)",
+          "replacement": "XHTTP stream-one H2 & H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "http-transport"
+          ]
+        },
+        {
+          "feature": "Legacy XTLS",
+          "replacement": "xtls-rprx-vision with TLS or REALITY",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "xtls"
+          ]
+        },
+        {
+          "feature": "mkcp header & seed",
+          "replacement": "finalmask/udp header-* & mkcp-original & mkcp-aes128gcm",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "mkcp header/seed"
+          ]
+        },
+        {
+          "feature": "QUIC transport (without web service, etc.)",
+          "replacement": "XHTTP stream-one H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "quic"
+          ]
+        },
+        {
+          "feature": "Flow for Trojan",
+          "source": "infra/conf/trojan.go",
+          "keys": [
+            "trojan flow"
+          ]
+        },
+        {
+          "feature": "\"legacy reverse\"",
+          "replacement": "\"VLESS Reverse Proxy\"",
+          "source": "infra/conf/xray.go",
+          "keys": []
+        },
+        {
+          "feature": "Global transport config",
+          "replacement": "streamSettings in inbounds and outbounds",
+          "source": "infra/conf/xray.go",
+          "keys": [
+            "global transport"
+          ]
+        }
+      ],
+      "deprecatedFeatures": [
+        {
+          "feature": "\"nonIPQuery\" and \"blockTypes\" in DNS outbound",
+          "replacement": "\"rules\"",
+          "source": "infra/conf/dns_proxy.go",
+          "keys": [
+            "dns legacy nonIPQuery blockTypes"
+          ]
+        },
+        {
+          "feature": "Shadowsocks (with no Forward Secrecy, etc.)",
+          "replacement": "VLESS Encryption",
+          "source": "infra/conf/shadowsocks.go",
+          "keys": [
+            "shadowsocks"
+          ]
+        },
+        {
+          "feature": "\"host\" in \"headers\"",
+          "replacement": "independent \"host\"",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "xhttp headers host"
+          ]
+        },
+        {
+          "feature": "gRPC transport (with unnecessary costs, etc.)",
+          "replacement": "XHTTP stream-up H2",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "grpc"
+          ]
+        },
+        {
+          "feature": "HTTPUpgrade transport (with ALPN http/1.1, etc.)",
+          "replacement": "XHTTP H2 & H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "httpupgrade"
+          ]
+        },
+        {
+          "feature": "WebSocket transport (with ALPN http/1.1, etc.)",
+          "replacement": "XHTTP H2 & H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "websocket",
+            "ws"
+          ]
+        },
+        {
+          "feature": "Trojan (with no Flow, etc.)",
+          "replacement": "VLESS with Flow & Seed",
+          "source": "infra/conf/trojan.go",
+          "keys": [
+            "trojan"
+          ]
+        },
+        {
+          "feature": "VMess (with no Forward Secrecy, etc.)",
+          "replacement": "VLESS Encryption",
+          "source": "infra/conf/vmess.go",
+          "keys": [
+            "vmess"
+          ]
+        }
+      ],
       "topLevelKeys": [
         "api",
         "burstObservatory",
@@ -3139,6 +3450,73 @@ export const xrayParityManifest = {
         "reality",
         "tls",
         "xtls"
+      ],
+      "fingerprints": [
+        "360",
+        "android",
+        "chrome",
+        "edge",
+        "firefox",
+        "hello360_11_0",
+        "hello360_7_5",
+        "hello360_auto",
+        "helloandroid_11_okhttp",
+        "hellochrome_100",
+        "hellochrome_100_psk",
+        "hellochrome_102",
+        "hellochrome_106_shuffle",
+        "hellochrome_112_psk_shuf",
+        "hellochrome_114_padding_psk_shuf",
+        "hellochrome_115_pq",
+        "hellochrome_115_pq_psk",
+        "hellochrome_120",
+        "hellochrome_120_pq",
+        "hellochrome_131",
+        "hellochrome_58",
+        "hellochrome_62",
+        "hellochrome_70",
+        "hellochrome_72",
+        "hellochrome_83",
+        "hellochrome_87",
+        "hellochrome_96",
+        "hellochrome_auto",
+        "helloedge_106",
+        "helloedge_85",
+        "helloedge_auto",
+        "hellofirefox_102",
+        "hellofirefox_105",
+        "hellofirefox_120",
+        "hellofirefox_55",
+        "hellofirefox_56",
+        "hellofirefox_63",
+        "hellofirefox_65",
+        "hellofirefox_99",
+        "hellofirefox_auto",
+        "hellogolang",
+        "helloios_11_1",
+        "helloios_12_1",
+        "helloios_13",
+        "helloios_14",
+        "helloios_auto",
+        "helloqq_11_1",
+        "helloqq_auto",
+        "hellorandomized",
+        "hellorandomizedalpn",
+        "hellorandomizednoalpn",
+        "hellosafari_16_0",
+        "hellosafari_auto",
+        "ios",
+        "qq",
+        "random",
+        "randomized",
+        "randomizednoalpn",
+        "safari",
+        "unsafe"
+      ],
+      "alpn": [
+        "h3",
+        "h2",
+        "http/1.1"
       ],
       "jsonLoaders": {
         "infra/conf/transport_internet.go:tcpHeaderLoader": [
@@ -6663,6 +7041,160 @@ export const xrayParityManifest = {
       "tag": "v26.5.3",
       "version": "26.5.3",
       "commit": "228f1e13aa22739b0d6b9adbdb2b600f1e2018e1",
+      "removedFeatures": [
+        {
+          "feature": "noise = { ... }",
+          "replacement": "noises = [ { ... } ]",
+          "source": "infra/conf/freedom.go",
+          "keys": [
+            "freedom noise"
+          ]
+        },
+        {
+          "feature": "\"allowInsecure\"",
+          "replacement": "\"pinnedPeerCertSha256\"",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "allowInsecure"
+          ]
+        },
+        {
+          "feature": "\"verifyPeerCertInNames\"",
+          "replacement": "\"verifyPeerCertByName\"",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "verifyPeerCertInNames"
+          ]
+        },
+        {
+          "feature": "domain",
+          "replacement": "domains(server) & resolvers(client)",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "finalmask xdns domain"
+          ]
+        },
+        {
+          "feature": "HTTP transport (without header padding, etc.)",
+          "replacement": "XHTTP stream-one H2 & H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "http-transport"
+          ]
+        },
+        {
+          "feature": "Legacy XTLS",
+          "replacement": "xtls-rprx-vision with TLS or REALITY",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "xtls"
+          ]
+        },
+        {
+          "feature": "mkcp header & seed",
+          "replacement": "finalmask/udp header-* & mkcp-original & mkcp-aes128gcm",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "mkcp header/seed"
+          ]
+        },
+        {
+          "feature": "QUIC transport (without web service, etc.)",
+          "replacement": "XHTTP stream-one H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "quic"
+          ]
+        },
+        {
+          "feature": "Flow for Trojan",
+          "source": "infra/conf/trojan.go",
+          "keys": [
+            "trojan flow"
+          ]
+        },
+        {
+          "feature": "\"legacy reverse\"",
+          "replacement": "\"VLESS Reverse Proxy\"",
+          "source": "infra/conf/xray.go",
+          "keys": []
+        },
+        {
+          "feature": "Global transport config",
+          "replacement": "streamSettings in inbounds and outbounds",
+          "source": "infra/conf/xray.go",
+          "keys": [
+            "global transport"
+          ]
+        }
+      ],
+      "deprecatedFeatures": [
+        {
+          "feature": "\"nonIPQuery\" and \"blockTypes\"",
+          "replacement": "\"rules\"",
+          "source": "infra/conf/dns_proxy.go",
+          "keys": [
+            "dns legacy nonIPQuery blockTypes"
+          ]
+        },
+        {
+          "feature": "Shadowsocks (with no Forward Secrecy, etc.)",
+          "replacement": "VLESS Encryption",
+          "source": "infra/conf/shadowsocks.go",
+          "keys": [
+            "shadowsocks"
+          ]
+        },
+        {
+          "feature": "\"host\" in \"headers\"",
+          "replacement": "independent \"host\"",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "xhttp headers host"
+          ]
+        },
+        {
+          "feature": "gRPC transport (with unnecessary costs, etc.)",
+          "replacement": "XHTTP stream-up H2",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "grpc"
+          ]
+        },
+        {
+          "feature": "HTTPUpgrade transport (with ALPN http/1.1, etc.)",
+          "replacement": "XHTTP H2 & H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "httpupgrade"
+          ]
+        },
+        {
+          "feature": "WebSocket transport (with ALPN http/1.1, etc.)",
+          "replacement": "XHTTP H2 & H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "websocket",
+            "ws"
+          ]
+        },
+        {
+          "feature": "Trojan (with no Flow, etc.)",
+          "replacement": "VLESS with Flow & Seed",
+          "source": "infra/conf/trojan.go",
+          "keys": [
+            "trojan"
+          ]
+        },
+        {
+          "feature": "VMess (with no Forward Secrecy, etc.)",
+          "replacement": "VLESS Encryption",
+          "source": "infra/conf/vmess.go",
+          "keys": [
+            "vmess"
+          ]
+        }
+      ],
       "topLevelKeys": [
         "api",
         "burstObservatory",
@@ -6894,6 +7426,73 @@ export const xrayParityManifest = {
         "reality",
         "tls",
         "xtls"
+      ],
+      "fingerprints": [
+        "360",
+        "android",
+        "chrome",
+        "edge",
+        "firefox",
+        "hello360_11_0",
+        "hello360_7_5",
+        "hello360_auto",
+        "helloandroid_11_okhttp",
+        "hellochrome_100",
+        "hellochrome_100_psk",
+        "hellochrome_102",
+        "hellochrome_106_shuffle",
+        "hellochrome_112_psk_shuf",
+        "hellochrome_114_padding_psk_shuf",
+        "hellochrome_115_pq",
+        "hellochrome_115_pq_psk",
+        "hellochrome_120",
+        "hellochrome_120_pq",
+        "hellochrome_131",
+        "hellochrome_58",
+        "hellochrome_62",
+        "hellochrome_70",
+        "hellochrome_72",
+        "hellochrome_83",
+        "hellochrome_87",
+        "hellochrome_96",
+        "hellochrome_auto",
+        "helloedge_106",
+        "helloedge_85",
+        "helloedge_auto",
+        "hellofirefox_102",
+        "hellofirefox_105",
+        "hellofirefox_120",
+        "hellofirefox_55",
+        "hellofirefox_56",
+        "hellofirefox_63",
+        "hellofirefox_65",
+        "hellofirefox_99",
+        "hellofirefox_auto",
+        "hellogolang",
+        "helloios_11_1",
+        "helloios_12_1",
+        "helloios_13",
+        "helloios_14",
+        "helloios_auto",
+        "helloqq_11_1",
+        "helloqq_auto",
+        "hellorandomized",
+        "hellorandomizedalpn",
+        "hellorandomizednoalpn",
+        "hellosafari_16_0",
+        "hellosafari_auto",
+        "ios",
+        "qq",
+        "random",
+        "randomized",
+        "randomizednoalpn",
+        "safari",
+        "unsafe"
+      ],
+      "alpn": [
+        "h3",
+        "h2",
+        "http/1.1"
       ],
       "jsonLoaders": {
         "infra/conf/transport_internet.go:tcpHeaderLoader": [

@@ -64,5 +64,6 @@ export type XrayAdapter = {
   readonly versionRange: string;
   readonly latestTestedVersion: string;
   readonly capabilities: XrayCapabilities;
+  readonly issues?: readonly Issue[];
   readonly validateCompatibility: (profile: Profile) => Issue[];
 };

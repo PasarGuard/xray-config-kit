@@ -13,6 +13,9 @@ export type XrayParityGeneratorConfig = {
   readonly outputs: {
     readonly manifest: string;
     readonly types?: string;
+    readonly capabilities?: string;
+    readonly ciMatrix?: string;
+    readonly testHelpers?: string;
   };
 };
 
@@ -24,6 +27,9 @@ type NormalizedConfig = {
   readonly releases: readonly string[];
   readonly manifestOutput: string;
   readonly typesOutput?: string;
+  readonly capabilitiesOutput?: string;
+  readonly ciMatrixOutput?: string;
+  readonly testHelpersOutput?: string;
 };
 
 type LoaderEntry = {
@@ -41,14 +47,25 @@ type ReleaseManifest = {
   readonly tag: string;
   readonly version: string;
   readonly commit: string;
+  readonly removedFeatures: FeatureNotice[];
+  readonly deprecatedFeatures: FeatureNotice[];
   readonly topLevelKeys: string[];
   readonly inboundProtocols: LoaderEntry[];
   readonly outboundProtocols: LoaderEntry[];
   readonly streamFields: StructField[];
   readonly transportAliases: Record<string, string>;
   readonly securityTypes: string[];
+  readonly fingerprints: string[];
+  readonly alpn: string[];
   readonly jsonLoaders: Record<string, LoaderEntry[]>;
   readonly structs: Record<string, StructField[]>;
+};
+
+type FeatureNotice = {
+  readonly feature: string;
+  readonly replacement?: string;
+  readonly source: string;
+  readonly keys: string[];
 };
 
 const repoRoot = resolve(import.meta.dir, "..");
@@ -106,7 +123,10 @@ async function loadConfig(): Promise<NormalizedConfig> {
     xrayRoot: resolve(configuredRoot),
     releases: config.releases.map(normalizeTag),
     manifestOutput: resolve(repoRoot, config.outputs.manifest),
-    typesOutput: config.outputs.types ? resolve(repoRoot, config.outputs.types) : undefined
+    typesOutput: config.outputs.types ? resolve(repoRoot, config.outputs.types) : undefined,
+    capabilitiesOutput: config.outputs.capabilities ? resolve(repoRoot, config.outputs.capabilities) : undefined,
+    ciMatrixOutput: config.outputs.ciMatrix ? resolve(repoRoot, config.outputs.ciMatrix) : undefined,
+    testHelpersOutput: config.outputs.testHelpers ? resolve(repoRoot, config.outputs.testHelpers) : undefined
   };
 }
 
@@ -119,6 +139,14 @@ function git(args: string[]): string {
 
 function show(tag: string, path: string): string {
   return git(["show", `${tag}:${path}`]);
+}
+
+function showOptional(tag: string, path: string): string {
+  try {
+    return show(tag, path);
+  } catch {
+    return "";
+  }
 }
 
 function listInfraConf(tag: string): string[] {
@@ -229,22 +257,167 @@ function parseSecurityTypes(source: string): string[] {
   return [...types].sort();
 }
 
+function parseGoStringLiteral(input: string): string {
+  if (input.startsWith("`") && input.endsWith("`")) return input.slice(1, -1);
+  try {
+    return JSON.parse(input) as string;
+  } catch {
+    return input.replace(/^"|"$/g, "");
+  }
+}
+
+function featureKeys(feature: string): string[] {
+  const text = feature.toLowerCase();
+  if (text.includes("grpc transport")) return ["grpc"];
+  if (text.includes("websocket transport")) return ["websocket", "ws"];
+  if (text.includes("httpupgrade transport")) return ["httpupgrade"];
+  if (text.includes("http transport")) return ["http-transport"];
+  if (text.includes("quic transport")) return ["quic"];
+  if (text.includes("legacy xtls")) return ["xtls"];
+  if (text.includes("vmess")) return ["vmess"];
+  if (text.includes("shadowsocks")) return ["shadowsocks"];
+  if (text.includes("flow for trojan")) return ["trojan flow"];
+  if (text.includes("trojan")) return ["trojan"];
+  if (text.includes("global transport")) return ["global transport"];
+  if (text.includes("mkcp header")) return ["mkcp header/seed"];
+  if (text.includes("allowinsecure")) return ["allowInsecure"];
+  if (text.includes("verifypeercertinnames")) return ["verifyPeerCertInNames"];
+  if (text.includes("nonipquery") || text.includes("blocktypes")) return ["dns legacy nonIPQuery blockTypes"];
+  if (text.includes("\"host\" in \"headers\"")) return ["xhttp headers host"];
+  if (text === "domain") return ["finalmask xdns domain"];
+  if (text.includes("noise =")) return ["freedom noise"];
+  return [];
+}
+
+function parseFeatureNotices(files: Record<string, string>, kind: "removed" | "deprecated"): FeatureNotice[] {
+  const notices: FeatureNotice[] = [];
+  const callNames = kind === "removed"
+    ? ["PrintRemovedFeatureError"]
+    : ["PrintDeprecatedFeatureWarning", "PrintNonRemovalDeprecatedFeatureWarning"];
+  const callRegex = new RegExp(`errors\\.(${callNames.join("|")})\\(\\s*(\`[^\`]*\`|"(?:[^"\\\\]|\\\\.)*")\\s*,\\s*(\`[^\`]*\`|"(?:[^"\\\\]|\\\\.)*")`, "g");
+  for (const [path, source] of Object.entries(files)) {
+    for (const match of source.matchAll(callRegex)) {
+      const feature = parseGoStringLiteral(match[2] ?? "");
+      const replacement = parseGoStringLiteral(match[3] ?? "");
+      notices.push({
+        feature,
+        replacement: replacement === "" ? undefined : replacement,
+        source: path,
+        keys: featureKeys(feature)
+      });
+    }
+  }
+  const seen = new Set<string>();
+  return notices.filter((notice) => {
+    const key = `${notice.feature}\0${notice.replacement ?? ""}\0${notice.source}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).sort((a, b) => `${a.source}:${a.feature}`.localeCompare(`${b.source}:${b.feature}`));
+}
+
+function parseFingerprints(source: string): string[] {
+  const fingerprints = new Set<string>(["unsafe"]);
+  for (const mapName of ["PresetFingerprints", "ModernFingerprints", "OtherFingerprints"]) {
+    const block = extractBlock(source, new RegExp(`var\\s+${mapName}\\s*=\\s*map\\[string\\]\\*utls\\.ClientHelloID\\s*\\{`));
+    for (const match of block.matchAll(/"([^"]+)"\s*:/g)) {
+      if (match[1]) fingerprints.add(match[1]);
+    }
+  }
+  return [...fingerprints].sort();
+}
+
+function majorMinor(version: string): readonly [number, number] {
+  const match = version.match(/(\d+)\.(\d+)/);
+  return [Number(match?.[1] ?? 0), Number(match?.[2] ?? 0)];
+}
+
+function versionRange(version: string): string {
+  const [major, minor] = majorMinor(version);
+  return `>=${major}.${minor}.0 <${major}.${minor + 1}.0`;
+}
+
+function adapterId(version: string): string {
+  const [major, minor] = majorMinor(version);
+  return `xray@${major}.${minor}`;
+}
+
+function uniqueSorted(values: readonly string[]): string[] {
+  return [...new Set(values)].sort((a, b) => a.localeCompare(b));
+}
+
+function capabilityMatrix(release: ReleaseManifest): Record<string, {
+  supported: boolean;
+  introduced?: string;
+  removed?: string;
+  replacement?: string;
+  deprecated?: boolean;
+}> {
+  const matrix: Record<string, {
+    supported: boolean;
+    introduced?: string;
+    removed?: string;
+    replacement?: string;
+    deprecated?: boolean;
+  }> = {};
+
+  for (const protocol of uniqueSorted([
+    ...release.inboundProtocols.map((entry) => entry.protocol),
+    ...release.outboundProtocols.map((entry) => entry.protocol)
+  ])) {
+    matrix[protocol] = { supported: true };
+  }
+  for (const key of release.topLevelKeys) matrix[key] = { supported: true };
+  for (const transport of Object.keys(release.transportAliases)) matrix[transport] = { supported: true };
+  for (const security of release.securityTypes) {
+    matrix[security] = security === "xtls"
+      ? { supported: false, removed: release.version, replacement: "xtls-rprx-vision with TLS or REALITY" }
+      : { supported: true };
+  }
+
+  for (const notice of release.deprecatedFeatures) {
+    for (const key of notice.keys) {
+      matrix[key] = {
+        ...(matrix[key] ?? { supported: true }),
+        supported: matrix[key]?.supported ?? true,
+        deprecated: true,
+        replacement: notice.replacement
+      };
+    }
+  }
+  for (const notice of release.removedFeatures) {
+    for (const key of notice.keys) {
+      matrix[key] = {
+        supported: false,
+        removed: release.version,
+        replacement: notice.replacement
+      };
+    }
+  }
+  return Object.fromEntries(Object.entries(matrix).sort(([a], [b]) => a.localeCompare(b)));
+}
+
 function releaseManifest(tag: string): ReleaseManifest {
   const paths = listInfraConf(tag);
   const files = Object.fromEntries(paths.map((path) => [path, show(tag, path)]));
   const xray = files["infra/conf/xray.go"] ?? "";
   const transport = files["infra/conf/transport_internet.go"] ?? "";
+  const tls = showOptional(tag, "transport/internet/tls/tls.go");
   const structs = parseStructs(files);
   return {
     tag,
     version: tag.replace(/^v/, ""),
     commit: git(["rev-list", "-n", "1", tag]),
+    removedFeatures: parseFeatureNotices(files, "removed"),
+    deprecatedFeatures: parseFeatureNotices(files, "deprecated"),
     topLevelKeys: (structs.Config ?? []).map((field) => field.json).sort(),
     inboundProtocols: extractLoader(xray, "inboundConfigLoader"),
     outboundProtocols: extractLoader(xray, "outboundConfigLoader"),
     streamFields: structs.StreamConfig ?? [],
     transportAliases: parseTransportAliases(transport),
     securityTypes: parseSecurityTypes(transport),
+    fingerprints: parseFingerprints(tls),
+    alpn: ["h3", "h2", "http/1.1"],
     jsonLoaders: parseAllJsonLoaders(files),
     structs
   };
@@ -294,6 +467,59 @@ function generatedTypesContent(config: NormalizedConfig): string {
     + `export type XrayParitySecurityType<Tag extends XrayParityReleaseTag = XrayParityReleaseTag> = XrayParityReleaseByTag<Tag>["securityTypes"][number];\n`;
 }
 
+function generatedCapabilitiesContent(releases: readonly ReleaseManifest[], config: NormalizedConfig): string {
+  const capabilities = Object.fromEntries(releases.map((release) => {
+    const protocols = uniqueSorted([
+      ...release.inboundProtocols.map((entry) => entry.protocol),
+      ...release.outboundProtocols.map((entry) => entry.protocol)
+    ]);
+    const transports = Object.keys(release.transportAliases).sort((a, b) => a.localeCompare(b));
+    const securities = release.securityTypes.filter((security) => security !== "xtls").sort((a, b) => a.localeCompare(b));
+    return [release.tag, {
+      adapterId: adapterId(release.version),
+      xrayVersionRange: versionRange(release.version),
+      latestTestedVersion: release.version,
+      protocols,
+      transports,
+      securities,
+      fingerprints: release.fingerprints,
+      alpn: release.alpn,
+      removedFeatures: release.removedFeatures.map(({ feature, replacement }) => ({ feature, replacement })),
+      deprecatedFeatures: release.deprecatedFeatures.map(({ feature, replacement }) => ({ feature, replacement })),
+      compatibilityMatrix: capabilityMatrix(release)
+    }];
+  }));
+  const releaseTags = releases.map((release) => release.tag);
+  const latest = releases[releases.length - 1]!;
+  return `// Generated by scripts/generate-xray-parity-manifest.ts.\n`
+    + `// Config: ${asRelativePath(config.configPath)}\n`
+    + `// Do not edit this file by hand.\n\n`
+    + `import type { XrayCapabilities } from "./types.js";\n\n`
+    + `export const generatedXrayReleaseTags = ${JSON.stringify(releaseTags, null, 2)} as const;\n`
+    + `export const latestGeneratedXrayReleaseTag = ${JSON.stringify(latest.tag)} as const;\n`
+    + `export const latestGeneratedXrayVersion = ${JSON.stringify(latest.version)} as const;\n\n`
+    + `export const generatedXrayCapabilitiesByTag = ${JSON.stringify(capabilities, null, 2)} as const satisfies Record<string, XrayCapabilities>;\n`;
+}
+
+function ciMatrixContent(config: NormalizedConfig): string {
+  return `${JSON.stringify({
+    include: config.releases.map((release) => ({ "xray-release": release }))
+  }, null, 2)}\n`;
+}
+
+function generatedTestHelpersContent(releases: readonly ReleaseManifest[], config: NormalizedConfig): string {
+  const latest = releases[releases.length - 1]!;
+  return `// Generated by scripts/generate-xray-parity-manifest.ts.\n`
+    + `// Config: ${asRelativePath(config.configPath)}\n`
+    + `// Do not edit this file by hand.\n\n`
+    + `import { getXrayParityRelease, getXrayParityReleases } from "../../src/index.js";\n\n`
+    + `export const selectedGeneratedReleaseTags = ${JSON.stringify(releases.map((release) => release.tag), null, 2)} as const;\n`
+    + `export const selectedGeneratedVersions = ${JSON.stringify(releases.map((release) => release.version), null, 2)} as const;\n`
+    + `export const selectedGeneratedReleases = getXrayParityReleases();\n`
+    + `export const oldestGeneratedRelease = selectedGeneratedReleases[0]!;\n`
+    + `export const latestGeneratedRelease = getXrayParityRelease({ releaseTag: ${JSON.stringify(latest.tag)} });\n`;
+}
+
 function writeGeneratedFile(path: string, content: string): void {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, content, "utf8");
@@ -307,6 +533,7 @@ if (!existsSync(xrayRoot)) {
 }
 
 const { selectedTags, tags } = resolveReleaseTags(config.releases);
+const releases = tags.map(releaseManifest);
 const manifest = {
   source: {
     repo: config.sourceRepo,
@@ -316,8 +543,11 @@ const manifest = {
     selectedTags,
     tags
   },
-  releases: tags.map(releaseManifest)
+  releases
 };
 
 writeGeneratedFile(config.manifestOutput, generatedManifestContent(manifest, config));
 if (config.typesOutput) writeGeneratedFile(config.typesOutput, generatedTypesContent(config));
+if (config.capabilitiesOutput) writeGeneratedFile(config.capabilitiesOutput, generatedCapabilitiesContent(releases, config));
+if (config.ciMatrixOutput) writeGeneratedFile(config.ciMatrixOutput, ciMatrixContent(config));
+if (config.testHelpersOutput) writeGeneratedFile(config.testHelpersOutput, generatedTestHelpersContent(releases, config));

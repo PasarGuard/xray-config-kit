@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { validateStrictXrayConfig } from "../../src/index.js";
+import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
 describe("xray inbound sniffing strict parity", () => {
   it("accepts SniffingConfig fields declared by xray-core", () => {
@@ -20,7 +21,7 @@ describe("xray inbound sniffing strict parity", () => {
           }
         }
       ]
-    }, { releaseTag: "v26.5.3" });
+    }, { releaseTag: latestGeneratedRelease.tag });
 
     expect(result.ok, result.issues.map((issue) => issue.message).join("; ")).toBe(true);
   });
@@ -39,7 +40,7 @@ describe("xray inbound sniffing strict parity", () => {
           }
         }
       ]
-    }, { releaseTag: "v26.5.3" });
+    }, { releaseTag: latestGeneratedRelease.tag });
 
     expect(result.ok).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toContain("/inbounds/0/sniffing/notFromXray");

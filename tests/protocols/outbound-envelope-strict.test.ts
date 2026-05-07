@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { validateStrictXrayConfig } from "../../src/index.js";
+import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
 describe("xray outbound envelope strict parity", () => {
   it("accepts outbound mux and proxySettings fields declared by xray-core", () => {
@@ -23,7 +24,7 @@ describe("xray outbound envelope strict parity", () => {
           targetStrategy: "UseIP"
         }
       ]
-    }, { releaseTag: "v26.5.3" });
+    }, { releaseTag: latestGeneratedRelease.tag });
 
     expect(result.ok, result.issues.map((issue) => issue.message).join("; ")).toBe(true);
   });
@@ -43,7 +44,7 @@ describe("xray outbound envelope strict parity", () => {
           }
         }
       ]
-    }, { releaseTag: "v26.5.3" });
+    }, { releaseTag: latestGeneratedRelease.tag });
 
     expect(result.ok).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([

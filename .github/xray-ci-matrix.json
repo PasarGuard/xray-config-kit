@@ -1,0 +1,16 @@
+{
+  "include": [
+    {
+      "xray-release": "v25.10.15"
+    },
+    {
+      "xray-release": "v26.4.25"
+    },
+    {
+      "xray-release": "v26.5.3"
+    },
+    {
+      "xray-release": "latest"
+    }
+  ]
+}

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "bun:test";
 import { getXrayParityRelease, validateStrictXrayConfig } from "../../src/index.js";
+import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
 describe("xray protocol settings field coverage", () => {
   it("rejects unknown settings fields for every inbound loader struct", () => {
-    const release = getXrayParityRelease({ releaseTag: "v26.5.3" });
+    const release = getXrayParityRelease({ releaseTag: latestGeneratedRelease.tag });
 
     for (const entry of release.inboundProtocols) {
       const result = validateStrictXrayConfig({
@@ -25,7 +26,7 @@ describe("xray protocol settings field coverage", () => {
   });
 
   it("rejects unknown settings fields for every outbound loader struct", () => {
-    const release = getXrayParityRelease({ releaseTag: "v26.5.3" });
+    const release = getXrayParityRelease({ releaseTag: latestGeneratedRelease.tag });
 
     for (const entry of release.outboundProtocols) {
       const result = validateStrictXrayConfig({

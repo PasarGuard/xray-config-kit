@@ -1,6 +1,6 @@
 import { makeIssue } from "../core/issues.js";
 import { isJsonObject } from "../core/json.js";
-import type { Issue, JsonObject, JsonValue, ValidationMode, XrayConfig } from "../core/types.js";
+import type { Issue, IssueCategory, IssueSeverity, JsonObject, JsonValue, ValidationMode, XrayConfig } from "../core/types.js";
 import { xrayParityManifest } from "./parity-manifest.js";
 
 export type XrayParityStructField = {
@@ -14,18 +14,43 @@ export type XrayParityLoaderEntry = {
   readonly config: string;
 };
 
+export type XrayParityFeatureNotice = {
+  readonly feature: string;
+  readonly replacement?: string;
+  readonly source: string;
+  readonly keys: readonly string[];
+};
+
 export type XrayParityRelease = {
   readonly tag: string;
   readonly version: string;
   readonly commit: string;
+  readonly removedFeatures: readonly XrayParityFeatureNotice[];
+  readonly deprecatedFeatures: readonly XrayParityFeatureNotice[];
   readonly topLevelKeys: readonly string[];
   readonly inboundProtocols: readonly XrayParityLoaderEntry[];
   readonly outboundProtocols: readonly XrayParityLoaderEntry[];
   readonly streamFields: readonly XrayParityStructField[];
   readonly transportAliases: Readonly<Record<string, string>>;
   readonly securityTypes: readonly string[];
+  readonly fingerprints: readonly string[];
+  readonly alpn: readonly string[];
   readonly jsonLoaders: Readonly<Record<string, readonly XrayParityLoaderEntry[]>>;
   readonly structs: Readonly<Record<string, readonly XrayParityStructField[]>>;
+};
+
+export type XrayParityReleaseResolution = {
+  readonly ok: true;
+  readonly release: XrayParityRelease;
+  readonly issue?: Issue;
+  readonly requestedVersion?: string;
+  readonly latestGeneratedVersion: string;
+} | {
+  readonly ok: false;
+  readonly release?: XrayParityRelease;
+  readonly issue: Issue;
+  readonly requestedVersion?: string;
+  readonly latestGeneratedVersion: string;
 };
 
 export type StrictXrayValidationOptions = {
@@ -68,15 +93,52 @@ function compareVersion(a: string, b: string): number {
   return 0;
 }
 
-function issue(code: string, path: string, message: string, suggestion?: string): Issue {
+function normalizeVersionInput(version: string): string {
+  return version.replace(/^v/i, "");
+}
+
+function latestRelease(): XrayParityRelease {
+  return [...manifest.releases].sort((a, b) => compareVersion(a.version, b.version)).at(-1)!;
+}
+
+function issue(
+  code: string,
+  path: string,
+  message: string,
+  suggestion?: string,
+  severity: IssueSeverity = "error",
+  category: IssueCategory = "schema"
+): Issue {
   return makeIssue({
     code,
-    severity: "error",
-    category: "schema",
+    severity,
+    category,
     path,
     message,
     suggestion
   });
+}
+
+function futureVersionIssue(requestedVersion: string, latestGeneratedVersion: string): Issue {
+  return issue(
+    "XCK_XRAY_PARITY_VERSION_UNGENERATED",
+    "/version",
+    `Xray ${requestedVersion} is newer than generated parity data (${latestGeneratedVersion}).`,
+    "Fetch Xray-core tags and run bun run generate:parity.",
+    "error",
+    "compatibility"
+  );
+}
+
+function approximatedVersionIssue(requestedVersion: string, release: XrayParityRelease): Issue {
+  return issue(
+    "XCK_XRAY_PARITY_VERSION_APPROXIMATED",
+    "/version",
+    `Xray ${requestedVersion} is not generated exactly; using ${release.tag} parity data.`,
+    "Add this exact Xray release to xray-parity.config.ts and run bun run generate:parity if exact behavior matters.",
+    "warning",
+    "compatibility"
+  );
 }
 
 function pointer(path: string, key: string | number): string {
@@ -237,24 +299,85 @@ export function getXrayParityReleases(): readonly XrayParityRelease[] {
   return manifest.releases;
 }
 
-export function getXrayParityRelease(options: { readonly xrayVersion?: string; readonly releaseTag?: string } = {}): XrayParityRelease {
+export function resolveXrayParityRelease(options: { readonly xrayVersion?: string; readonly releaseTag?: string } = {}): XrayParityReleaseResolution {
+  const sorted = [...manifest.releases].sort((a, b) => compareVersion(a.version, b.version));
+  const latest = sorted.at(-1)!;
+  const latestGeneratedVersion = latest.version;
+
   if (options.releaseTag) {
     const byTag = manifest.releases.find((release) => release.tag === options.releaseTag);
-    if (byTag) return byTag;
+    if (byTag) return { ok: true, release: byTag, requestedVersion: byTag.version, latestGeneratedVersion };
+    const requestedVersion = normalizeVersionInput(options.releaseTag);
+    if (compareVersion(requestedVersion, latest.version) > 0) {
+      return {
+        ok: false,
+        release: latest,
+        issue: futureVersionIssue(requestedVersion, latestGeneratedVersion),
+        requestedVersion,
+        latestGeneratedVersion
+      };
+    }
+    return {
+      ok: false,
+      release: latest,
+      issue: issue(
+        "XCK_XRAY_PARITY_RELEASE_UNKNOWN",
+        "/version",
+        `Xray release ${options.releaseTag} is not present in generated parity data.`,
+        "Use xrayVersion for nearest-lower matching or add this exact release to xray-parity.config.ts.",
+        "error",
+        "compatibility"
+      ),
+      requestedVersion,
+      latestGeneratedVersion
+    };
   }
+
   if (options.xrayVersion) {
-    const exact = manifest.releases.find((release) => release.version === options.xrayVersion || release.tag === options.xrayVersion);
-    if (exact) return exact;
-    const sorted = [...manifest.releases].sort((a, b) => compareVersion(a.version, b.version));
-    return [...sorted].reverse().find((release) => compareVersion(release.version, options.xrayVersion!) <= 0) ?? sorted[sorted.length - 1]!;
+    const requestedVersion = normalizeVersionInput(options.xrayVersion);
+    const exact = manifest.releases.find((release) => release.version === requestedVersion || release.tag === options.xrayVersion);
+    if (exact) return { ok: true, release: exact, requestedVersion, latestGeneratedVersion };
+    if (compareVersion(requestedVersion, latest.version) > 0) {
+      return {
+        ok: false,
+        release: latest,
+        issue: futureVersionIssue(requestedVersion, latestGeneratedVersion),
+        requestedVersion,
+        latestGeneratedVersion
+      };
+    }
+    const release = [...sorted].reverse().find((item) => compareVersion(item.version, requestedVersion) <= 0) ?? sorted[0]!;
+    return {
+      ok: true,
+      release,
+      issue: approximatedVersionIssue(requestedVersion, release),
+      requestedVersion,
+      latestGeneratedVersion
+    };
   }
-  return [...manifest.releases].sort((a, b) => compareVersion(a.version, b.version)).at(-1)!;
+
+  return { ok: true, release: latest, latestGeneratedVersion };
+}
+
+export function getXrayParityRelease(options: { readonly xrayVersion?: string; readonly releaseTag?: string } = {}): XrayParityRelease {
+  const resolved = resolveXrayParityRelease(options);
+  if (resolved.ok) return resolved.release;
+  throw new RangeError(resolved.issue.message);
 }
 
 export function validateStrictXrayConfig(input: unknown, options: StrictXrayValidationOptions = {}): StrictXrayValidationResult {
-  const release = getXrayParityRelease(options);
+  const resolved = resolveXrayParityRelease(options);
+  const release = resolved.release ?? latestRelease();
   const mode = options.mode ?? "strict";
-  const issues: Issue[] = [];
+  const issues: Issue[] = resolved.issue ? [resolved.issue] : [];
+
+  if (!resolved.ok) {
+    return {
+      ok: false,
+      release,
+      issues
+    };
+  }
 
   if (!isJsonObject(input)) {
     return {

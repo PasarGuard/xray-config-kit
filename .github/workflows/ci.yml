@@ -10,17 +10,30 @@ permissions:
   contents: read
 
 jobs:
+  prepare:
+    name: Prepare Xray Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      xray-matrix: ${{ steps.matrix.outputs.xray-matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read Xray matrix
+        id: matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          matrix="$(tr -d '\n' < .github/xray-ci-matrix.json)"
+          echo "xray-matrix=${matrix}" >> "$GITHUB_OUTPUT"
+
   test:
     name: Typecheck, Build, Test (${{ matrix.xray-release }})
+    needs: prepare
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        xray-release:
-          - v25.10.15
-          - v26.4.25
-          - v26.5.3
-          - latest
+      matrix: ${{ fromJson(needs.prepare.outputs.xray-matrix) }}
 
     steps:
       - name: Checkout

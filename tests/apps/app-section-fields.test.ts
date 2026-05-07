@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { getXrayParityRelease, validateStrictXrayConfig } from "../../src/index.js";
+import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
 function structName(type: string): string | undefined {
   const normalized = type.trim().replace(/^\*/, "");
@@ -48,19 +49,19 @@ describe("xray app section field parity", () => {
       },
       version: {
         min: "26.0.0",
-        max: "26.5.3"
+        max: latestGeneratedRelease.version
       },
       policy: {
         levels: {},
         system: {}
       }
-    }, { releaseTag: "v26.5.3" });
+    }, { releaseTag: latestGeneratedRelease.tag });
 
     expect(result.ok, result.issues.map((issue) => `${issue.path}: ${issue.message}`).join("; ")).toBe(true);
   });
 
   it("rejects unknown fields on every object-shaped app section captured from Config", () => {
-    const release = getXrayParityRelease({ releaseTag: "v26.5.3" });
+    const release = getXrayParityRelease({ releaseTag: latestGeneratedRelease.tag });
     const configFields = release.structs.Config ?? [];
     const objectSections = configFields.filter((field) => {
       const name = structName(field.type);
