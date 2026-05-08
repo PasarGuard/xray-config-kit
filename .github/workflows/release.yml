@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  release:
+    types: ["published"]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build, Test, Publish
+    runs-on: ubuntu-latest
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Xray
+        shell: bash
+        run: |
+          set -euo pipefail
+          release="$(curl -fsSL https://api.github.com/repos/XTLS/Xray-core/releases/latest | jq -r '.tag_name')"
+          curl -fsSLo /tmp/xray.zip "https://github.com/XTLS/Xray-core/releases/download/${release}/Xray-linux-64.zip"
+          unzip -q /tmp/xray.zip -d /tmp/xray
+          chmod +x /tmp/xray/xray
+          echo "XRAY_BINARY=/tmp/xray/xray" >> "$GITHUB_ENV"
+          echo "XRAY_VERSION=${release#v}" >> "$GITHUB_ENV"
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Build
+        run: bun run build
+
+      - name: Test
+        run: bun run test
+
+      - name: Configure npm auth
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$NPM_TOKEN"
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+
+      - name: Publish to npm
+        run: npm publish --access public
+
