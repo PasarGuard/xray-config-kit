@@ -455,6 +455,8 @@ const dokodemoInboundShape = {
   ...baseInboundShape,
   address: z.string().optional(),
   targetPort: portSchema.optional(),
+  /** Per-listen-port rewrite targets (`DokodemoConfig.portMap`). */
+  portMap: z.record(z.string(), z.string()).optional(),
   network: z.enum(["tcp", "udp", "tcp,udp"]).optional(),
   followRedirect: z.boolean().optional(),
   userLevel: z.number().int().min(0).optional()

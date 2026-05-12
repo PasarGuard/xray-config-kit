@@ -43,6 +43,17 @@ function asBoolean(value: JsonValue | undefined): boolean | undefined {
   return typeof value === "boolean" ? value : undefined;
 }
 
+/** `port` / `rewritePort` in tunnel/Dokodemo settings; integer 0..65535, string digits allowed. */
+function asInboundTunnelTargetPort(value: JsonValue | undefined): number | undefined {
+  const n = asNumber(value);
+  if (n !== undefined) return n >= 0 && n <= 65535 ? n : undefined;
+  if (typeof value === "string") {
+    const parsed = Number(value.trim());
+    if (Number.isInteger(parsed) && parsed >= 0 && parsed <= 65535) return parsed;
+  }
+  return undefined;
+}
+
 function asStringArray(value: JsonValue | undefined): string[] | undefined {
   return Array.isArray(value) && value.every((item) => typeof item === "string") ? [...value] : undefined;
 }
@@ -66,6 +77,18 @@ function asStringRecord(value: JsonValue | undefined): Record<string, string> | 
   const entries = Object.entries(value);
   if (!entries.every(([, item]) => typeof item === "string")) return undefined;
   return Object.fromEntries(entries) as Record<string, string>;
+}
+
+/** Dokodemo / tunnel `portMap`: string keys; values are host:port strings (coerce numbers if present). */
+function asPortMapRecord(value: JsonValue | undefined): Record<string, string> | undefined {
+  if (!isJsonObject(value)) return undefined;
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(value)) {
+    if (typeof v === "string") out[k] = v;
+    else if (typeof v === "number" && Number.isFinite(v)) out[k] = String(v);
+    else if (typeof v === "boolean") out[k] = v ? "true" : "false";
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 function asPortList(value: JsonValue | undefined): string | number | undefined {
@@ -364,8 +387,21 @@ function parseClientMeta(raw: JsonObject): Record<string, JsonValue> | undefined
 function parseInbound(raw: JsonObject, index: number, issues: Issue[]): Inbound {
   const protocol = asString(raw.protocol);
   const tag = asString(raw.tag) ?? `${protocol ?? "inbound"}-${index}`;
-  const listen = asString(raw.listen);
-  const port = typeof raw.port === "string" || typeof raw.port === "number" ? raw.port : 1;
+  const listenRaw = asString(raw.listen);
+  const listen =
+    listenRaw &&
+    listenRaw.trim() !== "" &&
+    listenRaw.trim() !== "0.0.0.0" &&
+    listenRaw.trim() !== "::" &&
+    listenRaw.trim() !== "[::]"
+      ? listenRaw.trim()
+      : undefined;
+  const port =
+    raw.port === undefined || raw.port === null
+      ? undefined
+      : typeof raw.port === "string" || typeof raw.port === "number"
+        ? raw.port
+        : 1;
   const settings = isJsonObject(raw.settings) ? raw.settings : {};
   const streamSettings = isJsonObject(raw.streamSettings) ? raw.streamSettings : undefined;
   const security = parseSecurity(streamSettings);
@@ -388,8 +424,8 @@ function parseInbound(raw: JsonObject, index: number, issues: Issue[]): Inbound 
       kind: "inbound",
       protocol: "vmess",
       tag,
-      listen,
-      port,
+      ...(listen !== undefined ? { listen } : {}),
+      ...(port !== undefined ? { port } : {}),
       sniffing,
       clients,
       security,
@@ -413,8 +449,8 @@ function parseInbound(raw: JsonObject, index: number, issues: Issue[]): Inbound 
       kind: "inbound",
       protocol: "vless",
       tag,
-      listen,
-      port,
+      ...(listen !== undefined ? { listen } : {}),
+      ...(port !== undefined ? { port } : {}),
       sniffing,
       clients,
       security,
@@ -438,8 +474,8 @@ function parseInbound(raw: JsonObject, index: number, issues: Issue[]): Inbound 
       kind: "inbound",
       protocol: "trojan",
       tag,
-      listen,
-      port,
+      ...(listen !== undefined ? { listen } : {}),
+      ...(port !== undefined ? { port } : {}),
       sniffing,
       clients,
       security,
@@ -463,8 +499,8 @@ function parseInbound(raw: JsonObject, index: number, issues: Issue[]): Inbound 
       kind: "inbound",
       protocol: "shadowsocks",
       tag,
-      listen,
-      port,
+      ...(listen !== undefined ? { listen } : {}),
+      ...(port !== undefined ? { port } : {}),
       sniffing,
       method: asString(settings.method) as never,
       password: asString(settings.password),
@@ -480,8 +516,8 @@ function parseInbound(raw: JsonObject, index: number, issues: Issue[]): Inbound 
       kind: "inbound",
       protocol: "http",
       tag,
-      listen,
-      port,
+      ...(listen !== undefined ? { listen } : {}),
+      ...(port !== undefined ? { port } : {}),
       sniffing,
       accounts: parseAccounts(settings),
       allowTransparent: asBoolean(settings.allowTransparent),
@@ -494,8 +530,8 @@ function parseInbound(raw: JsonObject, index: number, issues: Issue[]): Inbound 
       kind: "inbound",
       protocol,
       tag,
-      listen,
-      port,
+      ...(listen !== undefined ? { listen } : {}),
+      ...(port !== undefined ? { port } : {}),
       sniffing,
       auth: asString(settings.auth) as never,
       accounts: parseAccounts(settings),
@@ -518,8 +554,8 @@ function parseInbound(raw: JsonObject, index: number, issues: Issue[]): Inbound 
       kind: "inbound",
       protocol: "wireguard",
       tag,
-      listen,
-      port,
+      ...(listen !== undefined ? { listen } : {}),
+      ...(port !== undefined ? { port } : {}),
       sniffing,
       secretKey: asString(settings.secretKey) ?? "",
       publicKey: asString(settings.publicKey) ?? asString(settings.pubKey),
@@ -548,8 +584,8 @@ function parseInbound(raw: JsonObject, index: number, issues: Issue[]): Inbound 
       kind: "inbound",
       protocol: "hysteria",
       tag,
-      listen,
-      port,
+      ...(listen !== undefined ? { listen } : {}),
+      ...(port !== undefined ? { port } : {}),
       sniffing,
       clients,
       security,
@@ -560,18 +596,25 @@ function parseInbound(raw: JsonObject, index: number, issues: Issue[]): Inbound 
   }
 
   if (protocol === "dokodemo-door" || protocol === "tunnel") {
+    const portMap = asPortMapRecord(settings.portMap);
+    const st = settings as JsonObject;
+    /** Xray parity JSON uses address/port/network; public tunnel docs alias rewriteAddress/rewritePort/allowedNetwork. */
+    const address = asString(st.address) ?? asString(st.rewriteAddress);
+    const targetPort = asInboundTunnelTargetPort(st.port ?? st.rewritePort);
+    const netRaw = asString(st.network) ?? asString(st.allowedNetwork);
     return {
       kind: "inbound",
       protocol,
       tag,
-      listen,
-      port,
+      ...(listen !== undefined ? { listen } : {}),
+      ...(port !== undefined ? { port } : {}),
       sniffing,
-      address: asString(settings.address),
-      targetPort: asNumber(settings.port),
-      network: asString(settings.network) as never,
+      address,
+      ...(targetPort !== undefined ? { targetPort } : {}),
+      ...(netRaw !== undefined ? { network: netRaw as never } : {}),
       followRedirect: asBoolean(settings.followRedirect),
-      userLevel: asNumber(settings.userLevel)
+      userLevel: asNumber(settings.userLevel),
+      ...(portMap !== undefined ? { portMap } : {})
     };
   }
 
@@ -580,7 +623,7 @@ function parseInbound(raw: JsonObject, index: number, issues: Issue[]): Inbound 
       kind: "inbound",
       protocol: "tun",
       tag,
-      listen,
+      ...(listen !== undefined ? { listen } : {}),
       sniffing,
       name: asString(settings.name),
       mtu: asNumber(settings.mtu),

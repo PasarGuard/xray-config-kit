@@ -347,7 +347,7 @@ export type BaseInbound = {
   readonly kind: "inbound";
   readonly tag: string;
   readonly listen?: string;
-  readonly port: InboundPort;
+  readonly port?: InboundPort;
   readonly sniffing?: Sniffing;
   readonly streamAdvanced?: StreamAdvanced;
   readonly raw?: RawPatch[];
@@ -458,6 +458,8 @@ export type DokodemoInbound = BaseInbound & {
   readonly protocol: "dokodemo-door" | "tunnel";
   readonly address?: string;
   readonly targetPort?: number;
+  /** Maps inbound listen ports to rewrite targets (`host:port`, `:port`, `host:`). */
+  readonly portMap?: Record<string, string>;
   readonly network?: string | string[];
   readonly followRedirect?: boolean;
   readonly userLevel?: number;

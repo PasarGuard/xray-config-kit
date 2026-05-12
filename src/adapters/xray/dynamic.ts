@@ -58,7 +58,7 @@ function validateFeature(adapter: XrayAdapter, feature: string, path: string, la
 
 function validateInbound(adapter: XrayAdapter, inbound: Inbound, index: number): Issue[] {
   if (inbound.protocol === "unmanaged") return [];
-  const path = `/inbounds/${index}`;
+  const path = `/inbounds/${index + 1}`;
   const issues: Issue[] = [
     ...validateFeature(adapter, inbound.protocol, `${path}/protocol`, `Inbound protocol "${inbound.protocol}"`)
   ];

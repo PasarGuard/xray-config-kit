@@ -402,12 +402,16 @@ function compileInbound(inbound: Inbound): JsonObject {
   }
 
   if (inbound.protocol === "dokodemo-door" || inbound.protocol === "tunnel") {
+    const portMap =
+      inbound.portMap !== undefined && Object.keys(inbound.portMap).length > 0 ? inbound.portMap : undefined;
+    // Xray JSON tags (selected parity): address, port, network — not rewrite*/allowedNetwork.
     const settings = compactObject({
       address: inbound.address,
       port: inbound.targetPort,
       network: inbound.network,
       followRedirect: inbound.followRedirect,
-      userLevel: inbound.userLevel
+      userLevel: inbound.userLevel,
+      portMap
     });
     return compileInboundBase(inbound, settings);
   }

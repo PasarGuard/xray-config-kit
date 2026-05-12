@@ -11,6 +11,28 @@ export type XrayOutboundFormMetadata = {
   readonly settingsFieldsByProtocol: Readonly<Record<string, readonly XrayGeneratedFormField[]>>;
 };
 
+/** Inbound detour + per-protocol settings, derived from the same Xray parity structs as outbounds. */
+export type XrayInboundFormMetadata = {
+  readonly protocols: readonly XrayParityLoaderEntry[];
+  readonly envelopeFields: readonly XrayGeneratedFormField[];
+  readonly streamFields: readonly XrayGeneratedFormField[];
+  readonly securityFieldsByType: Readonly<Record<string, readonly XrayGeneratedFormField[]>>;
+  /** Per `Transport.type` — parity structs for `tcpSettings`, `grpcSettings`, etc. */
+  readonly transportSettingsByType: Readonly<Record<string, readonly XrayGeneratedFormField[]>>;
+  readonly settingsFieldsByProtocol: Readonly<Record<string, readonly XrayGeneratedFormField[]>>;
+};
+
+/** Kit `Transport.type` → Xray parity struct name in `release.structs` (stream network settings). */
+export const TRANSPORT_TYPE_TO_PARITY_STRUCT: Readonly<Record<string, string>> = {
+  tcp: "TCPConfig",
+  grpc: "GRPCConfig",
+  xhttp: "SplitHTTPConfig",
+  ws: "WebSocketConfig",
+  httpupgrade: "HttpUpgradeConfig",
+  kcp: "KCPConfig",
+  hysteria: "HysteriaConfig"
+} as const;
+
 type VersionOptions = {
   readonly xrayVersion?: string;
 };
@@ -62,4 +84,41 @@ export function getGeneratedOutboundFormMetadata(options: VersionOptions = {}): 
     proxySettingsFields: structFields(release.structs, "ProxyConfig"),
     settingsFieldsByProtocol
   };
+}
+
+export function getGeneratedInboundFormMetadata(options: VersionOptions = {}): XrayInboundFormMetadata {
+  const release = getXrayParityRelease(options);
+  const settingsFieldsByProtocol = Object.fromEntries(release.inboundProtocols.map((entry) => [
+    entry.protocol,
+    structFields(release.structs, entry.config)
+  ]));
+
+  const transportSettingsByType = Object.fromEntries(
+    Object.entries(TRANSPORT_TYPE_TO_PARITY_STRUCT).map(([transportType, structName]) => [
+      transportType,
+      structFields(release.structs, structName)
+    ])
+  );
+
+  return {
+    protocols: release.inboundProtocols,
+    envelopeFields: structFields(release.structs, "InboundDetourConfig"),
+    streamFields: release.streamFields,
+    securityFieldsByType: {
+      tls: structFields(release.structs, "TLSConfig"),
+      reality: structFields(release.structs, "REALITYConfig")
+    },
+    transportSettingsByType,
+    settingsFieldsByProtocol
+  };
+}
+
+export function getGeneratedRoutingBalancerFields(options: VersionOptions = {}): readonly XrayGeneratedFormField[] {
+  const release = getXrayParityRelease(options);
+  return uniqueFields(structFields(release.structs, "BalancingRule"));
+}
+
+export function getGeneratedBalancingStrategyFields(options: VersionOptions = {}): readonly XrayGeneratedFormField[] {
+  const release = getXrayParityRelease(options);
+  return structFields(release.structs, "StrategyConfig");
 }

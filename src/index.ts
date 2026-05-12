@@ -1,6 +1,7 @@
 export {
   createProfile,
-  normalizeProfile
+  normalizeProfile,
+  normalizeDokodemoTunnelInboundPortMap
 } from "./core/profile.js";
 export {
   validateProfile
@@ -27,6 +28,7 @@ export {
 } from "./core/diff.js";
 export {
   createDefaultInbound,
+  createDefaultInboundForProtocol,
   createDefaultOutbound,
   createDefaultRoutingBalancer,
   createDefaultRoutingRule,
@@ -77,6 +79,12 @@ export {
   compatibilityMatrix,
   registeredXrayAdapters
 } from "./adapters/xray/registry.js";
+export {
+  getGeneratedBalancingStrategyFields,
+  getGeneratedInboundFormMetadata,
+  getGeneratedRoutingBalancerFields,
+  TRANSPORT_TYPE_TO_PARITY_STRUCT
+} from "./adapters/xray/form-metadata.js";
 export {
   generateClientLink,
   generateShadowsocksLink,
@@ -129,6 +137,7 @@ export type {
 } from "./xray-json/index.js";
 export type {
   CreateDefaultInboundOptions,
+  CreateDefaultInboundForProtocolOptions,
   CreateDefaultOutboundOptions,
   CreateDefaultRoutingBalancerOptions,
   CreateDefaultRoutingRuleOptions,
@@ -144,6 +153,7 @@ export type {
 } from "./core/form.js";
 export type {
   XrayGeneratedFormField,
+  XrayInboundFormMetadata,
   XrayOutboundFormMetadata
 } from "./adapters/xray/form-metadata.js";
 export type {

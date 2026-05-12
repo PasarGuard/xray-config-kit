@@ -1,6 +1,7 @@
 import {
   fieldDefinitions,
   fieldFlags,
+  getGeneratedInboundFormMetadata,
   getGeneratedOutboundFormMetadata,
   getGeneratedRoutingRuleFields,
   type XrayGeneratedFormField
@@ -43,15 +44,13 @@ import type {
 const placeholderUuid = "00000000-0000-4000-8000-000000000000";
 const placeholderKey32 = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
-type CreateDefaultInboundPortOption<Protocol extends Exclude<Inbound["protocol"], "unmanaged">> =
-  Protocol extends "tun" ? { readonly port?: InboundPort } : { readonly port: InboundPort };
-
 type CreateDefaultInboundBaseOptions<Protocol extends Exclude<Inbound["protocol"], "unmanaged">> = {
   readonly protocol: Protocol;
   readonly tag?: string;
   readonly listen?: string;
+  readonly port?: InboundPort;
   readonly clientDefaults?: CreateDefaultInboundClientDefaults;
-} & CreateDefaultInboundPortOption<Protocol>;
+};
 
 export type CreateDefaultInboundClientDefaults = "placeholder" | "empty";
 
@@ -105,8 +104,19 @@ type InboundForProtocol<Protocol extends Exclude<Inbound["protocol"], "unmanaged
 
 export type InboundFormCapabilities = {
   readonly protocols: Record<string, boolean>;
+  readonly protocolConfigs: Record<string, string>;
+  readonly protocolOrder: readonly string[];
   readonly transports: Record<string, boolean>;
   readonly securities: Record<string, boolean>;
+  readonly securityFields: Record<string, Record<string, boolean>>;
+  readonly securityFieldDefinitions: Record<string, Record<string, XrayGeneratedFormField>>;
+  readonly securityFieldOrderByType: Readonly<Record<string, readonly string[]>>;
+  readonly transportSettingsFields: Record<string, Record<string, boolean>>;
+  readonly transportSettingsFieldDefinitions: Record<string, Record<string, XrayGeneratedFormField>>;
+  readonly transportSettingsFieldOrderByType: Readonly<Record<string, readonly string[]>>;
+  readonly settingsFields: Record<string, Record<string, boolean>>;
+  readonly settingsFieldDefinitions: Record<string, Record<string, XrayGeneratedFormField>>;
+  readonly settingsFieldOrderByProtocol: Readonly<Record<string, readonly string[]>>;
   readonly clientLinks: Record<string, boolean>;
 };
 
@@ -135,6 +145,8 @@ export type ProfileTagSource = Pick<Profile, "inbounds" | "outbounds" | "routing
 export type RoutingRuleFormCapabilities = {
   readonly fields: Record<string, boolean>;
   readonly fieldDefinitions: Record<string, XrayGeneratedFormField>;
+  /** Parity order for stable form layout (JSON keys). */
+  readonly fieldOrder: readonly string[];
   readonly networks: Record<string, boolean>;
   readonly protocols: Record<string, boolean>;
   readonly inboundTags: string[];
@@ -153,10 +165,15 @@ export type OutboundFormCapabilities = {
   readonly protocolConfigs: Record<string, string>;
   readonly envelopeFields: Record<string, boolean>;
   readonly envelopeFieldDefinitions: Record<string, XrayGeneratedFormField>;
+  /** JSON keys in parity order for envelope (e.g. sendThrough, streamSettings). */
+  readonly envelopeFieldOrder: readonly string[];
   readonly settingsFields: Record<string, Record<string, boolean>>;
   readonly settingsFieldDefinitions: Record<string, Record<string, XrayGeneratedFormField>>;
+  /** JSON keys per protocol in parity order for outbound `settings`. */
+  readonly settingsFieldOrderByProtocol: Readonly<Record<string, readonly string[]>>;
   readonly streamFields: Record<string, boolean>;
   readonly streamFieldDefinitions: Record<string, XrayGeneratedFormField>;
+  readonly streamFieldOrder: readonly string[];
   readonly muxFields: Record<string, boolean>;
   readonly muxFieldDefinitions: Record<string, XrayGeneratedFormField>;
   readonly proxySettingsFields: Record<string, boolean>;
@@ -265,10 +282,150 @@ function assertCreateDefaultInboundOptions(options: CreateDefaultInboundOptions)
   if (protocol === "hysteria" && hasTransport) {
     throw new TypeError("Hysteria default inbound uses the hysteria transport and does not accept a transport option.");
   }
+}
 
-  if (protocol !== "tun" && unsafe.port === undefined) {
-    throw new TypeError(`${protocol} default inbound requires a port.`);
+function normalizeDefaultInboundListen(listen: string | undefined): { listen?: string } {
+  if (listen === undefined) return {};
+  const t = listen.trim();
+  if (t === "" || t === "0.0.0.0" || t === "::" || t === "[::]") return {};
+  return { listen: t };
+}
+
+function defaultInboundPort(port: InboundPort | undefined): { port?: InboundPort } {
+  if (port === undefined) return {};
+  return { port };
+}
+
+const defaultInboundProtocols = [
+  "vmess",
+  "vless",
+  "trojan",
+  "shadowsocks",
+  "hysteria",
+  "http",
+  "mixed",
+  "socks",
+  "dokodemo-door",
+  "tunnel",
+  "tun",
+  "wireguard"
+] as const satisfies readonly Exclude<Inbound["protocol"], "unmanaged">[];
+
+function isDefaultInboundProtocol(protocol: string): protocol is Exclude<Inbound["protocol"], "unmanaged"> {
+  return (defaultInboundProtocols as readonly string[]).includes(protocol);
+}
+
+const inboundSecurityFieldKeysByType = {
+  tls: [
+    "serverName",
+    "alpn",
+    "fingerprint",
+    "allowInsecure",
+    "enableSessionResumption",
+    "disableSystemRoot",
+    "minVersion",
+    "maxVersion",
+    "cipherSuites",
+    "rejectUnknownSni",
+    "curvePreferences",
+    "masterKeyLog",
+    "pinnedPeerCertSha256",
+    "verifyPeerCertByName",
+    "echServerKeys",
+    "echConfigList",
+    "echForceQuery",
+    "echSockopt"
+  ],
+  reality: [
+    "serverNames",
+    "privateKey",
+    "publicKey",
+    "shortIds",
+    "target",
+    "fingerprint",
+    "spiderX",
+    "mldsa65Seed",
+    "mldsa65Verify",
+    "maxTimeDiff",
+    "show"
+  ]
+} as const satisfies Readonly<Record<"tls" | "reality", readonly string[]>>;
+
+function inboundSecurityFields(type: "tls" | "reality", rows: readonly XrayGeneratedFormField[]): readonly XrayGeneratedFormField[] {
+  const byKey = new Map(rows.map((row) => [row.json, row]));
+  return inboundSecurityFieldKeysByType[type].map((key) => {
+    if (key === "target") return { json: "target", go: "Target", type: "string" };
+    const field = byKey.get(key);
+    return field ?? { json: key, go: key, type: "string" };
+  });
+}
+
+export type CreateDefaultInboundForProtocolOptions = {
+  readonly protocol: Exclude<Inbound["protocol"], "unmanaged">;
+  readonly tag?: string;
+  readonly listen?: string;
+  readonly port?: InboundPort;
+  readonly transport?: Transport["type"];
+  readonly security?: Security["type"];
+  readonly clientDefaults?: CreateDefaultInboundClientDefaults;
+};
+
+export function createDefaultInboundForProtocol(options: CreateDefaultInboundForProtocolOptions): Exclude<Inbound, { protocol: "unmanaged" }> {
+  const base = {
+    tag: options.tag,
+    listen: options.listen,
+    port: options.port,
+    clientDefaults: options.clientDefaults
+  };
+
+  if (options.protocol === "vmess") {
+    return createDefaultInbound({
+      protocol: "vmess",
+      ...base,
+      transport: options.transport,
+      security: options.security === "tls" ? "tls" : "none"
+    });
   }
+
+  if (options.protocol === "vless") {
+    return createDefaultInbound({
+      protocol: "vless",
+      ...base,
+      transport: options.transport,
+      security: options.security
+    });
+  }
+
+  if (options.protocol === "trojan") {
+    return createDefaultInbound({
+      protocol: "trojan",
+      ...base,
+      transport: options.transport,
+      security: options.security
+    });
+  }
+
+  if (options.protocol === "shadowsocks") {
+    return createDefaultInbound({
+      protocol: "shadowsocks",
+      ...base,
+      transport: options.transport,
+      security: options.security === "tls" ? "tls" : "none"
+    });
+  }
+
+  if (options.protocol === "hysteria") {
+    return createDefaultInbound({
+      protocol: "hysteria",
+      ...base,
+      security: options.security === "none" ? "none" : "tls"
+    });
+  }
+
+  return createDefaultInbound({
+    protocol: options.protocol as "http" | "mixed" | "socks" | "dokodemo-door" | "tunnel" | "tun" | "wireguard",
+    ...base
+  });
 }
 
 export function createDefaultInbound<const Options extends CreateDefaultInboundOptions>(
@@ -277,17 +434,17 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
   const typedOptions = options as CreateDefaultInboundOptions;
   assertCreateDefaultInboundOptions(typedOptions);
 
-  const tag = typedOptions.tag ?? `${typedOptions.protocol}-inbound`;
-  const port = typedOptions.port ?? 443;
-  const listen = typedOptions.listen ?? "0.0.0.0";
+  const tag = typedOptions.tag ?? "";
+  const listenFields = normalizeDefaultInboundListen(typedOptions.listen);
+  const portFields = defaultInboundPort(typedOptions.port);
 
   if (typedOptions.protocol === "vmess") {
     return {
       kind: "inbound",
       protocol: "vmess",
       tag,
-      listen,
-      port,
+      ...listenFields,
+      ...portFields,
       clients: typedOptions.clientDefaults === "empty"
         ? []
         : [{ protocol: "vmess", id: placeholderUuid, security: "auto", email: "user" }],
@@ -301,8 +458,8 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
       kind: "inbound",
       protocol: "vless",
       tag,
-      listen,
-      port,
+      ...listenFields,
+      ...portFields,
       clients: typedOptions.clientDefaults === "empty"
         ? []
         : [{ protocol: "vless", id: placeholderUuid, email: "user" }],
@@ -317,8 +474,8 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
       kind: "inbound",
       protocol: "trojan",
       tag,
-      listen,
-      port,
+      ...listenFields,
+      ...portFields,
       clients: typedOptions.clientDefaults === "empty"
         ? []
         : [{ protocol: "trojan", password: "change-me-trojan-password", email: "user" }],
@@ -334,8 +491,8 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
       kind: "inbound",
       protocol: "shadowsocks",
       tag,
-      listen,
-      port,
+      ...listenFields,
+      ...portFields,
       method: useEmptyClients ? undefined : "2022-blake3-aes-256-gcm",
       password: useEmptyClients ? undefined : "change-me-server-password",
       network: "tcp,udp",
@@ -354,8 +511,8 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
       kind: "inbound",
       protocol: "hysteria",
       tag,
-      listen,
-      port,
+      ...listenFields,
+      ...portFields,
       version: 2,
       clients: typedOptions.clientDefaults === "empty"
         ? []
@@ -370,8 +527,8 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
       kind: "inbound",
       protocol: "http",
       tag,
-      listen,
-      port: typedOptions.port ?? 8080,
+      ...listenFields,
+      ...portFields,
       accounts: [{ user: "user", pass: "change-me-http-password" }]
     } as InboundForProtocol<Options["protocol"]>;
   }
@@ -381,8 +538,8 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
       kind: "inbound",
       protocol: typedOptions.protocol,
       tag,
-      listen,
-      port: typedOptions.port ?? 1080,
+      ...listenFields,
+      ...portFields,
       auth: "password",
       accounts: [{ user: "user", pass: "change-me-socks-password" }],
       udp: true,
@@ -395,10 +552,8 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
       kind: "inbound",
       protocol: typedOptions.protocol,
       tag,
-      listen,
-      port,
-      address: "127.0.0.1",
-      targetPort: typedOptions.port ?? 80,
+      ...listenFields,
+      ...portFields,
       network: "tcp"
     } as InboundForProtocol<Options["protocol"]>;
   }
@@ -408,7 +563,7 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
       kind: "inbound",
       protocol: "tun",
       tag,
-      listen,
+      ...listenFields,
       name: "xray0",
       mtu: 1500,
       gateway: ["198.18.0.1/15"],
@@ -421,8 +576,8 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
     kind: "inbound",
     protocol: "wireguard",
     tag,
-    listen,
-    port: typedOptions.port ?? 51820,
+    ...listenFields,
+    ...portFields,
     secretKey: placeholderKey32,
     publicKey: placeholderKey32,
     address: ["10.0.0.1/24"],
@@ -440,10 +595,57 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
 
 export function getInboundFormCapabilities(options: { readonly xrayVersion?: string } = {}): InboundFormCapabilities {
   const capabilities = getCapabilities(options);
+  const metadata = getGeneratedInboundFormMetadata(options);
+  const protocolRows = metadata.protocols.filter((entry) => isDefaultInboundProtocol(entry.protocol));
+  const securityFieldRowsByType = Object.fromEntries(
+    Object.entries(metadata.securityFieldsByType).map(([type, rows]) => [
+      type,
+      type === "tls" || type === "reality" ? inboundSecurityFields(type, rows) : rows
+    ])
+  );
+  const settingsFieldOrderByProtocol = Object.fromEntries(
+    Object.entries(metadata.settingsFieldsByProtocol).map(([protocol, rows]) => [protocol, rows.map((row) => row.json)])
+  );
+  const securityFieldOrderByType = Object.fromEntries(
+    Object.entries(securityFieldRowsByType).map(([type, rows]) => [type, rows.map((row) => row.json)])
+  );
+  const transportFieldRowsByType = metadata.transportSettingsByType;
+  const transportSettingsFieldOrderByType = Object.fromEntries(
+    Object.entries(transportFieldRowsByType).map(([type, rows]) => [type, rows.map((row) => row.json)])
+  );
   return {
-    protocols: Object.fromEntries(capabilities.protocols.map((item) => [item, true])),
+    protocols: Object.fromEntries(protocolRows.map((entry) => [entry.protocol, true])),
+    protocolConfigs: Object.fromEntries(protocolRows.map((entry) => [entry.protocol, entry.config])),
+    protocolOrder: protocolRows.map((entry) => entry.protocol),
     transports: Object.fromEntries(capabilities.transports.map((item) => [item, true])),
     securities: Object.fromEntries(capabilities.securities.map((item) => [item, true])),
+    securityFields: Object.fromEntries(Object.entries(securityFieldRowsByType).map(([type, rows]) => [
+      type,
+      fieldFlags(rows)
+    ])),
+    securityFieldDefinitions: Object.fromEntries(Object.entries(securityFieldRowsByType).map(([type, rows]) => [
+      type,
+      fieldDefinitions(rows)
+    ])),
+    securityFieldOrderByType,
+    transportSettingsFields: Object.fromEntries(Object.entries(transportFieldRowsByType).map(([type, rows]) => [
+      type,
+      fieldFlags(rows)
+    ])),
+    transportSettingsFieldDefinitions: Object.fromEntries(Object.entries(transportFieldRowsByType).map(([type, rows]) => [
+      type,
+      fieldDefinitions(rows)
+    ])),
+    transportSettingsFieldOrderByType,
+    settingsFields: Object.fromEntries(Object.entries(metadata.settingsFieldsByProtocol).map(([protocol, rows]) => [
+      protocol,
+      fieldFlags(rows)
+    ])),
+    settingsFieldDefinitions: Object.fromEntries(Object.entries(metadata.settingsFieldsByProtocol).map(([protocol, rows]) => [
+      protocol,
+      fieldDefinitions(rows)
+    ])),
+    settingsFieldOrderByProtocol,
     clientLinks: {
       vmess: capabilities.protocols.includes("vmess"),
       vless: capabilities.protocols.includes("vless"),
@@ -510,6 +712,7 @@ export function getRoutingRuleFormCapabilities(input?: ProfileTagSource | Routin
   return {
     fields: fieldFlags(fields),
     fieldDefinitions: fieldDefinitions(fields),
+    fieldOrder: fields.map((field) => field.json),
     networks: {
       tcp: true,
       udp: true,
@@ -584,21 +787,28 @@ export function createDefaultOutbound<P extends Exclude<Outbound["protocol"], "u
 
 export function getOutboundFormCapabilities(options: FormVersionOptions = {}): OutboundFormCapabilities {
   const metadata = getGeneratedOutboundFormMetadata(options);
+  const settingsFieldOrderByProtocol = Object.fromEntries(
+    Object.entries(metadata.settingsFieldsByProtocol).map(([protocol, rows]) => [protocol, rows.map((row) => row.json)])
+  );
+
   return {
     protocols: Object.fromEntries(metadata.protocols.map((entry) => [entry.protocol, true])),
     protocolConfigs: Object.fromEntries(metadata.protocols.map((entry) => [entry.protocol, entry.config])),
     envelopeFields: fieldFlags(metadata.envelopeFields),
     envelopeFieldDefinitions: fieldDefinitions(metadata.envelopeFields),
-    settingsFields: Object.fromEntries(Object.entries(metadata.settingsFieldsByProtocol).map(([protocol, fields]) => [
+    envelopeFieldOrder: metadata.envelopeFields.map((field) => field.json),
+    settingsFields: Object.fromEntries(Object.entries(metadata.settingsFieldsByProtocol).map(([protocol, rows]) => [
       protocol,
-      fieldFlags(fields)
+      fieldFlags(rows)
     ])),
-    settingsFieldDefinitions: Object.fromEntries(Object.entries(metadata.settingsFieldsByProtocol).map(([protocol, fields]) => [
+    settingsFieldDefinitions: Object.fromEntries(Object.entries(metadata.settingsFieldsByProtocol).map(([protocol, rows]) => [
       protocol,
-      fieldDefinitions(fields)
+      fieldDefinitions(rows)
     ])),
+    settingsFieldOrderByProtocol,
     streamFields: fieldFlags(metadata.streamFields),
     streamFieldDefinitions: fieldDefinitions(metadata.streamFields),
+    streamFieldOrder: metadata.streamFields.map((field) => field.json),
     muxFields: fieldFlags(metadata.muxFields),
     muxFieldDefinitions: fieldDefinitions(metadata.muxFields),
     proxySettingsFields: fieldFlags(metadata.proxySettingsFields),
@@ -632,7 +842,7 @@ export function validateInboundDraft(draft: Inbound, options: ValidateOptions = 
     inbounds: [draft]
   }, options).issues.map((issue) => ({
     ...issue,
-    path: issue.path.replace(/^\/inbounds\/0/, "")
+    path: issue.path.replace(/^\/inbounds\/1/, "")
   }));
 }
 
@@ -656,6 +866,6 @@ export function validateOutboundDraft(draft: Outbound, options: ValidateOptions 
     outbounds: [draft]
   }, options).issues.map((issue) => ({
     ...issue,
-    path: issue.path.replace(/^\/outbounds\/0/, "")
+    path: issue.path.replace(/^\/outbounds\/1/, "")
   }));
 }

@@ -46,7 +46,7 @@ function analyzeInboundSecurity(inbound: Inbound, index: number): Issue[] {
           code: "XCK_SECURITY_PUBLIC_UNAUTHENTICATED_PROXY",
           severity: "warning",
           category: "security",
-          path: `/inbounds/${index}`,
+          path: `/inbounds/${index + 1}`,
           message: `Imported ${protocol.toUpperCase()} inbound appears public and unauthenticated.`,
           suggestion: "Bind management proxies to localhost or require authentication."
         })
@@ -66,7 +66,7 @@ function analyzeInboundSecurity(inbound: Inbound, index: number): Issue[] {
         code: "XCK_SECURITY_PUBLIC_UNAUTHENTICATED_PROXY",
         severity: "warning",
         category: "security",
-        path: `/inbounds/${index}`,
+        path: `/inbounds/${index + 1}`,
         message: `${inbound.protocol.toUpperCase()} inbound is public and unauthenticated.`,
         suggestion: "Bind local proxy inbounds to 127.0.0.1 or require password authentication."
       }));
@@ -78,7 +78,7 @@ function analyzeInboundSecurity(inbound: Inbound, index: number): Issue[] {
       code: "XCK_SECURITY_ALLOW_INSECURE",
       severity: "warning",
       category: "security",
-      path: `/inbounds/${index}/security/allowInsecure`,
+      path: `/inbounds/${index + 1}/security/allowInsecure`,
       message: "allowInsecure disables certificate verification and is scheduled for removal by Xray-core.",
       suggestion: "Use pinnedPeerCertSha256 and verifyPeerCertByName."
     }));
@@ -89,7 +89,7 @@ function analyzeInboundSecurity(inbound: Inbound, index: number): Issue[] {
       code: "XCK_SUGGESTION_TLS_SERVER_NAME_MISSING",
       severity: "info",
       category: "suggestion",
-      path: `/inbounds/${index}/security/serverName`,
+      path: `/inbounds/${index + 1}/security/serverName`,
       message: "TLS serverName is empty; generated client links may need an explicit SNI value.",
       suggestion: "Set security.serverName when clients should connect through a domain name."
     }));
@@ -101,7 +101,7 @@ function analyzeInboundSecurity(inbound: Inbound, index: number): Issue[] {
         code: "XCK_SECURITY_REALITY_SHOW_ENABLED",
         severity: "warning",
         category: "security",
-        path: `/inbounds/${index}/security/show`,
+        path: `/inbounds/${index + 1}/security/show`,
         message: "REALITY show mode should not be enabled in production configs."
       }));
     }
@@ -110,7 +110,7 @@ function analyzeInboundSecurity(inbound: Inbound, index: number): Issue[] {
         code: "XCK_SUGGESTION_REALITY_PUBLIC_KEY_MISSING",
         severity: "info",
         category: "suggestion",
-        path: `/inbounds/${index}/security/publicKey`,
+        path: `/inbounds/${index + 1}/security/publicKey`,
         message: "REALITY publicKey is not required for server config but is needed for client link generation."
       }));
     }
@@ -119,7 +119,7 @@ function analyzeInboundSecurity(inbound: Inbound, index: number): Issue[] {
         code: "XCK_SECURITY_RISKY_REALITY_TARGET_NAME",
         severity: "warning",
         category: "security",
-        path: `/inbounds/${index}/security/serverNames`,
+        path: `/inbounds/${index + 1}/security/serverNames`,
         message: "REALITY serverNames include Apple/iCloud-looking names, which Xray-core warns may be operationally risky."
       }));
     }
@@ -174,7 +174,7 @@ function analyzeRouting(profile: Profile): Issue[] {
           code: "XCK_SUGGESTION_SNIFFING_DISABLED_FOR_DOMAIN_ROUTING",
           severity: "info",
           category: "suggestion",
-          path: `/inbounds/${index}/sniffing`,
+          path: `/inbounds/${index + 1}/sniffing`,
           message: "Domain routing rules are present but this inbound does not sniff HTTP/TLS destinations.",
           suggestion: "Enable sniffing with destOverride [\"http\", \"tls\"] when domain routing should see client-requested names."
         }));

@@ -30,7 +30,7 @@ export function explainConfig(input: Profile | XrayConfig, options: BuildOptions
 
   input.inbounds.forEach((inbound, index) => {
     entries.push({
-      path: `/inbounds/${index}`,
+      path: `/inbounds/${index + 1}`,
       title: inbound.protocol === "unmanaged" ? "Unmanaged inbound preserved" : `${inbound.protocol.toUpperCase()} inbound`,
       source: inbound.protocol === "unmanaged" ? "import" : "profile",
       detail: inbound.protocol === "unmanaged"

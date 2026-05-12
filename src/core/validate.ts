@@ -46,9 +46,9 @@ function validateInboundTags(profile: Profile): Issue[] {
         code: "XCK_SEMANTIC_DUPLICATE_INBOUND_TAG",
         severity: "error",
         category: "semantic",
-        path: `/inbounds/${index}/tag`,
+        path: `/inbounds/${index + 1}/tag`,
         message: `Inbound tag "${inbound.tag}" is duplicated.`,
-        suggestion: `Rename this tag or merge it with /inbounds/${previous}.`
+        suggestion: `Rename this tag or merge it with /inbounds/${previous + 1}.`
       }));
     }
     seen.set(inbound.tag, index);
@@ -69,9 +69,9 @@ function validateOutboundTags(profile: Profile): Issue[] {
         code: "XCK_SEMANTIC_DUPLICATE_OUTBOUND_TAG",
         severity: "error",
         category: "semantic",
-        path: `/outbounds/${index}/tag`,
+        path: `/outbounds/${index + 1}/tag`,
         message: `Outbound tag "${outbound.tag}" is duplicated.`,
-        suggestion: `Rename this tag or merge it with /outbounds/${previous}.`
+        suggestion: `Rename this tag or merge it with /outbounds/${previous + 1}.`
       }));
     }
     seen.set(outbound.tag, index);
@@ -93,7 +93,7 @@ function validateClients(inbound: Inbound, inboundIndex: number): Issue[] {
       code: "XCK_SEMANTIC_MISSING_CLIENTS",
       severity: "warning",
       category: "semantic",
-      path: `/inbounds/${inboundIndex}/clients`,
+      path: `/inbounds/${inboundIndex + 1}/clients`,
       message: `${inbound.protocol.toUpperCase()} inbound has no enabled clients.`
     }));
   }
@@ -103,7 +103,7 @@ function validateClients(inbound: Inbound, inboundIndex: number): Issue[] {
       code: "XCK_SEMANTIC_MISSING_SHADOWSOCKS_CREDENTIALS",
       severity: "error",
       category: "semantic",
-      path: `/inbounds/${inboundIndex}`,
+      path: `/inbounds/${inboundIndex + 1}`,
       message: "Shadowsocks inbound requires either a server password or at least one enabled client."
     }));
   }
@@ -113,7 +113,7 @@ function validateClients(inbound: Inbound, inboundIndex: number): Issue[] {
       code: "XCK_SEMANTIC_SHADOWSOCKS_MISSING_METHOD",
       severity: "error",
       category: "semantic",
-      path: `/inbounds/${inboundIndex}/method`,
+      path: `/inbounds/${inboundIndex + 1}/method`,
       message: "Shadowsocks inbound requires a server method or per-client methods when clients are configured."
     }));
   }
@@ -123,7 +123,7 @@ function validateClients(inbound: Inbound, inboundIndex: number): Issue[] {
       code: "XCK_SEMANTIC_SHADOWSOCKS_2022_MISSING_SERVER_PASSWORD",
       severity: "error",
       category: "semantic",
-      path: `/inbounds/${inboundIndex}/password`,
+      path: `/inbounds/${inboundIndex + 1}/password`,
       message: "Multi-user Shadowsocks 2022 requires a server password so client passwords can be composed correctly."
     }));
   }
@@ -136,9 +136,9 @@ function validateClients(inbound: Inbound, inboundIndex: number): Issue[] {
         code: "XCK_SEMANTIC_DUPLICATE_CLIENT",
         severity: "error",
         category: "semantic",
-        path: `/inbounds/${inboundIndex}/clients/${clientIndex}`,
+        path: `/inbounds/${inboundIndex + 1}/clients/${clientIndex}`,
         message: "Client credential is duplicated within the same inbound.",
-        suggestion: `Remove this client or rotate its credential. First occurrence is /inbounds/${inboundIndex}/clients/${previous}.`
+        suggestion: `Remove this client or rotate its credential. First occurrence is /inbounds/${inboundIndex + 1}/clients/${previous}.`
       }));
     }
     seen.set(key, clientIndex);
@@ -150,9 +150,9 @@ function validateClients(inbound: Inbound, inboundIndex: number): Issue[] {
           code: "XCK_SEMANTIC_DUPLICATE_CLIENT_EMAIL",
           severity: "warning",
           category: "semantic",
-          path: `/inbounds/${inboundIndex}/clients/${clientIndex}/email`,
+          path: `/inbounds/${inboundIndex + 1}/clients/${clientIndex}/email`,
           message: `Client email "${client.email}" is duplicated within the same inbound.`,
-          suggestion: `Use unique emails if the control plane maps traffic or subscriptions by email. First occurrence is /inbounds/${inboundIndex}/clients/${previousEmail}.`
+          suggestion: `Use unique emails if the control plane maps traffic or subscriptions by email. First occurrence is /inbounds/${inboundIndex + 1}/clients/${previousEmail}.`
         }));
       }
       emails.set(client.email, clientIndex);
@@ -163,7 +163,7 @@ function validateClients(inbound: Inbound, inboundIndex: number): Issue[] {
         code: client.protocol === "vmess" ? "XCK_SEMANTIC_INVALID_VMESS_UUID" : "XCK_SEMANTIC_INVALID_VLESS_UUID",
         severity: "error",
         category: "semantic",
-        path: `/inbounds/${inboundIndex}/clients/${clientIndex}/id`,
+        path: `/inbounds/${inboundIndex + 1}/clients/${clientIndex}/id`,
         message: `${client.protocol.toUpperCase()} client id must be a valid UUID.`
       }));
     }
@@ -174,7 +174,7 @@ function validateClients(inbound: Inbound, inboundIndex: number): Issue[] {
         code: "XCK_SECURITY_WEAK_CLIENT_SECRET",
         severity: "warning",
         category: "security",
-        path: `/inbounds/${inboundIndex}/clients/${clientIndex}/${client.protocol === "hysteria" ? "auth" : "password"}`,
+        path: `/inbounds/${inboundIndex + 1}/clients/${clientIndex}/${client.protocol === "hysteria" ? "auth" : "password"}`,
         message: "Client password is short enough to be risky.",
         suggestion: "Use at least 16 random bytes encoded as base64url or hex."
       }));
@@ -195,7 +195,7 @@ function validateReality(inbound: Inbound, inboundIndex: number): Issue[] {
       code: "XCK_SEMANTIC_INVALID_REALITY_PRIVATE_KEY",
       severity: "error",
       category: "semantic",
-      path: `/inbounds/${inboundIndex}/security/privateKey`,
+      path: `/inbounds/${inboundIndex + 1}/security/privateKey`,
       message: "REALITY privateKey must be a 32-byte base64url value."
     }));
   }
@@ -205,7 +205,7 @@ function validateReality(inbound: Inbound, inboundIndex: number): Issue[] {
       code: "XCK_SEMANTIC_INVALID_REALITY_PUBLIC_KEY",
       severity: "error",
       category: "semantic",
-      path: `/inbounds/${inboundIndex}/security/publicKey`,
+      path: `/inbounds/${inboundIndex + 1}/security/publicKey`,
       message: "REALITY publicKey must be a 32-byte base64url value when provided."
     }));
   }
@@ -215,7 +215,7 @@ function validateReality(inbound: Inbound, inboundIndex: number): Issue[] {
       code: "XCK_SEMANTIC_EMPTY_REALITY_SHORT_IDS",
       severity: "error",
       category: "semantic",
-      path: `/inbounds/${inboundIndex}/security/shortIds`,
+      path: `/inbounds/${inboundIndex + 1}/security/shortIds`,
       message: "REALITY requires at least one shortId."
     }));
   }
@@ -226,7 +226,7 @@ function validateReality(inbound: Inbound, inboundIndex: number): Issue[] {
         code: "XCK_SEMANTIC_INVALID_REALITY_SHORT_ID",
         severity: "error",
         category: "semantic",
-        path: `/inbounds/${inboundIndex}/security/shortIds/${shortIdIndex}`,
+        path: `/inbounds/${inboundIndex + 1}/security/shortIds/${shortIdIndex}`,
         message: "REALITY shortId must be even-length hex and at most 16 characters."
       }));
     }
@@ -235,7 +235,7 @@ function validateReality(inbound: Inbound, inboundIndex: number): Issue[] {
         code: "XCK_SECURITY_WEAK_REALITY_SHORT_ID",
         severity: "warning",
         category: "security",
-        path: `/inbounds/${inboundIndex}/security/shortIds/${shortIdIndex}`,
+        path: `/inbounds/${inboundIndex + 1}/security/shortIds/${shortIdIndex}`,
         message: "Very short REALITY shortIds reduce client separation entropy.",
         suggestion: "Use 8 to 16 hex characters for each shortId."
       }));
@@ -247,7 +247,7 @@ function validateReality(inbound: Inbound, inboundIndex: number): Issue[] {
       code: "XCK_SEMANTIC_REALITY_SEED_REUSES_PRIVATE_KEY",
       severity: "error",
       category: "semantic",
-      path: `/inbounds/${inboundIndex}/security/mldsa65Seed`,
+      path: `/inbounds/${inboundIndex + 1}/security/mldsa65Seed`,
       message: "mldsa65Seed must not reuse the REALITY privateKey."
     }));
   }
@@ -264,7 +264,7 @@ function validateFallbacks(inbound: Inbound, inboundIndex: number): Issue[] {
         code: "XCK_SEMANTIC_INVALID_FALLBACK_PATH",
         severity: "error",
         category: "semantic",
-        path: `/inbounds/${inboundIndex}/fallbacks/${fallbackIndex}/path`,
+        path: `/inbounds/${inboundIndex + 1}/fallbacks/${fallbackIndex}/path`,
         message: "Fallback path must start with '/'."
       })
     ];
@@ -303,7 +303,7 @@ function validatePortList(port: XrayPortList, path: string, label: string): Issu
 }
 
 function validateInboundPort(port: InboundPort, inboundIndex: number): Issue[] {
-  return validatePortList(port, `/inbounds/${inboundIndex}/port`, "Inbound port");
+  return validatePortList(port, `/inbounds/${inboundIndex + 1}/port`, "Inbound port");
 }
 
 function validateRoutingRule(rule: RoutingRule, ruleIndex: number): Issue[] {
@@ -382,7 +382,18 @@ function validateLocalInbound(inbound: Inbound, inboundIndex: number): Issue[] {
   const issues: Issue[] = [];
 
   if (inbound.protocol !== "tun") {
-    issues.push(...validateInboundPort(inbound.port, inboundIndex));
+    const portValue = "port" in inbound ? inbound.port : undefined;
+    if (portValue !== undefined) {
+      issues.push(...validateInboundPort(portValue, inboundIndex));
+    } else {
+      issues.push(makeIssue({
+        code: "XCK_SEMANTIC_INBOUND_PORT_MISSING",
+        severity: "warning",
+        category: "semantic",
+        path: `/inbounds/${inboundIndex + 1}/port`,
+        message: "Inbound listen port is not set. Add a port before deploying this configuration."
+      }));
+    }
   }
 
   if (inbound.listen && inbound.listen.trim() === "") {
@@ -390,7 +401,7 @@ function validateLocalInbound(inbound: Inbound, inboundIndex: number): Issue[] {
       code: "XCK_SEMANTIC_INVALID_LISTEN",
       severity: "error",
       category: "semantic",
-      path: `/inbounds/${inboundIndex}/listen`,
+      path: `/inbounds/${inboundIndex + 1}/listen`,
       message: "Inbound listen address cannot be blank."
     }));
   }
@@ -400,7 +411,7 @@ function validateLocalInbound(inbound: Inbound, inboundIndex: number): Issue[] {
       code: "XCK_SEMANTIC_INVALID_HTTP_ACCOUNT",
       severity: "error",
       category: "semantic",
-      path: `/inbounds/${inboundIndex}/accounts`,
+      path: `/inbounds/${inboundIndex + 1}/accounts`,
       message: "HTTP inbound accounts require both user and pass."
     }));
   }
@@ -412,7 +423,7 @@ function validateLocalInbound(inbound: Inbound, inboundIndex: number): Issue[] {
         code: "XCK_SEMANTIC_MIXED_AUTH_WITHOUT_ACCOUNTS",
         severity: "error",
         category: "semantic",
-        path: `/inbounds/${inboundIndex}/accounts`,
+        path: `/inbounds/${inboundIndex + 1}/accounts`,
         message: "Mixed/SOCKS password auth requires at least one account."
       }));
     }
@@ -423,7 +434,7 @@ function validateLocalInbound(inbound: Inbound, inboundIndex: number): Issue[] {
       code: "XCK_SEMANTIC_WIREGUARD_NO_PEERS",
       severity: "warning",
       category: "semantic",
-      path: `/inbounds/${inboundIndex}/peers`,
+      path: `/inbounds/${inboundIndex + 1}/peers`,
       message: "WireGuard inbound has no peers configured."
     }));
   }
@@ -433,7 +444,7 @@ function validateLocalInbound(inbound: Inbound, inboundIndex: number): Issue[] {
       code: "XCK_SEMANTIC_WIREGUARD_RESERVED_LENGTH",
       severity: "error",
       category: "semantic",
-      path: `/inbounds/${inboundIndex}/reserved`,
+      path: `/inbounds/${inboundIndex + 1}/reserved`,
       message: "WireGuard reserved must be exactly 3 bytes when provided as an array."
     }));
   }
@@ -444,7 +455,7 @@ function validateLocalInbound(inbound: Inbound, inboundIndex: number): Issue[] {
         code: "XCK_SEMANTIC_HYSTERIA_VERSION",
         severity: "error",
         category: "semantic",
-        path: `/inbounds/${inboundIndex}/version`,
+        path: `/inbounds/${inboundIndex + 1}/version`,
         message: "Xray-core Hysteria JSON support currently requires version 2."
       }));
     }
@@ -454,7 +465,7 @@ function validateLocalInbound(inbound: Inbound, inboundIndex: number): Issue[] {
         code: "XCK_SEMANTIC_HYSTERIA_UDP_IDLE_TIMEOUT",
         severity: "error",
         category: "semantic",
-        path: `/inbounds/${inboundIndex}/transport/udpIdleTimeout`,
+        path: `/inbounds/${inboundIndex + 1}/transport/udpIdleTimeout`,
         message: "Hysteria udpIdleTimeout must be between 2 and 600 seconds when set."
       }));
     }
@@ -465,7 +476,7 @@ function validateLocalInbound(inbound: Inbound, inboundIndex: number): Issue[] {
       code: "XCK_SEMANTIC_INVALID_DOKODEMO_TARGET_PORT",
       severity: "error",
       category: "semantic",
-      path: `/inbounds/${inboundIndex}/targetPort`,
+      path: `/inbounds/${inboundIndex + 1}/targetPort`,
       message: "Dokodemo targetPort must be an integer between 1 and 65535."
     }));
   }
@@ -477,7 +488,7 @@ function validateLocalInbound(inbound: Inbound, inboundIndex: number): Issue[] {
         code: "XCK_SEMANTIC_HTTPUPGRADE_HOST_HEADER",
         severity: "error",
         category: "semantic",
-        path: `/inbounds/${inboundIndex}/transport/headers`,
+        path: `/inbounds/${inboundIndex + 1}/transport/headers`,
         message: "HTTPUpgrade headers cannot contain Host; use transport.host instead."
       }));
     }
@@ -490,7 +501,7 @@ function validateLocalInbound(inbound: Inbound, inboundIndex: number): Issue[] {
         code: "XCK_SEMANTIC_XHTTP_HOST_HEADER",
         severity: "error",
         category: "semantic",
-        path: `/inbounds/${inboundIndex}/transport/extra/headers`,
+        path: `/inbounds/${inboundIndex + 1}/transport/extra/headers`,
         message: "XHTTP headers cannot contain Host; use transport.host instead."
       }));
     }
@@ -507,8 +518,8 @@ function semanticIssues(profile: Profile, options: ValidateOptions): Issue[] {
     ...validateRawPatches(profile.raw?.patches, "/raw/patches", options),
     ...(profile.routing?.rules ?? []).flatMap(validateRoutingRule),
     ...profile.inbounds.flatMap((inbound, index) => [
-      ...validateRawPatches(inbound.protocol === "unmanaged" ? undefined : inbound.raw, `/inbounds/${index}/raw`, options),
-      ...validateRawPatches(inbound.protocol !== "unmanaged" && "streamAdvanced" in inbound ? inbound.streamAdvanced?.patches : undefined, `/inbounds/${index}/streamAdvanced/patches`, options),
+      ...validateRawPatches(inbound.protocol === "unmanaged" ? undefined : inbound.raw, `/inbounds/${index + 1}/raw`, options),
+      ...validateRawPatches(inbound.protocol !== "unmanaged" && "streamAdvanced" in inbound ? inbound.streamAdvanced?.patches : undefined, `/inbounds/${index + 1}/streamAdvanced/patches`, options),
       ...validateLocalInbound(inbound, index),
       ...validateClients(inbound, index),
       ...validateReality(inbound, index),

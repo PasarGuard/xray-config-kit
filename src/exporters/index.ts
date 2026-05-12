@@ -45,7 +45,9 @@ function displayHost(inbound: Exclude<Inbound, { protocol: "unmanaged" }>, host:
 
 function singlePortForExport(inbound: Exclude<Inbound, { protocol: "unmanaged" }>, override: number | undefined, label: string): number {
   if (override !== undefined) return override;
-  if (!("port" in inbound)) throw new Error(`${label} requires a network port.`);
+  if (!("port" in inbound) || inbound.port === undefined) {
+    throw new Error(`${label} requires a network port.`);
+  }
   if (typeof inbound.port === "number") return inbound.port;
   if (/^\d+$/.test(inbound.port.trim())) return Number(inbound.port.trim());
   throw new Error(`${label} requires a single numeric port. Pass an explicit port when the inbound uses multiple ports.`);
@@ -462,7 +464,7 @@ export function generateSubscription(profile: Profile, options: SubscriptionOpti
           code: "XCK_SUBSCRIPTION_CLIENT_OUTBOUND_FAILED",
           severity: "warning",
           category: "suggestion",
-          path: `/inbounds/${profile.inbounds.indexOf(inbound)}`,
+          path: `/inbounds/${profile.inbounds.indexOf(inbound) + 1}`,
           message: "Could not generate xray-json outbound for a client.",
           suggestion: error instanceof Error ? error.message : undefined
         }));
@@ -503,7 +505,7 @@ export function generateSubscription(profile: Profile, options: SubscriptionOpti
         code: "XCK_SUBSCRIPTION_LINK_FAILED",
         severity: "warning",
         category: "suggestion",
-        path: `/inbounds/${profile.inbounds.indexOf(inbound)}`,
+        path: `/inbounds/${profile.inbounds.indexOf(inbound) + 1}`,
         message: "Could not generate a subscription link for a client.",
         suggestion: error instanceof Error ? error.message : undefined
       }));

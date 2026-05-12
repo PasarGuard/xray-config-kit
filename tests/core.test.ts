@@ -20,6 +20,7 @@ import {
   getRoutingRuleFormCapabilities,
   getXrayParityRelease,
   importXrayConfig,
+  normalizeProfile,
   validateProfile,
   validateOutboundDraft,
   validateRoutingRuleDraft
@@ -375,7 +376,8 @@ describe("@pasarguard/xray-config-kit core", () => {
           port: 10080,
           address: "example.com",
           targetPort: 443,
-          network: "tcp"
+          network: "tcp",
+          portMap: { "8443": "1.1.1.1:443" }
         }
       ],
       outbounds: [
@@ -427,7 +429,8 @@ describe("@pasarguard/xray-config-kit core", () => {
       settings: {
         address: "example.com",
         port: 443,
-        network: "tcp"
+        network: "tcp",
+        portMap: { "8443": "1.1.1.1:443" }
       }
     });
     expect(built.config.outbounds?.[0]).toMatchObject({
@@ -440,6 +443,113 @@ describe("@pasarguard/xray-config-kit core", () => {
     const imported = importXrayConfig({ inbounds: built.config.inbounds, outbounds: built.config.outbounds });
     expect(imported.profile.inbounds.map((inbound) => inbound.protocol)).toEqual(["hysteria", "tun", "dokodemo-door"]);
     expect(imported.profile.outbounds?.some((outbound) => outbound.protocol === "hysteria")).toBe(true);
+    const dok = imported.profile.inbounds[2];
+    expect(dok.protocol).toBe("dokodemo-door");
+    expect((dok as { portMap?: Record<string, string> }).portMap).toEqual({ "8443": "1.1.1.1:443" });
+  });
+
+  it("imports tunnel settings using rewriteAddress / rewritePort / allowedNetwork aliases (doc naming)", () => {
+    const imported = importXrayConfig({
+      inbounds: [
+        {
+          protocol: "tunnel",
+          tag: "t-doc",
+          listen: "0.0.0.0",
+          port: 3090,
+          settings: {
+            allowedNetwork: "tcp,udp",
+            rewriteAddress: "8.8.8.8",
+            rewritePort: 53,
+            portMap: {
+              "5555": "1.1.1.1:7777",
+              "5556": ":8888"
+            },
+            followRedirect: false,
+            userLevel: 1
+          }
+        }
+      ]
+    });
+    const t = imported.profile.inbounds[0];
+    expect(t?.protocol).toBe("tunnel");
+    expect(t).toMatchObject({
+      tag: "t-doc",
+      address: "8.8.8.8",
+      targetPort: 53,
+      network: "tcp,udp",
+      portMap: { "5555": "1.1.1.1:7777", "5556": ":8888" },
+      followRedirect: false,
+      userLevel: 1
+    });
+  });
+
+  it("normalizeProfile lifts tunnel raw /settings/portMap into typed portMap (round-trip safe)", () => {
+    const profile = {
+      schemaVersion: "xck.v1",
+      inbounds: [
+        {
+          kind: "inbound",
+          protocol: "tunnel",
+          tag: "tn",
+          port: 8041,
+          address: "2.2.2.2",
+          targetPort: 53,
+          raw: [{ op: "add" as const, path: "/settings/portMap", value: { "22": "8.8.8.8:11" } }]
+        }
+      ],
+      outbounds: [
+        { protocol: "freedom", tag: "direct", settings: { domainStrategy: "AsIs" } },
+        { protocol: "blackhole", tag: "block", settings: { response: { type: "none" } } }
+      ]
+    } as Profile;
+
+    const n = normalizeProfile(profile);
+    const ib = n.inbounds[0] as { portMap?: Record<string, string>; raw?: unknown };
+    expect(ib.portMap).toEqual({ "22": "8.8.8.8:11" });
+    expect(ib.raw).toBeUndefined();
+    expect(validateProfile(n, {}).ok).toBe(true);
+    const built = buildXrayConfig(n, { xrayVersion: latestGeneratedRelease.version });
+    expect(built.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+    const settings = built.config.inbounds?.[0]?.settings as Record<string, unknown> | undefined;
+    expect(settings?.portMap).toEqual({ "22": "8.8.8.8:11" });
+  });
+
+  it("normalizeProfile drops stray portMap from non-tunnel inbounds before strict validation", () => {
+    const profile = {
+      schemaVersion: "xck.v1",
+      inbounds: [
+        {
+          kind: "inbound",
+          protocol: "shadowsocks",
+          tag: "ss",
+          port: 1081,
+          method: "aes-128-gcm",
+          password: "secretsecretsecretsecret",
+          network: "tcp,udp",
+          clients: [],
+          portMap: { "22": "8.8.8.8:11" }
+        },
+        {
+          kind: "inbound",
+          protocol: "tunnel",
+          tag: "out",
+          port: 2211,
+          address: "22.1.32.1",
+          targetPort: 51,
+          network: "tcp,udp",
+          portMap: { "22": "8.8.8.8:11" }
+        }
+      ],
+      outbounds: [
+        { protocol: "freedom", tag: "direct", settings: { domainStrategy: "AsIs" } },
+        { protocol: "blackhole", tag: "block", settings: { response: { type: "none" } } }
+      ]
+    } as Profile;
+
+    const n = normalizeProfile(profile);
+    expect("portMap" in (n.inbounds[0] as object)).toBe(false);
+    expect((n.inbounds[1] as { portMap?: Record<string, string> }).portMap).toEqual({ "22": "8.8.8.8:11" });
+    expect(validateProfile(n, {}).ok).toBe(true);
   });
 
   it("creates outbound drafts from generated Xray protocol metadata", () => {
@@ -681,8 +791,7 @@ describe("@pasarguard/xray-config-kit core", () => {
       .toThrow("mixed default inbound does not support transport options.");
     expect(() => createUnsafeDefaultInbound({ protocol: "vmess", security: "reality" }))
       .toThrow("VMess default inbound supports only none or TLS security.");
-    expect(() => createUnsafeDefaultInbound({ protocol: "shadowsocks", clientDefaults: "empty" }))
-      .toThrow("shadowsocks default inbound requires a port.");
+    expect(() => createUnsafeDefaultInbound({ protocol: "shadowsocks", clientDefaults: "empty" })).not.toThrow();
   });
 
   it("can create panel drafts with empty client arrays", () => {
@@ -699,6 +808,10 @@ describe("@pasarguard/xray-config-kit core", () => {
     expect(defaultDraft.clients).toHaveLength(1);
     expect(panelDraft.clients).toEqual([]);
     expect(shadowsocksPanelDraft.clients).toEqual([]);
+    const bareVless = createDefaultInbound({ protocol: "vless", clientDefaults: "empty" });
+    expect(bareVless).toMatchObject({ tag: "", protocol: "vless" });
+    expect(bareVless).not.toHaveProperty("port");
+    expect(bareVless).not.toHaveProperty("listen");
   });
 
   it("builds minimal Shadowsocks drafts with default policy controls", () => {
@@ -719,7 +832,6 @@ describe("@pasarguard/xray-config-kit core", () => {
     expect(built.config.policy).toEqual({ levels: { "0": { statsUserOnline: true } } });
     expect(built.config.inbounds?.[0]).toMatchObject({
       tag: "Shadowsocks TCP",
-      listen: "0.0.0.0",
       port: 1080,
       protocol: "shadowsocks",
       settings: {
@@ -727,6 +839,7 @@ describe("@pasarguard/xray-config-kit core", () => {
         network: "tcp,udp"
       }
     });
+    expect(built.config.inbounds?.[0]).not.toHaveProperty("listen");
     expect(built.config.inbounds?.[0]?.settings).not.toHaveProperty("method");
     expect(built.config.inbounds?.[0]?.settings).not.toHaveProperty("password");
 
