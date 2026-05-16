@@ -48,8 +48,8 @@ describe("xray outbound envelope strict parity", () => {
 
     expect(result.ok).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([
-      "/outbounds/0/proxySettings/notFromXray",
-      "/outbounds/0/mux/notFromXray"
+      "/outbounds/1/proxySettings/notFromXray",
+      "/outbounds/1/mux/notFromXray"
     ]));
   });
 });

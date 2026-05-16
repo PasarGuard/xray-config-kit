@@ -40,10 +40,10 @@ describe("strict xray json error surface", () => {
       "XCK_XRAY_STRICT_UNKNOWN_OUTBOUND_PROTOCOL"
     ]));
     expect(result.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([
-      "/inbounds/0/protocol",
       "/inbounds/1/protocol",
-      "/outbounds/0/protocol",
-      "/outbounds/1/protocol"
+      "/inbounds/2/protocol",
+      "/outbounds/1/protocol",
+      "/outbounds/2/protocol"
     ]));
   });
 
@@ -72,12 +72,12 @@ describe("strict xray json error surface", () => {
 
     expect(result.ok).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([
-      "/inbounds/0/strayEnvelope",
-      "/inbounds/0/settings",
-      "/outbounds/0/strayEnvelope",
-      "/outbounds/0/settings",
-      "/outbounds/0/mux",
-      "/outbounds/0/proxySettings"
+      "/inbounds/1/strayEnvelope",
+      "/inbounds/1/settings",
+      "/outbounds/1/strayEnvelope",
+      "/outbounds/1/settings",
+      "/outbounds/1/mux",
+      "/outbounds/1/proxySettings"
     ]));
   });
 
@@ -108,8 +108,8 @@ describe("strict xray json error surface", () => {
     expect(result.issues.map((issue) => issue.severity)).toEqual(["warning", "warning", "warning"]);
     expect(result.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([
       "/unknownTopLevel",
-      "/inbounds/0/settings/kitOnly",
-      "/inbounds/0/streamSettings/unknownStreamField"
+      "/inbounds/1/settings/kitOnly",
+      "/inbounds/1/streamSettings/unknownStreamField"
     ]));
   });
 });

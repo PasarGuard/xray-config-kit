@@ -154,7 +154,7 @@ describe("xray stream transport settings parity", () => {
       }), { releaseTag: release.tag });
 
       expect(result.ok, field.json).toBe(false);
-      expect(result.issues.map((issue) => issue.path), field.json).toContain(`/inbounds/0/streamSettings/${field.json}/notFromXray`);
+      expect(result.issues.map((issue) => issue.path), field.json).toContain(`/inbounds/1/streamSettings/${field.json}/notFromXray`);
     }
   });
 });

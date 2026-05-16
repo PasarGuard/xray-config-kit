@@ -681,6 +681,8 @@ export type TrojanOutboundSettings = {
 
 // WireGuard outbound settings based on Xray parity WireGuardConfig
 export type WireGuardOutboundSettings = {
+  readonly DNS?: string;
+  readonly kernelMode?: boolean;
   readonly noKernelTun?: boolean;
   readonly secretKey?: string;
   readonly address?: readonly string[];

@@ -98,8 +98,8 @@ describe("xray stream security settings parity", () => {
 
     expect(result.ok).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([
-      "/inbounds/0/streamSettings/tlsSettings/kitOnlyTls",
-      "/inbounds/0/streamSettings/realitySettings/kitOnlyReality"
+      "/inbounds/1/streamSettings/tlsSettings/kitOnlyTls",
+      "/inbounds/1/streamSettings/realitySettings/kitOnlyReality"
     ]));
   });
 
@@ -123,8 +123,8 @@ describe("xray stream security settings parity", () => {
 
     expect(result.ok).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([
-      "/inbounds/0/streamSettings/tlsSettings",
-      "/inbounds/0/streamSettings/realitySettings"
+      "/inbounds/1/streamSettings/tlsSettings",
+      "/inbounds/1/streamSettings/realitySettings"
     ]));
   });
 });

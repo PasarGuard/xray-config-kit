@@ -568,7 +568,8 @@ export function buildXrayConfig(profileInput: Profile, options: BuildOptions = {
   const analysis = analyzeProfile(normalized, options);
   const strict = options.mode !== "permissive";
 
-  if (strict && hasErrors(analysis.issues)) {
+  const adapterHasErrors = (adapter.issues ?? []).some((issue) => issue.severity === "error");
+  if ((strict && hasErrors(analysis.issues)) || adapterHasErrors) {
     return {
       config: {},
       normalized,

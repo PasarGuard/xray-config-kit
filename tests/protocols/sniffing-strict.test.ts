@@ -43,6 +43,6 @@ describe("xray inbound sniffing strict parity", () => {
     }, { releaseTag: latestGeneratedRelease.tag });
 
     expect(result.ok).toBe(false);
-    expect(result.issues.map((issue) => issue.path)).toContain("/inbounds/0/sniffing/notFromXray");
+    expect(result.issues.map((issue) => issue.path)).toContain("/inbounds/1/sniffing/notFromXray");
   });
 });

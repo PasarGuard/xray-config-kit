@@ -330,7 +330,7 @@ const baseInboundShape = {
   kind: z.literal("inbound"),
   tag: tagSchema,
   listen: z.string().optional(),
-  port: inboundPortSchema,
+  port: inboundPortSchema.optional(),
   sniffing: sniffingSchema.optional(),
   streamAdvanced: z.object({
     sockopt: jsonObjectSchema.optional(),

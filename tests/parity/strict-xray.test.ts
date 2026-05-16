@@ -56,8 +56,8 @@ describe("strict xray json validation", () => {
     expect(result.ok).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toEqual(expect.arrayContaining([
       "/imaginaryTopLevel",
-      "/inbounds/0/settings/kitOnly",
-      "/inbounds/0/streamSettings/madeUpSettings"
+      "/inbounds/1/settings/kitOnly",
+      "/inbounds/1/streamSettings/madeUpSettings"
     ]));
   });
 

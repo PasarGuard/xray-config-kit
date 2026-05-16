@@ -879,6 +879,24 @@ describe("@pasarguard/xray-config-kit core", () => {
     expect(invalid.issues.some((issue) => issue.code === "XCK_SEMANTIC_INVALID_PORT")).toBe(true);
   });
 
+  it("allows inbounds without a port for socket listeners", () => {
+    const result = validateProfile(createProfile({
+      includeDefaultPolicy: false,
+      inbounds: [{
+        kind: "inbound",
+        protocol: "vless",
+        tag: "VLESS_CF",
+        listen: "@meow-cf",
+        clients: [],
+        security: { type: "none" },
+        transport: { type: "ws", path: "/meow-cf" },
+        decryption: "none"
+      }]
+    }));
+
+    expect(result.issues.some((issue) => issue.code === "XCK_SCHEMA_INVALID_PROFILE")).toBe(false);
+  });
+
   it("builds and imports panel-style routing rules", () => {
     const inbound = createDefaultInbound({
       protocol: "shadowsocks",

@@ -150,6 +150,15 @@ function fieldNames(fields: readonly XrayParityStructField[] | undefined): Set<s
   return new Set((fields ?? []).map((field) => field.json));
 }
 
+function structFieldNames(release: XrayParityRelease, structName: string | undefined): Set<string> {
+  const allowed = fieldNames(structName === undefined ? undefined : release.structs[structName]);
+  if (structName === "WireGuardConfig") {
+    allowed.add("DNS");
+    allowed.add("kernelMode");
+  }
+  return allowed;
+}
+
 function normalizeGoType(type: string): string | undefined {
   let next = type.trim();
   next = next.replace(/^\*/, "");
@@ -196,7 +205,7 @@ function validateStructObject(
     issues.push(issue("XCK_XRAY_STRICT_EXPECTED_OBJECT", path, `${label} must be a JSON object.`));
     return;
   }
-  validateKnownFields(value, fieldNames(fields), path, label, issues, mode);
+  validateKnownFields(value, structFieldNames(release, structName), path, label, issues, mode);
 }
 
 function protocolConfig(release: XrayParityRelease, direction: "inbound" | "outbound", protocol: string): string | undefined {
@@ -260,7 +269,7 @@ function validateDetour(
   issues: Issue[],
   mode: ValidationMode
 ): void {
-  const path = `/${direction === "inbound" ? "inbounds" : "outbounds"}/${index}`;
+  const path = `/${direction === "inbound" ? "inbounds" : "outbounds"}/${index + 1}`;
   if (!isJsonObject(value)) {
     issues.push(issue("XCK_XRAY_STRICT_EXPECTED_OBJECT", path, `${direction} entry must be a JSON object.`));
     return;

@@ -21,7 +21,7 @@ describe("xray protocol settings field coverage", () => {
       }, { releaseTag: release.tag });
 
       expect(result.ok, entry.protocol).toBe(false);
-      expect(result.issues.map((issue) => issue.path), entry.protocol).toContain("/inbounds/0/settings/notFromXray");
+      expect(result.issues.map((issue) => issue.path), entry.protocol).toContain("/inbounds/1/settings/notFromXray");
     }
   });
 
@@ -42,7 +42,7 @@ describe("xray protocol settings field coverage", () => {
       }, { releaseTag: release.tag });
 
       expect(result.ok, entry.protocol).toBe(false);
-      expect(result.issues.map((issue) => issue.path), entry.protocol).toContain("/outbounds/0/settings/notFromXray");
+      expect(result.issues.map((issue) => issue.path), entry.protocol).toContain("/outbounds/1/settings/notFromXray");
     }
   });
 });
