@@ -2,7 +2,7 @@ import { getXrayAdapter } from "../adapters/xray/registry.js";
 import { analyzeProfile } from "../analyze/index.js";
 import { applyRawPatch, cloneJson, isJsonObject, mergeTopLevel } from "./json.js";
 import { hasErrors, makeIssue } from "./issues.js";
-import { normalizeProfile } from "./profile.js";
+import { normalizeProfile, profileSourceFingerprint } from "./profile.js";
 import type {
   BuildOptions,
   BuildResult,
@@ -40,6 +40,25 @@ function compactObject(input: Record<string, JsonValue | undefined>): JsonObject
 
 function compactArray<T extends JsonValue>(input: readonly (T | undefined)[]): T[] {
   return input.filter((item): item is T => item !== undefined);
+}
+
+function mergeJsonPreservingSource(source: JsonValue, compiled: JsonValue): JsonValue {
+  if (Array.isArray(source) && Array.isArray(compiled)) {
+    return compiled.map((item, index) => {
+      const sourceItem = source[index];
+      return sourceItem === undefined ? cloneJson(item) : mergeJsonPreservingSource(sourceItem, item);
+    });
+  }
+  if (isJsonObject(source) && isJsonObject(compiled)) {
+    const output: Record<string, JsonValue | undefined> = { ...cloneJson(source) };
+    for (const [key, value] of Object.entries(compiled)) {
+      if (value === undefined) continue;
+      const sourceValue = source[key];
+      output[key] = sourceValue === undefined ? cloneJson(value) : mergeJsonPreservingSource(sourceValue, value);
+    }
+    return output as JsonObject;
+  }
+  return cloneJson(compiled);
 }
 
 function compileFallback(fallback: Fallback): JsonObject {
@@ -86,6 +105,7 @@ function compileTls(security: TlsSecurity): JsonObject {
     echForceQuery: security.echForceQuery,
     echSockopt: security.echSockopt,
     certificates: security.certificates?.map((certificate) => compactObject({
+      ...certificate.raw,
       certificateFile: certificate.certificateFile,
       keyFile: certificate.keyFile,
       certificate: certificate.certificate,
@@ -93,7 +113,8 @@ function compileTls(security: TlsSecurity): JsonObject {
       usage: certificate.usage,
       ocspStapling: certificate.ocspStapling,
       oneTimeLoading: certificate.oneTimeLoading,
-      buildChain: certificate.buildChain
+      buildChain: certificate.buildChain,
+      serveOnNode: certificate.serveOnNode
     }))
   });
 }
@@ -354,7 +375,7 @@ function compileInbound(inbound: Inbound): JsonObject {
       allowTransparent: inbound.allowTransparent,
       userLevel: inbound.userLevel
     });
-    return compileInboundBase(inbound, settings);
+    return compileInboundBase(inbound, settings, inbound.security, inbound.transport);
   }
 
   if (inbound.protocol === "mixed" || inbound.protocol === "socks") {
@@ -368,7 +389,7 @@ function compileInbound(inbound: Inbound): JsonObject {
       ip: inbound.ip,
       userLevel: inbound.userLevel
     });
-    return compileInboundBase(inbound, settings);
+    return compileInboundBase(inbound, settings, inbound.security, inbound.transport);
   }
 
   if (inbound.protocol === "wireguard") {
@@ -388,7 +409,7 @@ function compileInbound(inbound: Inbound): JsonObject {
       domainStrategy: inbound.domainStrategy,
       noKernelTun: inbound.noKernelTun
     });
-    return compileInboundBase(inbound, settings);
+    return compileInboundBase(inbound, settings, inbound.security, inbound.transport);
   }
 
   if (inbound.protocol === "hysteria") {
@@ -579,8 +600,21 @@ export function buildXrayConfig(profileInput: Profile, options: BuildOptions = {
     };
   }
 
-  let config = mergeTopLevel(compileProfile(normalized), normalized.raw?.topLevel) as XrayConfig;
+  const compiledProfile = compileProfile(normalized);
+  const sourcePreserved = normalized.raw?.source
+    ? mergeJsonPreservingSource(normalized.raw.source, compiledProfile) as JsonObject
+    : compiledProfile;
+  let config = mergeTopLevel(sourcePreserved, normalized.raw?.topLevel) as XrayConfig;
   const issues = [...analysis.issues];
+
+  if (
+    normalized.raw?.source &&
+    normalized.raw.sourceProfileFingerprint &&
+    normalized.raw.sourceProfileFingerprint === profileSourceFingerprint(normalized) &&
+    !normalized.raw.patches?.length
+  ) {
+    config = cloneJson(normalized.raw.source) as XrayConfig;
+  }
 
   if (options.preserveUnknown) {
     const preserved = applyUnknownPreservation(config, normalized);

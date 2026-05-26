@@ -155,14 +155,16 @@ export type TlsSecurity = {
 };
 
 export type TlsCertificate = {
+  readonly raw?: JsonObject;
   readonly certificateFile?: string;
   readonly keyFile?: string;
-  readonly certificate?: string[];
-  readonly key?: string[];
+  readonly certificate?: string[] | string;
+  readonly key?: string[] | string;
   readonly usage?: "encipherment" | "verify" | "issue";
   readonly ocspStapling?: number;
   readonly oneTimeLoading?: boolean;
   readonly buildChain?: boolean;
+  readonly serveOnNode?: boolean;
 };
 
 export type RealitySecurity = {
@@ -401,6 +403,8 @@ export type HttpInbound = BaseInbound & {
   readonly accounts?: HttpAccount[];
   readonly allowTransparent?: boolean;
   readonly userLevel?: number;
+  readonly security?: TlsSecurity | NoneSecurity;
+  readonly transport?: Transport;
 };
 
 export type MixedAccount = {
@@ -415,6 +419,8 @@ export type MixedInbound = BaseInbound & {
   readonly udp?: boolean;
   readonly ip?: string;
   readonly userLevel?: number;
+  readonly security?: TlsSecurity | NoneSecurity;
+  readonly transport?: Transport;
 };
 
 export type SocksInbound = BaseInbound & {
@@ -424,6 +430,8 @@ export type SocksInbound = BaseInbound & {
   readonly udp?: boolean;
   readonly ip?: string;
   readonly userLevel?: number;
+  readonly security?: TlsSecurity | NoneSecurity;
+  readonly transport?: Transport;
 };
 
 export type WireGuardPeer = {
@@ -446,6 +454,8 @@ export type WireGuardInbound = BaseInbound & {
   readonly reserved?: number[] | string;
   readonly domainStrategy?: "forceip" | "forceipv4" | "forceipv6" | "forceipv4v6" | "forceipv6v4";
   readonly noKernelTun?: boolean;
+  readonly security?: TlsSecurity | NoneSecurity;
+  readonly transport?: Transport;
 };
 
 export type HysteriaInbound = BaseInbound & {
@@ -702,13 +712,14 @@ export type LoopbackOutboundSettings = {
 // TLS certificate config based on Xray parity TLSCertConfig
 export type TlsCertificateConfig = {
   readonly certificateFile?: string;
-  readonly certificate?: readonly string[];
+  readonly certificate?: readonly string[] | string;
   readonly keyFile?: string;
-  readonly key?: readonly string[];
+  readonly key?: readonly string[] | string;
   readonly usage?: string;
   readonly ocspStapling?: number;
   readonly oneTimeLoading?: boolean;
   readonly buildChain?: boolean;
+  readonly serveOnNode?: boolean;
 };
 
 // TLS config based on Xray parity TLSConfig
@@ -896,6 +907,8 @@ export type Profile = {
   readonly dns?: Dns;
   readonly log?: JsonObject;
   readonly raw?: {
+    readonly source?: JsonObject;
+    readonly sourceProfileFingerprint?: string;
     readonly topLevel?: Record<string, JsonValue>;
     readonly patches?: RawPatch[];
   };

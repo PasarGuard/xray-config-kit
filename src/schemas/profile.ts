@@ -104,15 +104,19 @@ export const noneSecuritySchema = z.object({
   type: z.literal("none")
 }).strict();
 
+const tlsCertificateContentSchema = z.union([z.array(z.string()), z.string()]);
+
 export const tlsCertificateSchema = z.object({
+  raw: jsonObjectSchema.optional(),
   certificateFile: z.string().optional(),
   keyFile: z.string().optional(),
-  certificate: z.array(z.string()).optional(),
-  key: z.array(z.string()).optional(),
+  certificate: tlsCertificateContentSchema.optional(),
+  key: tlsCertificateContentSchema.optional(),
   usage: z.enum(["encipherment", "verify", "issue"]).optional(),
   ocspStapling: z.number().int().min(0).optional(),
   oneTimeLoading: z.boolean().optional(),
-  buildChain: z.boolean().optional()
+  buildChain: z.boolean().optional(),
+  serveOnNode: z.boolean().optional()
 }).strict();
 
 export const tlsSecuritySchema = z.object({
@@ -393,7 +397,9 @@ export const httpInboundSchema = z.object({
   protocol: z.literal("http"),
   accounts: z.array(httpAccountSchema).optional(),
   allowTransparent: z.boolean().optional(),
-  userLevel: z.number().int().min(0).optional()
+  userLevel: z.number().int().min(0).optional(),
+  security: z.discriminatedUnion("type", [tlsSecuritySchema, noneSecuritySchema]).optional(),
+  transport: transportSchema.optional()
 }).strict();
 
 export const mixedAccountSchema = z.object({
@@ -408,7 +414,9 @@ export const mixedInboundSchema = z.object({
   accounts: z.array(mixedAccountSchema).optional(),
   udp: z.boolean().optional(),
   ip: z.string().optional(),
-  userLevel: z.number().int().min(0).optional()
+  userLevel: z.number().int().min(0).optional(),
+  security: z.discriminatedUnion("type", [tlsSecuritySchema, noneSecuritySchema]).optional(),
+  transport: transportSchema.optional()
 }).strict();
 
 export const socksInboundSchema = z.object({
@@ -418,7 +426,9 @@ export const socksInboundSchema = z.object({
   accounts: z.array(mixedAccountSchema).optional(),
   udp: z.boolean().optional(),
   ip: z.string().optional(),
-  userLevel: z.number().int().min(0).optional()
+  userLevel: z.number().int().min(0).optional(),
+  security: z.discriminatedUnion("type", [tlsSecuritySchema, noneSecuritySchema]).optional(),
+  transport: transportSchema.optional()
 }).strict();
 
 export const wireGuardPeerSchema = z.object({
@@ -441,7 +451,9 @@ export const wireGuardInboundSchema = z.object({
   workers: z.number().int().min(0).optional(),
   reserved: z.union([z.array(z.number().int().min(0).max(255)).length(3), z.string()]).optional(),
   domainStrategy: z.enum(["forceip", "forceipv4", "forceipv6", "forceipv4v6", "forceipv6v4"]).optional(),
-  noKernelTun: z.boolean().optional()
+  noKernelTun: z.boolean().optional(),
+  security: z.discriminatedUnion("type", [tlsSecuritySchema, noneSecuritySchema]).optional(),
+  transport: transportSchema.optional()
 }).strict();
 
 export const hysteriaInboundSchema = z.object({
@@ -645,6 +657,8 @@ export const profileSchema = z.object({
   dns: dnsSchema.optional(),
   log: z.record(jsonValueSchema).optional(),
   raw: z.object({
+    source: jsonObjectSchema.optional(),
+    sourceProfileFingerprint: z.string().optional(),
     topLevel: z.record(jsonValueSchema).optional(),
     patches: z.array(rawPatchSchema).optional()
   }).strict().optional(),

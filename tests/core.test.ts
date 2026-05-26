@@ -294,6 +294,52 @@ describe("@pasarguard/xray-config-kit core", () => {
     expect(analysis.issues.filter((issue) => issue.code === "XCK_SECURITY_PUBLIC_UNAUTHENTICATED_PROXY")).toHaveLength(3);
   });
 
+  it("preserves HTTP inbound TLS certificates through typed panel saves", () => {
+    const certificate = [
+      "-----BEGIN CERTIFICATE-----",
+      "MIIB",
+      "-----END CERTIFICATE-----"
+    ];
+    const key = [
+      "-----BEGIN PRIVATE KEY-----",
+      "MIIB",
+      "-----END PRIVATE KEY-----"
+    ];
+    const profile = createProfile({
+      inbounds: [
+        {
+          kind: "inbound",
+          protocol: "http",
+          tag: "HANDSHAKE_DEST",
+          listen: "127.0.0.1",
+          port: 69,
+          security: {
+            type: "tls",
+            certificates: [{ certificate, key }]
+          },
+          transport: { type: "tcp" },
+          streamAdvanced: {
+            sockopt: {
+              tcpFastOpen: true,
+              acceptProxyProtocol: false,
+              tcpKeepAliveInterval: 0
+            }
+          }
+        }
+      ],
+      includeDefaultPolicy: false
+    });
+
+    const built = buildXrayConfig(profile, { mode: "permissive" });
+
+    expect(built.config.inbounds?.[0]?.streamSettings?.tlsSettings?.certificates?.[0]).toEqual({ certificate, key });
+    expect(built.config.inbounds?.[0]?.streamSettings?.sockopt).toEqual({
+      tcpFastOpen: true,
+      acceptProxyProtocol: false,
+      tcpKeepAliveInterval: 0
+    });
+  });
+
   it("builds/imports WireGuard inbounds and exports peer configs without implicit hostname", () => {
     const profile = createProfile({
       inbounds: [

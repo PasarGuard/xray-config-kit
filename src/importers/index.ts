@@ -1,5 +1,5 @@
 import { knownXrayTopLevelKeys } from "../xray-json/index.js";
-import { createProfile } from "../core/profile.js";
+import { createProfile, profileSourceFingerprint } from "../core/profile.js";
 import { isJsonObject } from "../core/json.js";
 import { makeIssue } from "../core/issues.js";
 import type {
@@ -58,13 +58,13 @@ function asStringArray(value: JsonValue | undefined): string[] | undefined {
   return Array.isArray(value) && value.every((item) => typeof item === "string") ? [...value] : undefined;
 }
 
-function asStringList(value: JsonValue | undefined): string[] | undefined {
-  if (typeof value === "string") return value.split(",").map((item) => item.trim()).filter(Boolean);
+function asStringOrStringArray(value: JsonValue | undefined): string | string[] | undefined {
+  if (typeof value === "string") return value;
   return asStringArray(value);
 }
 
-function asStringOrStringArray(value: JsonValue | undefined): string | string[] | undefined {
-  if (typeof value === "string") return value;
+function asStringList(value: JsonValue | undefined): string[] | undefined {
+  if (typeof value === "string") return value.split(",").map((item) => item.trim()).filter(Boolean);
   return asStringArray(value);
 }
 
@@ -132,14 +132,16 @@ function parseSecurity(streamSettings: JsonObject | undefined): Security | undef
       echForceQuery: asString(tls.echForceQuery) as never,
       echSockopt: isJsonObject(tls.echSockopt) ? tls.echSockopt : undefined,
       certificates: asObjectArray(tls.certificates)?.map((certificate) => ({
+        raw: certificate,
         certificateFile: asString(certificate.certificateFile),
         keyFile: asString(certificate.keyFile),
-        certificate: asStringArray(certificate.certificate),
-        key: asStringArray(certificate.key),
+        certificate: asStringOrStringArray(certificate.certificate),
+        key: asStringOrStringArray(certificate.key),
         usage: asString(certificate.usage) as never,
         ocspStapling: asNumber(certificate.ocspStapling),
         oneTimeLoading: asBoolean(certificate.oneTimeLoading),
-        buildChain: asBoolean(certificate.buildChain)
+        buildChain: asBoolean(certificate.buildChain),
+        serveOnNode: asBoolean(certificate.serveOnNode)
       }))
     } as Security;
   }
@@ -525,7 +527,10 @@ function parseInbound(raw: JsonObject, index: number, issues: Issue[]): Inbound 
       sniffing,
       accounts: parseAccounts(settings),
       allowTransparent: asBoolean(settings.allowTransparent),
-      userLevel: asNumber(settings.userLevel)
+      userLevel: asNumber(settings.userLevel),
+      security: security && security.type !== "reality" ? security : undefined,
+      transport,
+      streamAdvanced
     };
   }
 
@@ -541,7 +546,10 @@ function parseInbound(raw: JsonObject, index: number, issues: Issue[]): Inbound 
       accounts: parseAccounts(settings),
       udp: asBoolean(settings.udp),
       ip: asString(settings.ip),
-      userLevel: asNumber(settings.userLevel)
+      userLevel: asNumber(settings.userLevel),
+      security: security && security.type !== "reality" ? security : undefined,
+      transport,
+      streamAdvanced
     };
   }
 
@@ -571,7 +579,10 @@ function parseInbound(raw: JsonObject, index: number, issues: Issue[]): Inbound 
         ? settings.reserved as number[]
         : asString(settings.reserved),
       domainStrategy: asString(settings.domainStrategy) as never,
-      noKernelTun: asBoolean(settings.noKernelTun)
+      noKernelTun: asBoolean(settings.noKernelTun),
+      security: security && security.type !== "reality" ? security : undefined,
+      transport,
+      streamAdvanced
     };
   }
 
@@ -842,16 +853,23 @@ export function importXrayConfig(input: unknown, _options: ImportOptions = {}): 
     }
   }
 
-  const profile: Profile = createProfile({
+  const profileWithoutFingerprint: Profile = createProfile({
     inbounds,
     outbounds: outbounds.length > 0 ? outbounds : undefined,
     routing: parseRouting(raw.routing),
     dns: parseDns(raw.dns),
     log: isJsonObject(raw.log) ? raw.log : undefined,
-    raw: Object.keys(topLevel).length > 0 ? { topLevel } : undefined,
+    raw: { source: raw, ...(Object.keys(topLevel).length > 0 ? { topLevel } : {}) },
     unknown: Object.keys(pointers).length > 0 ? { source: "import", pointers } : undefined,
     includeDefaultPolicy: false
   });
+  const profile: Profile = {
+    ...profileWithoutFingerprint,
+    raw: {
+      ...profileWithoutFingerprint.raw,
+      sourceProfileFingerprint: profileSourceFingerprint(profileWithoutFingerprint)
+    }
+  };
 
   return {
     profile,

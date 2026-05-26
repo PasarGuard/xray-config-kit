@@ -113,8 +113,27 @@ export function createProfile(input: CreateProfileInput = {}): Profile {
   });
 }
 
+export function profileSourceFingerprint(profile: Profile): string {
+  const raw = profile.raw
+    ? {
+        ...profile.raw,
+        source: undefined,
+        sourceProfileFingerprint: undefined
+      }
+    : undefined;
+  const cleanedRaw = raw && Object.values(raw).some((value) => value !== undefined) ? raw : undefined;
+  return JSON.stringify({
+    ...profile,
+    raw: cleanedRaw
+  });
+}
+
 export function normalizeProfile(profile: Profile): Profile {
-  const outbounds = profile.outbounds && profile.outbounds.length > 0 ? profile.outbounds : defaultOutbounds;
+  const outbounds = profile.outbounds && profile.outbounds.length > 0
+    ? profile.outbounds
+    : profile.raw?.source
+      ? profile.outbounds
+      : defaultOutbounds;
   const inbounds = profile.inbounds ?? [];
   return {
     ...profile,
