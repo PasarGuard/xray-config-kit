@@ -227,6 +227,61 @@ describe("xray import preservation vs strict parity", () => {
     expect(direct?.settings?.domainStrategy).toBe("AsIs");
   });
 
+  it("does not inject typed HTTP stream defaults into advanced pasted inbound JSON", () => {
+    const raw = {
+      inbounds: [
+        {
+          tag: "http",
+          port: 22457,
+          listen: "127.0.0.1",
+          protocol: "http",
+          streamSettings: {
+            sockopt: {
+              tcpFastOpen: true,
+              acceptProxyProtocol: true,
+              tcpKeepAliveInterval: 0
+            },
+            security: "tls",
+            tlsSettings: {
+              certificates: [
+                {
+                  key: [
+                    "-----BEGIN RSA PRIVATE KEY-----",
+                    "key",
+                    "-----END RSA PRIVATE KEY-----"
+                  ],
+                  certificate: [
+                    "-----BEGIN CERTIFICATE-----",
+                    "cert",
+                    "-----END CERTIFICATE-----"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    };
+
+    const imported = importXrayConfig(raw);
+    const changedProfile = {
+      ...imported.profile,
+      inbounds: [
+        {
+          ...imported.profile.inbounds[0],
+          port: 22458
+        }
+      ]
+    };
+
+    const changed = buildXrayConfig(changedProfile, { mode: "permissive" });
+    expect(changed.config.inbounds?.[0]?.port).toBe(22458);
+    expect(changed.config.inbounds?.[0]).not.toHaveProperty("settings");
+    expect(changed.config.inbounds?.[0]?.streamSettings).not.toHaveProperty("network");
+    expect(changed.config.inbounds?.[0]?.streamSettings).not.toHaveProperty("tcpSettings");
+    expect(changed.config.inbounds?.[0]?.streamSettings?.tlsSettings?.certificates).toEqual(raw.inbounds[0].streamSettings.tlsSettings.certificates);
+  });
+
   it("does not preserve old inbound or outbound config when protocol changes", () => {
     const raw = {
       inbounds: [

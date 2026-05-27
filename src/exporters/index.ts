@@ -173,10 +173,14 @@ function linkRemark(inbound: Exclude<Inbound, { protocol: "unmanaged" }>, client
   return options.remark ?? client.email ?? `${inbound.tag}-${client.protocol}`;
 }
 
+function shadowsocksUsesServerPassword(method: string | undefined): boolean {
+  return method === "2022-blake3-aes-128-gcm" || method === "2022-blake3-aes-256-gcm";
+}
+
 function shadowsocksClientPassword(inbound: Extract<Inbound, { protocol: "shadowsocks" }>, client: Extract<Client, { protocol: "shadowsocks" }>): string {
   const method = client.method ?? inbound.method;
   if (!method) throw new Error("Shadowsocks client export requires a method on the client or inbound.");
-  if (method.startsWith("2022-") && inbound.password) return `${inbound.password}:${client.password}`;
+  if (shadowsocksUsesServerPassword(method) && inbound.password) return `${inbound.password}:${client.password}`;
   return client.password;
 }
 

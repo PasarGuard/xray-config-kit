@@ -62,13 +62,22 @@ function uniqueTaggedItems(items: JsonValue[]): Map<string, JsonValue> {
   return tagged;
 }
 
-function mergeJsonPreservingSource(source: JsonValue, compiled: JsonValue): JsonValue {
+function isEmptyJsonObject(value: JsonValue): boolean {
+  return isJsonObject(value) && Object.keys(value).length === 0;
+}
+
+function shouldSkipMissingSourceField(parentKey: string | undefined, key: string, value: JsonValue): boolean {
+  if (isEmptyJsonObject(value)) return true;
+  return parentKey === "streamSettings" && key === "network" && value === "tcp";
+}
+
+function mergeJsonPreservingSource(source: JsonValue, compiled: JsonValue, parentKey?: string): JsonValue {
   if (Array.isArray(source) && Array.isArray(compiled)) {
     const sourceByTag = uniqueTaggedItems(source);
     return compiled.map((item, index) => {
       const tag = getJsonObjectTag(item);
       const sourceItem = tag ? sourceByTag.get(tag) ?? source[index] : source[index];
-      return sourceItem === undefined ? cloneJson(item) : mergeJsonPreservingSource(sourceItem, item);
+      return sourceItem === undefined ? cloneJson(item) : mergeJsonPreservingSource(sourceItem, item, parentKey);
     });
   }
   if (isJsonObject(source) && isJsonObject(compiled)) {
@@ -90,7 +99,12 @@ function mergeJsonPreservingSource(source: JsonValue, compiled: JsonValue): Json
     for (const [key, value] of Object.entries(compiled)) {
       if (value === undefined) continue;
       const sourceValue = source[key];
-      output[key] = sourceValue === undefined ? cloneJson(value) : mergeJsonPreservingSource(sourceValue, value);
+      if (sourceValue === undefined) {
+        if (shouldSkipMissingSourceField(parentKey, key, value)) continue;
+        output[key] = cloneJson(value);
+        continue;
+      }
+      output[key] = mergeJsonPreservingSource(sourceValue, value, key);
     }
     return output as JsonObject;
   }
@@ -118,6 +132,10 @@ function compileSniffing(sniffing: Sniffing | undefined): JsonObject | undefined
     metadataOnly: sniffing.metadataOnly,
     routeOnly: sniffing.routeOnly
   });
+}
+
+function shadowsocksUsesServerPassword(method: string | undefined): boolean {
+  return method === "2022-blake3-aes-128-gcm" || method === "2022-blake3-aes-256-gcm";
 }
 
 function compileTls(security: TlsSecurity): JsonObject {
@@ -493,7 +511,7 @@ function compileInbound(inbound: Inbound): JsonObject {
   const shadowsocksInbound = inbound as Extract<Inbound, { protocol: "shadowsocks" }>;
   const settings = compactObject({
     method: shadowsocksInbound.method,
-    password: shadowsocksInbound.password,
+    password: shadowsocksUsesServerPassword(shadowsocksInbound.method) ? shadowsocksInbound.password : undefined,
     network: shadowsocksInbound.network ?? "tcp,udp",
     clients: shadowsocksInbound.clients
       .filter((client) => client.enabled !== false)

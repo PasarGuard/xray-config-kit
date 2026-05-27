@@ -17,6 +17,10 @@ function clientKey(client: Client): string {
   return `hysteria:${client.auth}`;
 }
 
+function shadowsocksUsesServerPassword(method: string | undefined): boolean {
+  return method === "2022-blake3-aes-128-gcm" || method === "2022-blake3-aes-256-gcm";
+}
+
 function validateRawPatches(patches: readonly RawPatch[] | undefined, path: string, options: ValidateOptions): Issue[] {
   if (!patches) return [];
   return patches.flatMap((patch, index) => {
@@ -118,7 +122,7 @@ function validateClients(inbound: Inbound, inboundIndex: number): Issue[] {
     }));
   }
 
-  if (inbound.protocol === "shadowsocks" && inbound.method?.startsWith("2022-") && clients.length > 0 && !inbound.password) {
+  if (inbound.protocol === "shadowsocks" && shadowsocksUsesServerPassword(inbound.method) && clients.length > 0 && !inbound.password) {
     issues.push(makeIssue({
       code: "XCK_SEMANTIC_SHADOWSOCKS_2022_MISSING_SERVER_PASSWORD",
       severity: "error",

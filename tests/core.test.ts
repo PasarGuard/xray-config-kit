@@ -869,6 +869,7 @@ describe("@pasarguard/xray-config-kit core", () => {
 
   it("can create panel drafts with empty client arrays", () => {
     const defaultDraft = createDefaultInbound({ protocol: "vless", port: 443, transport: "tcp", security: "reality" });
+    const shadowsocksDefaultDraft = createDefaultInbound({ protocol: "shadowsocks", port: 1080 });
     const panelDraft = createDefaultInbound({
       protocol: "vless",
       port: 443,
@@ -879,6 +880,8 @@ describe("@pasarguard/xray-config-kit core", () => {
     const shadowsocksPanelDraft = createDefaultInbound({ protocol: "shadowsocks", port: 1080, clientDefaults: "empty" });
 
     expect(defaultDraft.clients).toHaveLength(1);
+    expect(shadowsocksDefaultDraft.method).toBe("chacha20-poly1305");
+    expect(shadowsocksDefaultDraft.password).toBeUndefined();
     expect(panelDraft.clients).toEqual([]);
     expect(shadowsocksPanelDraft.clients).toEqual([]);
     const bareVless = createDefaultInbound({ protocol: "vless", clientDefaults: "empty" });
@@ -962,6 +965,11 @@ describe("@pasarguard/xray-config-kit core", () => {
       const built = buildXrayConfig(profile, { xrayVersion: latestGeneratedRelease.version });
       expect(built.issues.filter((issue) => issue.severity === "error")).toEqual([]);
       expect(built.config.inbounds?.[0]?.settings?.method).toBe(method);
+      expect(built.config.inbounds?.[0]?.settings?.password).toBe(
+        method === "2022-blake3-aes-128-gcm" || method === "2022-blake3-aes-256-gcm"
+          ? "server-password"
+          : undefined
+      );
       expect(built.config.inbounds?.[0]?.settings?.clients?.[0]?.method).toBe(method.startsWith("2022-") ? undefined : method);
     }
   });

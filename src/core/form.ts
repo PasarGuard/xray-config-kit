@@ -493,8 +493,8 @@ export function createDefaultInbound<const Options extends CreateDefaultInboundO
       tag,
       ...listenFields,
       ...portFields,
-      method: useEmptyClients ? undefined : "2022-blake3-aes-256-gcm",
-      password: useEmptyClients ? undefined : "change-me-server-password",
+      method: useEmptyClients ? undefined : "chacha20-poly1305",
+      password: undefined,
       network: "tcp,udp",
       clients: useEmptyClients ? [] : [{ protocol: "shadowsocks", password: "change-me-client-password", email: "user" }]
     };

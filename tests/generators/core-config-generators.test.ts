@@ -86,10 +86,17 @@ describe("core config generators", () => {
   it("generates short IDs and Shadowsocks 2022 passwords with exact lengths", () => {
     expect(generateShortId()).toMatch(/^[0-9a-f]{16}$/);
 
-    for (const method of SHADOWSOCKS_ENCRYPTION_METHODS) {
+    expect(SHADOWSOCKS_ENCRYPTION_METHODS[0]?.value).toBe("chacha20-poly1305");
+
+    const generationMethods = SHADOWSOCKS_ENCRYPTION_METHODS.filter(method => method.value === "2022-blake3-aes-128-gcm" || method.value === "2022-blake3-aes-256-gcm");
+    for (const method of generationMethods) {
       const result = generateShadowsocksPassword(method.value);
       expect(result?.encryptionMethod).toBe(method.label);
       expect(base64ByteLength(result?.password ?? "")).toBe(method.length);
+    }
+
+    for (const method of SHADOWSOCKS_ENCRYPTION_METHODS.filter(method => !generationMethods.includes(method))) {
+      expect(generateShadowsocksPassword(method.value)).toBeUndefined();
     }
 
     expect(generateShadowsocksPassword("not-a-shadowsocks-method")).toBeUndefined();
