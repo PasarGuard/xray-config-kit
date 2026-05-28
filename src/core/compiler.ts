@@ -71,6 +71,133 @@ function shouldSkipMissingSourceField(parentKey: string | undefined, key: string
   return parentKey === "streamSettings" && key === "network" && value === "tcp";
 }
 
+const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
+  ["__root", new Set(["log", "dns", "routing", "inbounds", "outbounds"])],
+  ["inbounds", new Set(["tag", "listen", "port", "protocol", "settings", "streamSettings", "sniffing"])],
+  ["outbounds", new Set(["tag", "protocol", "sendThrough", "settings", "streamSettings", "proxySettings", "mux", "targetStrategy"])],
+  ["settings", new Set([
+    "clients",
+    "default",
+    "flow",
+    "decryption",
+    "encryption",
+    "fallbacks",
+    "accounts",
+    "allowTransparent",
+    "userLevel",
+    "auth",
+    "udp",
+    "ip",
+    "secretKey",
+    "publicKey",
+    "pubKey",
+    "address",
+    "peers",
+    "mtu",
+    "workers",
+    "reserved",
+    "domainStrategy",
+    "noKernelTun",
+    "port",
+    "network",
+    "followRedirect",
+    "portMap",
+    "name",
+    "gateway",
+    "dns",
+    "autoSystemRoutingTable",
+    "autoOutboundsInterface",
+    "method",
+    "password",
+    "level",
+    "email",
+    "servers",
+    "vnext",
+    "response",
+    "redirect"
+  ])],
+  ["vnext", new Set(["address", "port", "users"])],
+  ["servers", new Set(["address", "port", "domains", "expectedIPs", "skipFallback", "queryStrategy", "tag", "password", "method", "level", "email", "flow", "uot", "uotVersion", "ivCheck", "users"])],
+  ["users", new Set(["id", "alterId", "security", "encryption", "flow", "password", "method", "level", "email", "experiments"])],
+  ["streamSettings", new Set([
+    "network",
+    "security",
+    "tlsSettings",
+    "realitySettings",
+    "tcpSettings",
+    "rawSettings",
+    "grpcSettings",
+    "xhttpSettings",
+    "splithttpSettings",
+    "wsSettings",
+    "httpupgradeSettings",
+    "kcpSettings",
+    "hysteriaSettings",
+    "sockopt",
+    "finalmask"
+  ])],
+  ["tlsSettings", new Set([
+    "serverName",
+    "alpn",
+    "fingerprint",
+    "allowInsecure",
+    "enableSessionResumption",
+    "disableSystemRoot",
+    "minVersion",
+    "maxVersion",
+    "cipherSuites",
+    "rejectUnknownSni",
+    "curvePreferences",
+    "masterKeyLog",
+    "pinnedPeerCertSha256",
+    "verifyPeerCertByName",
+    "echServerKeys",
+    "echConfigList",
+    "echForceQuery",
+    "echSockopt",
+    "certificates"
+  ])],
+  ["realitySettings", new Set([
+    "serverNames",
+    "privateKey",
+    "publicKey",
+    "shortIds",
+    "target",
+    "dest",
+    "spiderX",
+    "fingerprint",
+    "mldsa65Seed",
+    "mldsa65Verify",
+    "maxTimeDiff",
+    "show"
+  ])],
+  ["tcpSettings", new Set(["acceptProxyProtocol", "header"])],
+  ["rawSettings", new Set(["acceptProxyProtocol", "header"])],
+  ["grpcSettings", new Set(["serviceName", "authority", "multiMode", "idle_timeout", "health_check_timeout", "permit_without_stream", "initial_windows_size", "user_agent"])],
+  ["xhttpSettings", new Set(["host", "path", "mode", "headers", "scMaxBufferedPosts", "scMaxEachPostBytes", "scMinPostsIntervalMs", "scStreamUpServerSecs", "noSSEHeader", "xPaddingBytes", "xPaddingObfsMode", "xPaddingKey", "xPaddingHeader", "xPaddingPlacement", "xPaddingMethod", "uplinkHTTPMethod", "sessionPlacement", "sessionKey", "seqPlacement", "seqKey", "uplinkDataPlacement", "uplinkDataKey", "uplinkChunkSize", "noGRPCHeader", "xmux"])],
+  ["splithttpSettings", new Set(["host", "path", "mode", "headers", "scMaxBufferedPosts", "scMaxEachPostBytes", "scMinPostsIntervalMs", "scStreamUpServerSecs", "noSSEHeader", "xPaddingBytes", "xPaddingObfsMode", "xPaddingKey", "xPaddingHeader", "xPaddingPlacement", "xPaddingMethod", "uplinkHTTPMethod", "sessionPlacement", "sessionKey", "seqPlacement", "seqKey", "uplinkDataPlacement", "uplinkDataKey", "uplinkChunkSize", "noGRPCHeader", "xmux"])],
+  ["wsSettings", new Set(["path", "host", "headers", "acceptProxyProtocol", "heartbeatPeriod"])],
+  ["httpupgradeSettings", new Set(["path", "host", "headers", "acceptProxyProtocol"])],
+  ["kcpSettings", new Set(["mtu", "tti", "uplinkCapacity", "downlinkCapacity", "cwndMultiplier", "maxSendingWindow"])],
+  ["hysteriaSettings", new Set(["version", "auth", "udpIdleTimeout", "masquerade"])],
+  ["sniffing", new Set(["enabled", "destOverride", "domainsExcluded", "ipsExcluded", "metadataOnly", "routeOnly"])],
+  ["proxySettings", new Set(["tag", "transportLayer"])],
+  ["mux", new Set(["enabled", "concurrency", "xudpConcurrency", "xudpProxyUDP443"])],
+  ["routing", new Set(["domainStrategy", "rules", "balancers"])],
+  ["rules", new Set(["type", "ruleTag", "inboundTag", "outboundTag", "balancerTag", "domain", "domains", "ip", "port", "sourceIP", "source", "sourcePort", "user", "vlessRoute", "protocol", "network", "attrs", "localIP", "localPort", "process", "webhook"])],
+  ["webhook", new Set(["url", "deduplication", "headers"])],
+  ["balancers", new Set(["tag", "selector", "strategy", "fallbackTag"])],
+  ["strategy", new Set(["type", "settings"])],
+  ["dns", new Set(["servers", "hosts", "queryStrategy", "disableCache", "disableFallback"])],
+  ["observatory", new Set(["subjectSelector", "probeURL", "probeUrl", "probeInterval", "enableConcurrency"])],
+  ["burstObservatory", new Set(["subjectSelector", "pingConfig"])],
+  ["pingConfig", new Set(["destination", "connectivity", "interval", "timeout", "sampling", "httpMethod"])]
+]);
+
+function shouldDropMissingCompiledField(parentKey: string | undefined, key: string): boolean {
+  return knownSourceFieldsByParent.get(parentKey ?? "__root")?.has(key) === true;
+}
+
 function mergeJsonPreservingSource(source: JsonValue, compiled: JsonValue, parentKey?: string): JsonValue {
   if (Array.isArray(source) && Array.isArray(compiled)) {
     const sourceByTag = uniqueTaggedItems(source);
@@ -96,6 +223,9 @@ function mergeJsonPreservingSource(source: JsonValue, compiled: JsonValue, paren
       return cloneJson(compiled);
     }
     const output: Record<string, JsonValue | undefined> = { ...cloneJson(source) };
+    for (const key of Object.keys(source)) {
+      if (compiled[key] === undefined && shouldDropMissingCompiledField(parentKey, key)) delete output[key];
+    }
     for (const [key, value] of Object.entries(compiled)) {
       if (value === undefined) continue;
       const sourceValue = source[key];

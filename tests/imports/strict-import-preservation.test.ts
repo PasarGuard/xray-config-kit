@@ -150,6 +150,329 @@ describe("xray import preservation vs strict parity", () => {
     expect(changed.config.customTopLevel).toEqual({ keep: true });
   });
 
+  it("removes known imported fields when cleared from the typed inbound UI model", () => {
+    const raw = {
+      inbounds: [
+        {
+          protocol: "http",
+          tag: "http",
+          listen: "127.0.0.1",
+          port: 8080,
+          customInboundField: { keep: true },
+          settings: {
+            allowTransparent: true,
+            userLevel: 3,
+            customSettingsField: "keep"
+          },
+          streamSettings: {
+            network: "tcp",
+            security: "tls",
+            tlsSettings: {
+              serverName: "old.example.com",
+              allowInsecure: true,
+              customTlsField: "keep"
+            },
+            customStreamField: "keep"
+          }
+        }
+      ]
+    };
+
+    const imported = importXrayConfig(raw);
+    const inbound = {
+      ...imported.profile.inbounds[0],
+      listen: undefined,
+      allowTransparent: undefined,
+      userLevel: undefined,
+      security: {
+        type: "tls" as const,
+        allowInsecure: true
+      },
+      transport: {
+        type: "tcp" as const
+      }
+    };
+    const changed = buildXrayConfig({
+      ...imported.profile,
+      inbounds: [inbound]
+    }, { mode: "permissive" });
+
+    expect(changed.config.inbounds?.[0]).not.toHaveProperty("listen");
+    expect(changed.config.inbounds?.[0]?.settings).not.toHaveProperty("allowTransparent");
+    expect(changed.config.inbounds?.[0]?.settings).not.toHaveProperty("userLevel");
+    expect(changed.config.inbounds?.[0]?.streamSettings?.tlsSettings).not.toHaveProperty("serverName");
+    expect(changed.config.inbounds?.[0]?.customInboundField).toEqual({ keep: true });
+    expect(changed.config.inbounds?.[0]?.settings?.customSettingsField).toBe("keep");
+    expect(changed.config.inbounds?.[0]?.streamSettings?.customStreamField).toBe("keep");
+    expect(changed.config.inbounds?.[0]?.streamSettings?.tlsSettings?.customTlsField).toBe("keep");
+  });
+
+  it("removes known imported fields when cleared from outbound, routing, and DNS models", () => {
+    const raw = {
+      dns: {
+        servers: [
+          {
+            address: "8.8.8.8",
+            port: 53,
+            domains: ["geosite:google"],
+            expectedIPs: ["geoip:us"],
+            skipFallback: true,
+            queryStrategy: "UseIP",
+            tag: "google",
+            customServerField: "keep"
+          }
+        ],
+        hosts: { "example.com": "1.2.3.4" },
+        queryStrategy: "UseIPv4",
+        disableCache: true,
+        disableFallback: true,
+        customDnsField: "keep"
+      },
+      routing: {
+        domainStrategy: "IPIfNonMatch",
+        rules: [
+          {
+            type: "field",
+            inboundTag: ["in"],
+            outboundTag: "proxy",
+            port: "443",
+            domain: ["example.com"],
+            webhook: {
+              url: "https://hook.example",
+              deduplication: 30,
+              headers: { "X-Test": "1" },
+              customWebhookField: "keep"
+            },
+            customRuleField: "keep"
+          }
+        ],
+        balancers: [
+          {
+            tag: "bal",
+            selector: ["proxy"],
+            fallbackTag: "direct",
+            strategy: {
+              type: "leastPing",
+              settings: { expected: 1 },
+              customStrategyField: "keep"
+            },
+            customBalancerField: "keep"
+          }
+        ],
+        customRoutingField: "keep"
+      },
+      outbounds: [
+        {
+          protocol: "vless",
+          tag: "proxy",
+          sendThrough: "1.1.1.1",
+          settings: {
+            address: "example.com",
+            port: 443,
+            id: "11111111-1111-4111-8111-111111111111",
+            encryption: "none",
+            flow: "xtls-rprx-vision",
+            customSettingsField: "keep"
+          },
+          streamSettings: {
+            network: "tcp",
+            security: "tls",
+            tlsSettings: {
+              serverName: "old.example.com",
+              allowInsecure: true,
+              customTlsField: "keep"
+            },
+            customStreamField: "keep"
+          },
+          proxySettings: {
+            tag: "direct",
+            transportLayer: true,
+            customProxyField: "keep"
+          },
+          mux: {
+            enabled: true,
+            concurrency: 8,
+            customMuxField: "keep"
+          },
+          customOutboundField: "keep"
+        }
+      ]
+    };
+
+    const imported = importXrayConfig(raw);
+    const outbound = imported.profile.outbounds?.[0];
+    if (!outbound || outbound.protocol === "unmanaged") throw new Error("expected editable outbound");
+    const outboundSettings = { ...(outbound.settings ?? {}) };
+    delete outboundSettings.flow;
+
+    const changed = buildXrayConfig({
+      ...imported.profile,
+      dns: {
+        servers: [
+          {
+            address: "8.8.8.8"
+          }
+        ]
+      } as never,
+      routing: {
+        ...imported.profile.routing,
+        domainStrategy: undefined,
+        rules: [
+          {
+            ...imported.profile.routing?.rules[0],
+            port: undefined,
+            webhook: {
+              url: "https://hook.example"
+            }
+          }
+        ],
+        balancers: [
+          {
+            ...imported.profile.routing?.balancers?.[0],
+            fallbackTag: undefined,
+            strategy: {
+              type: "leastPing"
+            }
+          }
+        ]
+      } as never,
+      outbounds: [
+        {
+          ...outbound,
+          sendThrough: undefined,
+          settings: outboundSettings,
+          streamSettings: {
+            network: "tcp",
+            security: "tls",
+            tlsSettings: {
+              allowInsecure: true
+            }
+          },
+          proxySettings: {
+            customProxyField: "keep"
+          },
+          mux: {
+            enabled: true,
+            customMuxField: "keep"
+          }
+        }
+      ]
+    }, { mode: "permissive" });
+
+    expect(changed.config.outbounds?.[0]).not.toHaveProperty("sendThrough");
+    expect(changed.config.outbounds?.[0]?.settings).not.toHaveProperty("flow");
+    expect(changed.config.outbounds?.[0]?.streamSettings?.tlsSettings).not.toHaveProperty("serverName");
+    expect(changed.config.outbounds?.[0]?.proxySettings).not.toHaveProperty("tag");
+    expect(changed.config.outbounds?.[0]?.proxySettings).not.toHaveProperty("transportLayer");
+    expect(changed.config.outbounds?.[0]?.mux).not.toHaveProperty("concurrency");
+    expect(changed.config.outbounds?.[0]?.customOutboundField).toEqual("keep");
+    expect(changed.config.outbounds?.[0]?.settings?.customSettingsField).toEqual("keep");
+    expect(changed.config.outbounds?.[0]?.streamSettings?.customStreamField).toEqual("keep");
+    expect(changed.config.outbounds?.[0]?.streamSettings?.tlsSettings?.customTlsField).toEqual("keep");
+    expect(changed.config.outbounds?.[0]?.proxySettings?.customProxyField).toEqual("keep");
+    expect(changed.config.outbounds?.[0]?.mux?.customMuxField).toEqual("keep");
+
+    expect(changed.config.routing).not.toHaveProperty("domainStrategy");
+    expect(changed.config.routing?.rules?.[0]).not.toHaveProperty("port");
+    expect(changed.config.routing?.rules?.[0]?.webhook).not.toHaveProperty("deduplication");
+    expect(changed.config.routing?.rules?.[0]?.webhook).not.toHaveProperty("headers");
+    expect(changed.config.routing?.balancers?.[0]).not.toHaveProperty("fallbackTag");
+    expect(changed.config.routing?.balancers?.[0]?.strategy).not.toHaveProperty("settings");
+    expect(changed.config.routing?.customRoutingField).toEqual("keep");
+    expect(changed.config.routing?.rules?.[0]?.customRuleField).toEqual("keep");
+    expect(changed.config.routing?.rules?.[0]?.webhook?.customWebhookField).toEqual("keep");
+    expect(changed.config.routing?.balancers?.[0]?.customBalancerField).toEqual("keep");
+    expect(changed.config.routing?.balancers?.[0]?.strategy?.customStrategyField).toEqual("keep");
+
+    expect(changed.config.dns).not.toHaveProperty("queryStrategy");
+    expect(changed.config.dns).not.toHaveProperty("disableCache");
+    expect(changed.config.dns).not.toHaveProperty("disableFallback");
+    expect(changed.config.dns?.servers?.[0]).not.toHaveProperty("port");
+    expect(changed.config.dns?.servers?.[0]).not.toHaveProperty("domains");
+    expect(changed.config.dns?.servers?.[0]).not.toHaveProperty("expectedIPs");
+    expect(changed.config.dns?.servers?.[0]).not.toHaveProperty("skipFallback");
+    expect(changed.config.dns?.servers?.[0]).not.toHaveProperty("queryStrategy");
+    expect(changed.config.dns?.servers?.[0]).not.toHaveProperty("tag");
+    expect(changed.config.dns?.customDnsField).toEqual("keep");
+    expect(changed.config.dns?.servers?.[0]?.customServerField).toEqual("keep");
+  });
+
+  it("removes imported top-level DNS and routing sections when the typed model disables them", () => {
+    const raw = {
+      dns: {
+        servers: ["8.8.8.8"]
+      },
+      routing: {
+        domainStrategy: "AsIs",
+        rules: [{ type: "field", outboundTag: "direct" }]
+      },
+      inbounds: [
+        {
+          protocol: "http",
+          tag: "http",
+          port: 8080,
+          settings: {}
+        }
+      ]
+    };
+
+    const imported = importXrayConfig(raw);
+    const changed = buildXrayConfig({
+      ...imported.profile,
+      dns: undefined,
+      routing: undefined,
+      inbounds: [
+        {
+          ...imported.profile.inbounds[0],
+          port: 8081
+        }
+      ]
+    }, { mode: "permissive" });
+
+    expect(changed.config).not.toHaveProperty("dns");
+    expect(changed.config).not.toHaveProperty("routing");
+    expect(changed.config.inbounds?.[0]?.port).toBe(8081);
+  });
+
+  it("keeps imported known top-level sections that are not modeled by the typed editor", () => {
+    const raw = {
+      observatory: {
+        subjectSelector: ["proxy"],
+        probeURL: "https://example.com/generate_204"
+      },
+      policy: {
+        levels: {
+          "0": {
+            handshake: 4
+          }
+        }
+      },
+      inbounds: [
+        {
+          protocol: "http",
+          tag: "http",
+          port: 8080,
+          settings: {}
+        }
+      ]
+    };
+
+    const imported = importXrayConfig(raw);
+    const changed = buildXrayConfig({
+      ...imported.profile,
+      inbounds: [
+        {
+          ...imported.profile.inbounds[0],
+          port: 8081
+        }
+      ]
+    }, { mode: "permissive" });
+
+    expect(changed.config.observatory).toEqual(raw.observatory);
+    expect(changed.config.policy).toEqual(raw.policy);
+    expect(changed.config.inbounds?.[0]?.port).toBe(8081);
+  });
+
   it("preserves imported inbound and outbound JSON by tag when rows are reordered", () => {
     const raw = {
       inbounds: [
