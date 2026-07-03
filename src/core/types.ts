@@ -237,6 +237,10 @@ export type XHttpExtra = {
   readonly uplinkHTTPMethod?: string;
   readonly sessionPlacement?: "path" | "cookie" | "header" | "query";
   readonly sessionKey?: string;
+  readonly sessionIDPlacement?: "path" | "cookie" | "header" | "query";
+  readonly sessionIDKey?: string;
+  readonly sessionIDTable?: string;
+  readonly sessionIDLength?: IntRange;
   readonly seqPlacement?: "path" | "cookie" | "header" | "query";
   readonly seqKey?: string;
   readonly uplinkDataPlacement?: "body" | "cookie" | "header";

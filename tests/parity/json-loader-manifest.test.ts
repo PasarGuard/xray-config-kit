@@ -32,12 +32,14 @@ describe("xray json loader manifest coverage", () => {
     expect(tcpHeader.map((entry) => entry.protocol)).toEqual(expect.arrayContaining(["http", "none"]));
     expect(tcpMask.map((entry) => entry.protocol)).toEqual(expect.arrayContaining(["fragment", "header-custom", "sudoku"]));
     expect(udpMask.map((entry) => entry.protocol)).toEqual(expect.arrayContaining([
-      "header-dns",
-      "mkcp-aes128gcm",
-      "mkcp-original",
+      "header-custom",
+      "mkcp-legacy",
       "noise",
+      "realm",
       "salamander",
-      "xdns"
+      "sudoku",
+      "xdns",
+      "xicmp"
     ]));
     expect(Object.keys(release.transportAliases)).toEqual(expect.arrayContaining(["tcp", "raw", "xhttp", "grpc"]));
   });

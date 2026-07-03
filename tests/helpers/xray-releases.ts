@@ -7,13 +7,17 @@ import { getXrayParityRelease, getXrayParityReleases } from "../../src/index.js"
 export const selectedGeneratedReleaseTags = [
   "v25.10.15",
   "v26.4.25",
-  "v26.5.3"
+  "v26.5.3",
+  "v26.6.22",
+  "v26.6.27"
 ] as const;
 export const selectedGeneratedVersions = [
   "25.10.15",
   "26.4.25",
-  "26.5.3"
+  "26.5.3",
+  "26.6.22",
+  "26.6.27"
 ] as const;
 export const selectedGeneratedReleases = getXrayParityReleases();
 export const oldestGeneratedRelease = selectedGeneratedReleases[0]!;
-export const latestGeneratedRelease = getXrayParityRelease({ releaseTag: "v26.5.3" });
+export const latestGeneratedRelease = getXrayParityRelease({ releaseTag: "v26.6.27" });

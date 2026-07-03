@@ -353,10 +353,10 @@ const inboundSecurityFieldKeysByType = {
 
 function inboundSecurityFields(type: "tls" | "reality", rows: readonly XrayGeneratedFormField[]): readonly XrayGeneratedFormField[] {
   const byKey = new Map(rows.map((row) => [row.json, row]));
-  return inboundSecurityFieldKeysByType[type].map((key) => {
-    if (key === "target") return { json: "target", go: "Target", type: "string" };
+  return inboundSecurityFieldKeysByType[type].flatMap((key) => {
+    if (key === "target") return [{ json: "target", go: "Target", type: "string" }];
     const field = byKey.get(key);
-    return field ?? { json: key, go: key, type: "string" };
+    return field ? [field] : [];
   });
 }
 

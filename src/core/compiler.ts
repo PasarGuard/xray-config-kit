@@ -71,6 +71,9 @@ function shouldSkipMissingSourceField(parentKey: string | undefined, key: string
   return parentKey === "streamSettings" && key === "network" && value === "tcp";
 }
 
+const tcpRawSharedFields = new Set(["acceptProxyProtocol", "header"]);
+const xhttpSharedFields = new Set(["host", "path", "mode", "headers", "scMaxBufferedPosts", "scMaxEachPostBytes", "scMinPostsIntervalMs", "scStreamUpServerSecs", "noSSEHeader", "xPaddingBytes", "xPaddingObfsMode", "xPaddingKey", "xPaddingHeader", "xPaddingPlacement", "xPaddingMethod", "uplinkHTTPMethod", "sessionPlacement", "sessionKey", "sessionIDPlacement", "sessionIDKey", "sessionIDTable", "sessionIDLength", "seqPlacement", "seqKey", "uplinkDataPlacement", "uplinkDataKey", "uplinkChunkSize", "noGRPCHeader", "xmux"]);
+
 const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
   ["__root", new Set(["log", "dns", "routing", "inbounds", "outbounds"])],
   ["inbounds", new Set(["tag", "listen", "port", "protocol", "settings", "streamSettings", "sniffing"])],
@@ -171,11 +174,11 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
     "maxTimeDiff",
     "show"
   ])],
-  ["tcpSettings", new Set(["acceptProxyProtocol", "header"])],
-  ["rawSettings", new Set(["acceptProxyProtocol", "header"])],
+  ["tcpSettings", tcpRawSharedFields],
+  ["rawSettings", tcpRawSharedFields],
   ["grpcSettings", new Set(["serviceName", "authority", "multiMode", "idle_timeout", "health_check_timeout", "permit_without_stream", "initial_windows_size", "user_agent"])],
-  ["xhttpSettings", new Set(["host", "path", "mode", "headers", "scMaxBufferedPosts", "scMaxEachPostBytes", "scMinPostsIntervalMs", "scStreamUpServerSecs", "noSSEHeader", "xPaddingBytes", "xPaddingObfsMode", "xPaddingKey", "xPaddingHeader", "xPaddingPlacement", "xPaddingMethod", "uplinkHTTPMethod", "sessionPlacement", "sessionKey", "seqPlacement", "seqKey", "uplinkDataPlacement", "uplinkDataKey", "uplinkChunkSize", "noGRPCHeader", "xmux"])],
-  ["splithttpSettings", new Set(["host", "path", "mode", "headers", "scMaxBufferedPosts", "scMaxEachPostBytes", "scMinPostsIntervalMs", "scStreamUpServerSecs", "noSSEHeader", "xPaddingBytes", "xPaddingObfsMode", "xPaddingKey", "xPaddingHeader", "xPaddingPlacement", "xPaddingMethod", "uplinkHTTPMethod", "sessionPlacement", "sessionKey", "seqPlacement", "seqKey", "uplinkDataPlacement", "uplinkDataKey", "uplinkChunkSize", "noGRPCHeader", "xmux"])],
+  ["xhttpSettings", xhttpSharedFields],
+  ["splithttpSettings", xhttpSharedFields],
   ["wsSettings", new Set(["path", "host", "headers", "acceptProxyProtocol", "heartbeatPeriod"])],
   ["httpupgradeSettings", new Set(["path", "host", "headers", "acceptProxyProtocol"])],
   ["kcpSettings", new Set(["mtu", "tti", "uplinkCapacity", "downlinkCapacity", "cwndMultiplier", "maxSendingWindow"])],
@@ -363,6 +366,10 @@ function compileXhttp(transport: XHttpTransport): JsonObject {
     uplinkHTTPMethod: transport.extra?.uplinkHTTPMethod,
     sessionPlacement: transport.extra?.sessionPlacement,
     sessionKey: transport.extra?.sessionKey,
+    sessionIDPlacement: transport.extra?.sessionIDPlacement,
+    sessionIDKey: transport.extra?.sessionIDKey,
+    sessionIDTable: transport.extra?.sessionIDTable,
+    sessionIDLength: transport.extra?.sessionIDLength,
     seqPlacement: transport.extra?.seqPlacement,
     seqKey: transport.extra?.seqKey,
     uplinkDataPlacement: transport.extra?.uplinkDataPlacement,
