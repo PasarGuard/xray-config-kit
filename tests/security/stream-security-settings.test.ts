@@ -29,10 +29,8 @@ describe("xray stream security settings parity", () => {
               masterKeyLog: "",
               pinnedPeerCertSha256: "",
               verifyPeerCertByName: "example.com",
-              verifyPeerCertInNames: ["example.com"],
               echServerKeys: "",
               echConfigList: "",
-              echForceQuery: "none",
               echSockopt: {}
             }
           }

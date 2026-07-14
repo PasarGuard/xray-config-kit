@@ -7,10 +7,12 @@ import type { XrayCapabilities } from "./types.js";
 export const generatedXrayReleaseTags = [
   "v25.10.15",
   "v26.4.25",
-  "v26.5.3"
+  "v26.5.3",
+  "v26.6.22",
+  "v26.6.27"
 ] as const;
-export const latestGeneratedXrayReleaseTag = "v26.5.3" as const;
-export const latestGeneratedXrayVersion = "26.5.3" as const;
+export const latestGeneratedXrayReleaseTag = "v26.6.27" as const;
+export const latestGeneratedXrayVersion = "26.6.27" as const;
 
 export const generatedXrayCapabilitiesByTag = {
   "v25.10.15": {
@@ -1140,6 +1142,798 @@ export const generatedXrayCapabilitiesByTag = {
       "xtls": {
         "supported": false,
         "removed": "26.5.3",
+        "replacement": "xtls-rprx-vision with TLS or REALITY"
+      }
+    }
+  },
+  "v26.6.22": {
+    "adapterId": "xray@26.6",
+    "xrayVersionRange": ">=26.6.0 <26.7.0",
+    "latestTestedVersion": "26.6.22",
+    "protocols": [
+      "blackhole",
+      "block",
+      "direct",
+      "dns",
+      "dokodemo-door",
+      "freedom",
+      "http",
+      "hysteria",
+      "loopback",
+      "mixed",
+      "shadowsocks",
+      "socks",
+      "trojan",
+      "tun",
+      "tunnel",
+      "vless",
+      "vmess",
+      "wireguard"
+    ],
+    "transports": [
+      "grpc",
+      "httpupgrade",
+      "hysteria",
+      "kcp",
+      "mkcp",
+      "raw",
+      "splithttp",
+      "tcp",
+      "websocket",
+      "ws",
+      "xhttp"
+    ],
+    "securities": [
+      "none",
+      "reality",
+      "tls"
+    ],
+    "fingerprints": [
+      "360",
+      "android",
+      "chrome",
+      "edge",
+      "firefox",
+      "hello360_11_0",
+      "hello360_7_5",
+      "hello360_auto",
+      "helloandroid_11_okhttp",
+      "hellochrome_100",
+      "hellochrome_100_psk",
+      "hellochrome_102",
+      "hellochrome_106_shuffle",
+      "hellochrome_112_psk_shuf",
+      "hellochrome_114_padding_psk_shuf",
+      "hellochrome_115_pq",
+      "hellochrome_115_pq_psk",
+      "hellochrome_120",
+      "hellochrome_120_pq",
+      "hellochrome_131",
+      "hellochrome_133",
+      "hellochrome_58",
+      "hellochrome_62",
+      "hellochrome_70",
+      "hellochrome_72",
+      "hellochrome_83",
+      "hellochrome_87",
+      "hellochrome_96",
+      "hellochrome_auto",
+      "helloedge_106",
+      "helloedge_85",
+      "helloedge_auto",
+      "hellofirefox_102",
+      "hellofirefox_105",
+      "hellofirefox_120",
+      "hellofirefox_148",
+      "hellofirefox_55",
+      "hellofirefox_56",
+      "hellofirefox_63",
+      "hellofirefox_65",
+      "hellofirefox_99",
+      "hellofirefox_auto",
+      "hellogolang",
+      "helloios_11_1",
+      "helloios_12_1",
+      "helloios_13",
+      "helloios_14",
+      "helloios_auto",
+      "helloqq_11_1",
+      "helloqq_auto",
+      "hellorandomized",
+      "hellorandomizedalpn",
+      "hellorandomizednoalpn",
+      "hellosafari_16_0",
+      "hellosafari_26_3",
+      "hellosafari_auto",
+      "ios",
+      "qq",
+      "random",
+      "randomized",
+      "randomizednoalpn",
+      "safari",
+      "unsafe"
+    ],
+    "alpn": [
+      "h3",
+      "h2",
+      "http/1.1"
+    ],
+    "removedFeatures": [
+      {
+        "feature": "noise = { ... }",
+        "replacement": "noises = [ { ... } ]"
+      },
+      {
+        "feature": "\"allowInsecure\"",
+        "replacement": "\"pinnedPeerCertSha256\"(pcs) and \"verifyPeerCertByName\"(vcn)"
+      },
+      {
+        "feature": "domain",
+        "replacement": "domains(server) & resolvers(client)"
+      },
+      {
+        "feature": "HTTP transport (without header padding, etc.)",
+        "replacement": "XHTTP stream-one H2 & H3"
+      },
+      {
+        "feature": "Legacy XTLS",
+        "replacement": "xtls-rprx-vision with TLS or REALITY"
+      },
+      {
+        "feature": "mkcp header & seed",
+        "replacement": "finalmask/udp header-* & mkcp-original & mkcp-aes128gcm"
+      },
+      {
+        "feature": "QUIC transport (without web service, etc.)",
+        "replacement": "XHTTP stream-one H3"
+      },
+      {
+        "feature": "Flow for Trojan"
+      },
+      {
+        "feature": "\"legacy reverse\"",
+        "replacement": "\"VLESS Reverse Proxy\""
+      },
+      {
+        "feature": "Global transport config",
+        "replacement": "streamSettings in inbounds and outbounds"
+      }
+    ],
+    "deprecatedFeatures": [
+      {
+        "feature": "\"nonIPQuery\" and \"blockTypes\"",
+        "replacement": "\"rules\""
+      },
+      {
+        "feature": "Shadowsocks (with no Forward Secrecy, etc.)",
+        "replacement": "VLESS Encryption"
+      },
+      {
+        "feature": "\"host\" in \"headers\"",
+        "replacement": "independent \"host\""
+      },
+      {
+        "feature": "gRPC transport (with unnecessary costs, etc.)",
+        "replacement": "XHTTP stream-up H2"
+      },
+      {
+        "feature": "HTTPUpgrade transport (with ALPN http/1.1, etc.)",
+        "replacement": "XHTTP H2 & H3"
+      },
+      {
+        "feature": "WebSocket transport (with ALPN http/1.1, etc.)",
+        "replacement": "XHTTP H2 & H3"
+      },
+      {
+        "feature": "Trojan (with no Flow, etc.)",
+        "replacement": "VLESS with Flow & Seed"
+      },
+      {
+        "feature": "VMess (with no Forward Secrecy, etc.)",
+        "replacement": "VLESS Encryption"
+      }
+    ],
+    "compatibilityMatrix": {
+      "allowInsecure": {
+        "supported": false,
+        "removed": "26.6.22",
+        "replacement": "\"pinnedPeerCertSha256\"(pcs) and \"verifyPeerCertByName\"(vcn)"
+      },
+      "api": {
+        "supported": true
+      },
+      "blackhole": {
+        "supported": true
+      },
+      "block": {
+        "supported": true
+      },
+      "burstObservatory": {
+        "supported": true
+      },
+      "direct": {
+        "supported": true
+      },
+      "dns": {
+        "supported": true
+      },
+      "dns legacy nonIPQuery blockTypes": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "\"rules\""
+      },
+      "dokodemo-door": {
+        "supported": true
+      },
+      "fakeDns": {
+        "supported": true
+      },
+      "finalmask xdns domain": {
+        "supported": false,
+        "removed": "26.6.22",
+        "replacement": "domains(server) & resolvers(client)"
+      },
+      "freedom": {
+        "supported": true
+      },
+      "freedom noise": {
+        "supported": false,
+        "removed": "26.6.22",
+        "replacement": "noises = [ { ... } ]"
+      },
+      "geodata": {
+        "supported": true
+      },
+      "global transport": {
+        "supported": false,
+        "removed": "26.6.22",
+        "replacement": "streamSettings in inbounds and outbounds"
+      },
+      "grpc": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "XHTTP stream-up H2"
+      },
+      "http": {
+        "supported": true
+      },
+      "http-transport": {
+        "supported": false,
+        "removed": "26.6.22",
+        "replacement": "XHTTP stream-one H2 & H3"
+      },
+      "httpupgrade": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "XHTTP H2 & H3"
+      },
+      "hysteria": {
+        "supported": true
+      },
+      "inbounds": {
+        "supported": true
+      },
+      "kcp": {
+        "supported": true
+      },
+      "log": {
+        "supported": true
+      },
+      "loopback": {
+        "supported": true
+      },
+      "metrics": {
+        "supported": true
+      },
+      "mixed": {
+        "supported": true
+      },
+      "mkcp": {
+        "supported": true
+      },
+      "mkcp header/seed": {
+        "supported": false,
+        "removed": "26.6.22",
+        "replacement": "finalmask/udp header-* & mkcp-original & mkcp-aes128gcm"
+      },
+      "none": {
+        "supported": true
+      },
+      "observatory": {
+        "supported": true
+      },
+      "outbounds": {
+        "supported": true
+      },
+      "policy": {
+        "supported": true
+      },
+      "quic": {
+        "supported": false,
+        "removed": "26.6.22",
+        "replacement": "XHTTP stream-one H3"
+      },
+      "raw": {
+        "supported": true
+      },
+      "reality": {
+        "supported": true
+      },
+      "reverse": {
+        "supported": true
+      },
+      "routing": {
+        "supported": true
+      },
+      "shadowsocks": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "VLESS Encryption"
+      },
+      "socks": {
+        "supported": true
+      },
+      "splithttp": {
+        "supported": true
+      },
+      "stats": {
+        "supported": true
+      },
+      "tcp": {
+        "supported": true
+      },
+      "tls": {
+        "supported": true
+      },
+      "transport": {
+        "supported": true
+      },
+      "trojan": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "VLESS with Flow & Seed"
+      },
+      "trojan flow": {
+        "supported": false,
+        "removed": "26.6.22"
+      },
+      "tun": {
+        "supported": true
+      },
+      "tunnel": {
+        "supported": true
+      },
+      "version": {
+        "supported": true
+      },
+      "vless": {
+        "supported": true
+      },
+      "vmess": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "VLESS Encryption"
+      },
+      "websocket": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "XHTTP H2 & H3"
+      },
+      "wireguard": {
+        "supported": true
+      },
+      "ws": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "XHTTP H2 & H3"
+      },
+      "xhttp": {
+        "supported": true
+      },
+      "xhttp headers host": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "independent \"host\""
+      },
+      "xtls": {
+        "supported": false,
+        "removed": "26.6.22",
+        "replacement": "xtls-rprx-vision with TLS or REALITY"
+      }
+    }
+  },
+  "v26.6.27": {
+    "adapterId": "xray@26.6",
+    "xrayVersionRange": ">=26.6.0 <26.7.0",
+    "latestTestedVersion": "26.6.27",
+    "protocols": [
+      "blackhole",
+      "block",
+      "direct",
+      "dns",
+      "dokodemo-door",
+      "freedom",
+      "http",
+      "hysteria",
+      "loopback",
+      "mixed",
+      "shadowsocks",
+      "socks",
+      "trojan",
+      "tun",
+      "tunnel",
+      "vless",
+      "vmess",
+      "wireguard"
+    ],
+    "transports": [
+      "grpc",
+      "httpupgrade",
+      "hysteria",
+      "kcp",
+      "mkcp",
+      "raw",
+      "splithttp",
+      "tcp",
+      "websocket",
+      "ws",
+      "xhttp"
+    ],
+    "securities": [
+      "none",
+      "reality",
+      "tls"
+    ],
+    "fingerprints": [
+      "360",
+      "android",
+      "chrome",
+      "edge",
+      "firefox",
+      "hello360_11_0",
+      "hello360_7_5",
+      "hello360_auto",
+      "helloandroid_11_okhttp",
+      "hellochrome_100",
+      "hellochrome_100_psk",
+      "hellochrome_102",
+      "hellochrome_106_shuffle",
+      "hellochrome_112_psk_shuf",
+      "hellochrome_114_padding_psk_shuf",
+      "hellochrome_115_pq",
+      "hellochrome_115_pq_psk",
+      "hellochrome_120",
+      "hellochrome_120_pq",
+      "hellochrome_131",
+      "hellochrome_133",
+      "hellochrome_58",
+      "hellochrome_62",
+      "hellochrome_70",
+      "hellochrome_72",
+      "hellochrome_83",
+      "hellochrome_87",
+      "hellochrome_96",
+      "hellochrome_auto",
+      "helloedge_106",
+      "helloedge_85",
+      "helloedge_auto",
+      "hellofirefox_102",
+      "hellofirefox_105",
+      "hellofirefox_120",
+      "hellofirefox_148",
+      "hellofirefox_55",
+      "hellofirefox_56",
+      "hellofirefox_63",
+      "hellofirefox_65",
+      "hellofirefox_99",
+      "hellofirefox_auto",
+      "hellogolang",
+      "helloios_11_1",
+      "helloios_12_1",
+      "helloios_13",
+      "helloios_14",
+      "helloios_auto",
+      "helloqq_11_1",
+      "helloqq_auto",
+      "hellorandomized",
+      "hellorandomizedalpn",
+      "hellorandomizednoalpn",
+      "hellosafari_16_0",
+      "hellosafari_26_3",
+      "hellosafari_auto",
+      "ios",
+      "qq",
+      "random",
+      "randomized",
+      "randomizednoalpn",
+      "safari",
+      "unsafe"
+    ],
+    "alpn": [
+      "h3",
+      "h2",
+      "http/1.1"
+    ],
+    "removedFeatures": [
+      {
+        "feature": "noise = { ... }",
+        "replacement": "noises = [ { ... } ]"
+      },
+      {
+        "feature": "\"allowInsecure\"",
+        "replacement": "\"pinnedPeerCertSha256\"(pcs) and \"verifyPeerCertByName\"(vcn)"
+      },
+      {
+        "feature": "domain",
+        "replacement": "domains(server) & resolvers(client)"
+      },
+      {
+        "feature": "HTTP transport (without header padding, etc.)",
+        "replacement": "XHTTP stream-one H2 & H3"
+      },
+      {
+        "feature": "Legacy XTLS",
+        "replacement": "xtls-rprx-vision with TLS or REALITY"
+      },
+      {
+        "feature": "mkcp header & seed",
+        "replacement": "finalmask/udp header-* & mkcp-original & mkcp-aes128gcm"
+      },
+      {
+        "feature": "QUIC transport (without web service, etc.)",
+        "replacement": "XHTTP stream-one H3"
+      },
+      {
+        "feature": "Flow for Trojan"
+      },
+      {
+        "feature": "\"legacy reverse\"",
+        "replacement": "\"VLESS Reverse Proxy\""
+      },
+      {
+        "feature": "Global transport config",
+        "replacement": "streamSettings in inbounds and outbounds"
+      }
+    ],
+    "deprecatedFeatures": [
+      {
+        "feature": "\"nonIPQuery\" and \"blockTypes\"",
+        "replacement": "\"rules\""
+      },
+      {
+        "feature": "Shadowsocks (with no Forward Secrecy, etc.)",
+        "replacement": "VLESS Encryption"
+      },
+      {
+        "feature": "\"host\" in \"headers\"",
+        "replacement": "independent \"host\""
+      },
+      {
+        "feature": "gRPC transport (with unnecessary costs, etc.)",
+        "replacement": "XHTTP stream-up H2"
+      },
+      {
+        "feature": "HTTPUpgrade transport (with ALPN http/1.1, etc.)",
+        "replacement": "XHTTP H2 & H3"
+      },
+      {
+        "feature": "WebSocket transport (with ALPN http/1.1, etc.)",
+        "replacement": "XHTTP H2 & H3"
+      },
+      {
+        "feature": "Trojan (with no Flow, etc.)",
+        "replacement": "VLESS with Flow & Seed"
+      },
+      {
+        "feature": "VMess (with no Forward Secrecy, etc.)",
+        "replacement": "VLESS Encryption"
+      }
+    ],
+    "compatibilityMatrix": {
+      "allowInsecure": {
+        "supported": false,
+        "removed": "26.6.27",
+        "replacement": "\"pinnedPeerCertSha256\"(pcs) and \"verifyPeerCertByName\"(vcn)"
+      },
+      "api": {
+        "supported": true
+      },
+      "blackhole": {
+        "supported": true
+      },
+      "block": {
+        "supported": true
+      },
+      "burstObservatory": {
+        "supported": true
+      },
+      "direct": {
+        "supported": true
+      },
+      "dns": {
+        "supported": true
+      },
+      "dns legacy nonIPQuery blockTypes": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "\"rules\""
+      },
+      "dokodemo-door": {
+        "supported": true
+      },
+      "fakeDns": {
+        "supported": true
+      },
+      "finalmask xdns domain": {
+        "supported": false,
+        "removed": "26.6.27",
+        "replacement": "domains(server) & resolvers(client)"
+      },
+      "freedom": {
+        "supported": true
+      },
+      "freedom noise": {
+        "supported": false,
+        "removed": "26.6.27",
+        "replacement": "noises = [ { ... } ]"
+      },
+      "geodata": {
+        "supported": true
+      },
+      "global transport": {
+        "supported": false,
+        "removed": "26.6.27",
+        "replacement": "streamSettings in inbounds and outbounds"
+      },
+      "grpc": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "XHTTP stream-up H2"
+      },
+      "http": {
+        "supported": true
+      },
+      "http-transport": {
+        "supported": false,
+        "removed": "26.6.27",
+        "replacement": "XHTTP stream-one H2 & H3"
+      },
+      "httpupgrade": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "XHTTP H2 & H3"
+      },
+      "hysteria": {
+        "supported": true
+      },
+      "inbounds": {
+        "supported": true
+      },
+      "kcp": {
+        "supported": true
+      },
+      "log": {
+        "supported": true
+      },
+      "loopback": {
+        "supported": true
+      },
+      "metrics": {
+        "supported": true
+      },
+      "mixed": {
+        "supported": true
+      },
+      "mkcp": {
+        "supported": true
+      },
+      "mkcp header/seed": {
+        "supported": false,
+        "removed": "26.6.27",
+        "replacement": "finalmask/udp header-* & mkcp-original & mkcp-aes128gcm"
+      },
+      "none": {
+        "supported": true
+      },
+      "observatory": {
+        "supported": true
+      },
+      "outbounds": {
+        "supported": true
+      },
+      "policy": {
+        "supported": true
+      },
+      "quic": {
+        "supported": false,
+        "removed": "26.6.27",
+        "replacement": "XHTTP stream-one H3"
+      },
+      "raw": {
+        "supported": true
+      },
+      "reality": {
+        "supported": true
+      },
+      "reverse": {
+        "supported": true
+      },
+      "routing": {
+        "supported": true
+      },
+      "shadowsocks": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "VLESS Encryption"
+      },
+      "socks": {
+        "supported": true
+      },
+      "splithttp": {
+        "supported": true
+      },
+      "stats": {
+        "supported": true
+      },
+      "tcp": {
+        "supported": true
+      },
+      "tls": {
+        "supported": true
+      },
+      "transport": {
+        "supported": true
+      },
+      "trojan": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "VLESS with Flow & Seed"
+      },
+      "trojan flow": {
+        "supported": false,
+        "removed": "26.6.27"
+      },
+      "tun": {
+        "supported": true
+      },
+      "tunnel": {
+        "supported": true
+      },
+      "version": {
+        "supported": true
+      },
+      "vless": {
+        "supported": true
+      },
+      "vmess": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "VLESS Encryption"
+      },
+      "websocket": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "XHTTP H2 & H3"
+      },
+      "wireguard": {
+        "supported": true
+      },
+      "ws": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "XHTTP H2 & H3"
+      },
+      "xhttp": {
+        "supported": true
+      },
+      "xhttp headers host": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "independent \"host\""
+      },
+      "xtls": {
+        "supported": false,
+        "removed": "26.6.27",
         "replacement": "xtls-rprx-vision with TLS or REALITY"
       }
     }

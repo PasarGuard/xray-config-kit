@@ -11,17 +11,21 @@ export const xrayParityManifest = {
       "v25.10.15",
       "v26.4.25",
       "v26.5.3",
+      "v26.6.22",
       "latest"
     ],
     "selectedTags": [
       "v25.10.15",
       "v26.4.25",
-      "v26.5.3"
+      "v26.5.3",
+      "v26.6.22"
     ],
     "tags": [
       "v25.10.15",
       "v26.4.25",
-      "v26.5.3"
+      "v26.5.3",
+      "v26.6.22",
+      "v26.6.27"
     ]
   },
   "releases": [
@@ -1992,11 +1996,6 @@ export const xrayParityManifest = {
             "go": "Mark",
             "type": "int32",
             "json": "mark"
-          },
-          {
-            "go": "TCPNoDelay",
-            "type": "interface{}",
-            "json": "tcpNoDelay"
           },
           {
             "go": "TFO",
@@ -5640,11 +5639,6 @@ export const xrayParityManifest = {
             "go": "Mark",
             "type": "int32",
             "json": "mark"
-          },
-          {
-            "go": "TCPNoDelay",
-            "type": "interface{}",
-            "json": "tcpNoDelay"
           },
           {
             "go": "TFO",
@@ -9655,11 +9649,6 @@ export const xrayParityManifest = {
             "json": "mark"
           },
           {
-            "go": "TCPNoDelay",
-            "type": "interface{}",
-            "json": "tcpNoDelay"
-          },
-          {
             "go": "TFO",
             "type": "interface{}",
             "json": "tcpFastOpen"
@@ -11024,6 +11013,8122 @@ export const xrayParityManifest = {
             "go": "Id",
             "type": "uint16",
             "json": "id"
+          }
+        ],
+        "XmuxConfig": [
+          {
+            "go": "MaxConcurrency",
+            "type": "Int32Range",
+            "json": "maxConcurrency"
+          },
+          {
+            "go": "MaxConnections",
+            "type": "Int32Range",
+            "json": "maxConnections"
+          },
+          {
+            "go": "CMaxReuseTimes",
+            "type": "Int32Range",
+            "json": "cMaxReuseTimes"
+          },
+          {
+            "go": "HMaxRequestTimes",
+            "type": "Int32Range",
+            "json": "hMaxRequestTimes"
+          },
+          {
+            "go": "HMaxReusableSecs",
+            "type": "Int32Range",
+            "json": "hMaxReusableSecs"
+          },
+          {
+            "go": "HKeepAlivePeriod",
+            "type": "int64",
+            "json": "hKeepAlivePeriod"
+          }
+        ]
+      }
+    },
+    {
+      "tag": "v26.6.22",
+      "version": "26.6.22",
+      "commit": "b99c3e56574fb0317608c49dd1dd9af816db7a9e",
+      "removedFeatures": [
+        {
+          "feature": "noise = { ... }",
+          "replacement": "noises = [ { ... } ]",
+          "source": "infra/conf/freedom.go",
+          "keys": [
+            "freedom noise"
+          ]
+        },
+        {
+          "feature": "\"allowInsecure\"",
+          "replacement": "\"pinnedPeerCertSha256\"(pcs) and \"verifyPeerCertByName\"(vcn)",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "allowInsecure"
+          ]
+        },
+        {
+          "feature": "domain",
+          "replacement": "domains(server) & resolvers(client)",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "finalmask xdns domain"
+          ]
+        },
+        {
+          "feature": "HTTP transport (without header padding, etc.)",
+          "replacement": "XHTTP stream-one H2 & H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "http-transport"
+          ]
+        },
+        {
+          "feature": "Legacy XTLS",
+          "replacement": "xtls-rprx-vision with TLS or REALITY",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "xtls"
+          ]
+        },
+        {
+          "feature": "mkcp header & seed",
+          "replacement": "finalmask/udp header-* & mkcp-original & mkcp-aes128gcm",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "mkcp header/seed"
+          ]
+        },
+        {
+          "feature": "QUIC transport (without web service, etc.)",
+          "replacement": "XHTTP stream-one H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "quic"
+          ]
+        },
+        {
+          "feature": "Flow for Trojan",
+          "source": "infra/conf/trojan.go",
+          "keys": [
+            "trojan flow"
+          ]
+        },
+        {
+          "feature": "\"legacy reverse\"",
+          "replacement": "\"VLESS Reverse Proxy\"",
+          "source": "infra/conf/xray.go",
+          "keys": []
+        },
+        {
+          "feature": "Global transport config",
+          "replacement": "streamSettings in inbounds and outbounds",
+          "source": "infra/conf/xray.go",
+          "keys": [
+            "global transport"
+          ]
+        }
+      ],
+      "deprecatedFeatures": [
+        {
+          "feature": "\"nonIPQuery\" and \"blockTypes\"",
+          "replacement": "\"rules\"",
+          "source": "infra/conf/dns_proxy.go",
+          "keys": [
+            "dns legacy nonIPQuery blockTypes"
+          ]
+        },
+        {
+          "feature": "Shadowsocks (with no Forward Secrecy, etc.)",
+          "replacement": "VLESS Encryption",
+          "source": "infra/conf/shadowsocks.go",
+          "keys": [
+            "shadowsocks"
+          ]
+        },
+        {
+          "feature": "\"host\" in \"headers\"",
+          "replacement": "independent \"host\"",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "xhttp headers host"
+          ]
+        },
+        {
+          "feature": "gRPC transport (with unnecessary costs, etc.)",
+          "replacement": "XHTTP stream-up H2",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "grpc"
+          ]
+        },
+        {
+          "feature": "HTTPUpgrade transport (with ALPN http/1.1, etc.)",
+          "replacement": "XHTTP H2 & H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "httpupgrade"
+          ]
+        },
+        {
+          "feature": "WebSocket transport (with ALPN http/1.1, etc.)",
+          "replacement": "XHTTP H2 & H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "websocket",
+            "ws"
+          ]
+        },
+        {
+          "feature": "Trojan (with no Flow, etc.)",
+          "replacement": "VLESS with Flow & Seed",
+          "source": "infra/conf/trojan.go",
+          "keys": [
+            "trojan"
+          ]
+        },
+        {
+          "feature": "VMess (with no Forward Secrecy, etc.)",
+          "replacement": "VLESS Encryption",
+          "source": "infra/conf/vmess.go",
+          "keys": [
+            "vmess"
+          ]
+        }
+      ],
+      "topLevelKeys": [
+        "api",
+        "burstObservatory",
+        "dns",
+        "fakeDns",
+        "geodata",
+        "inbounds",
+        "log",
+        "metrics",
+        "observatory",
+        "outbounds",
+        "policy",
+        "reverse",
+        "routing",
+        "stats",
+        "transport",
+        "version"
+      ],
+      "inboundProtocols": [
+        {
+          "protocol": "dokodemo-door",
+          "config": "DokodemoConfig"
+        },
+        {
+          "protocol": "http",
+          "config": "HTTPServerConfig"
+        },
+        {
+          "protocol": "hysteria",
+          "config": "HysteriaServerConfig"
+        },
+        {
+          "protocol": "mixed",
+          "config": "SocksServerConfig"
+        },
+        {
+          "protocol": "shadowsocks",
+          "config": "ShadowsocksServerConfig"
+        },
+        {
+          "protocol": "socks",
+          "config": "SocksServerConfig"
+        },
+        {
+          "protocol": "trojan",
+          "config": "TrojanServerConfig"
+        },
+        {
+          "protocol": "tun",
+          "config": "TunConfig"
+        },
+        {
+          "protocol": "tunnel",
+          "config": "DokodemoConfig"
+        },
+        {
+          "protocol": "vless",
+          "config": "VLessInboundConfig"
+        },
+        {
+          "protocol": "vmess",
+          "config": "VMessInboundConfig"
+        },
+        {
+          "protocol": "wireguard",
+          "config": "WireGuardConfig"
+        }
+      ],
+      "outboundProtocols": [
+        {
+          "protocol": "blackhole",
+          "config": "BlackholeConfig"
+        },
+        {
+          "protocol": "block",
+          "config": "BlackholeConfig"
+        },
+        {
+          "protocol": "direct",
+          "config": "FreedomConfig"
+        },
+        {
+          "protocol": "dns",
+          "config": "DNSOutboundConfig"
+        },
+        {
+          "protocol": "freedom",
+          "config": "FreedomConfig"
+        },
+        {
+          "protocol": "http",
+          "config": "HTTPClientConfig"
+        },
+        {
+          "protocol": "hysteria",
+          "config": "HysteriaClientConfig"
+        },
+        {
+          "protocol": "loopback",
+          "config": "LoopbackConfig"
+        },
+        {
+          "protocol": "shadowsocks",
+          "config": "ShadowsocksClientConfig"
+        },
+        {
+          "protocol": "socks",
+          "config": "SocksClientConfig"
+        },
+        {
+          "protocol": "trojan",
+          "config": "TrojanClientConfig"
+        },
+        {
+          "protocol": "vless",
+          "config": "VLessOutboundConfig"
+        },
+        {
+          "protocol": "vmess",
+          "config": "VMessOutboundConfig"
+        },
+        {
+          "protocol": "wireguard",
+          "config": "WireGuardConfig"
+        }
+      ],
+      "streamFields": [
+        {
+          "go": "Address",
+          "type": "*Address",
+          "json": "address"
+        },
+        {
+          "go": "Port",
+          "type": "uint16",
+          "json": "port"
+        },
+        {
+          "go": "Network",
+          "type": "*TransportProtocol",
+          "json": "network"
+        },
+        {
+          "go": "Security",
+          "type": "string",
+          "json": "security"
+        },
+        {
+          "go": "FinalMask",
+          "type": "*FinalMask",
+          "json": "finalmask"
+        },
+        {
+          "go": "TLSSettings",
+          "type": "*TLSConfig",
+          "json": "tlsSettings"
+        },
+        {
+          "go": "REALITYSettings",
+          "type": "*REALITYConfig",
+          "json": "realitySettings"
+        },
+        {
+          "go": "RAWSettings",
+          "type": "*TCPConfig",
+          "json": "rawSettings"
+        },
+        {
+          "go": "TCPSettings",
+          "type": "*TCPConfig",
+          "json": "tcpSettings"
+        },
+        {
+          "go": "XHTTPSettings",
+          "type": "*SplitHTTPConfig",
+          "json": "xhttpSettings"
+        },
+        {
+          "go": "SplitHTTPSettings",
+          "type": "*SplitHTTPConfig",
+          "json": "splithttpSettings"
+        },
+        {
+          "go": "KCPSettings",
+          "type": "*KCPConfig",
+          "json": "kcpSettings"
+        },
+        {
+          "go": "GRPCSettings",
+          "type": "*GRPCConfig",
+          "json": "grpcSettings"
+        },
+        {
+          "go": "WSSettings",
+          "type": "*WebSocketConfig",
+          "json": "wsSettings"
+        },
+        {
+          "go": "HTTPUPGRADESettings",
+          "type": "*HttpUpgradeConfig",
+          "json": "httpupgradeSettings"
+        },
+        {
+          "go": "HysteriaSettings",
+          "type": "*HysteriaConfig",
+          "json": "hysteriaSettings"
+        },
+        {
+          "go": "SocketSettings",
+          "type": "*SocketConfig",
+          "json": "sockopt"
+        }
+      ],
+      "transportAliases": {
+        "grpc": "grpc",
+        "httpupgrade": "httpupgrade",
+        "hysteria": "hysteria",
+        "kcp": "mkcp",
+        "mkcp": "mkcp",
+        "raw": "tcp",
+        "splithttp": "splithttp",
+        "tcp": "tcp",
+        "websocket": "websocket",
+        "ws": "websocket",
+        "xhttp": "splithttp"
+      },
+      "securityTypes": [
+        "none",
+        "reality",
+        "tls",
+        "xtls"
+      ],
+      "fingerprints": [
+        "360",
+        "android",
+        "chrome",
+        "edge",
+        "firefox",
+        "hello360_11_0",
+        "hello360_7_5",
+        "hello360_auto",
+        "helloandroid_11_okhttp",
+        "hellochrome_100",
+        "hellochrome_100_psk",
+        "hellochrome_102",
+        "hellochrome_106_shuffle",
+        "hellochrome_112_psk_shuf",
+        "hellochrome_114_padding_psk_shuf",
+        "hellochrome_115_pq",
+        "hellochrome_115_pq_psk",
+        "hellochrome_120",
+        "hellochrome_120_pq",
+        "hellochrome_131",
+        "hellochrome_133",
+        "hellochrome_58",
+        "hellochrome_62",
+        "hellochrome_70",
+        "hellochrome_72",
+        "hellochrome_83",
+        "hellochrome_87",
+        "hellochrome_96",
+        "hellochrome_auto",
+        "helloedge_106",
+        "helloedge_85",
+        "helloedge_auto",
+        "hellofirefox_102",
+        "hellofirefox_105",
+        "hellofirefox_120",
+        "hellofirefox_148",
+        "hellofirefox_55",
+        "hellofirefox_56",
+        "hellofirefox_63",
+        "hellofirefox_65",
+        "hellofirefox_99",
+        "hellofirefox_auto",
+        "hellogolang",
+        "helloios_11_1",
+        "helloios_12_1",
+        "helloios_13",
+        "helloios_14",
+        "helloios_auto",
+        "helloqq_11_1",
+        "helloqq_auto",
+        "hellorandomized",
+        "hellorandomizedalpn",
+        "hellorandomizednoalpn",
+        "hellosafari_16_0",
+        "hellosafari_26_3",
+        "hellosafari_auto",
+        "ios",
+        "qq",
+        "random",
+        "randomized",
+        "randomizednoalpn",
+        "safari",
+        "unsafe"
+      ],
+      "alpn": [
+        "h3",
+        "h2",
+        "http/1.1"
+      ],
+      "jsonLoaders": {
+        "infra/conf/transport_internet.go:tcpHeaderLoader": [
+          {
+            "protocol": "http",
+            "config": "Authenticator"
+          },
+          {
+            "protocol": "none",
+            "config": "NoOpConnectionAuthenticator"
+          }
+        ],
+        "infra/conf/transport_internet.go:tcpmaskLoader": [
+          {
+            "protocol": "fragment",
+            "config": "FragmentMask"
+          },
+          {
+            "protocol": "header-custom",
+            "config": "HeaderCustomTCP"
+          },
+          {
+            "protocol": "sudoku",
+            "config": "Sudoku"
+          }
+        ],
+        "infra/conf/transport_internet.go:udpmaskLoader": [
+          {
+            "protocol": "header-custom",
+            "config": "HeaderCustomUDP"
+          },
+          {
+            "protocol": "mkcp-legacy",
+            "config": "MkcpLegacy"
+          },
+          {
+            "protocol": "noise",
+            "config": "NoiseMask"
+          },
+          {
+            "protocol": "realm",
+            "config": "Realm"
+          },
+          {
+            "protocol": "salamander",
+            "config": "Salamander"
+          },
+          {
+            "protocol": "sudoku",
+            "config": "Sudoku"
+          },
+          {
+            "protocol": "xdns",
+            "config": "Xdns"
+          },
+          {
+            "protocol": "xicmp",
+            "config": "Xicmp"
+          }
+        ],
+        "infra/conf/xray.go:inboundConfigLoader": [
+          {
+            "protocol": "dokodemo-door",
+            "config": "DokodemoConfig"
+          },
+          {
+            "protocol": "http",
+            "config": "HTTPServerConfig"
+          },
+          {
+            "protocol": "hysteria",
+            "config": "HysteriaServerConfig"
+          },
+          {
+            "protocol": "mixed",
+            "config": "SocksServerConfig"
+          },
+          {
+            "protocol": "shadowsocks",
+            "config": "ShadowsocksServerConfig"
+          },
+          {
+            "protocol": "socks",
+            "config": "SocksServerConfig"
+          },
+          {
+            "protocol": "trojan",
+            "config": "TrojanServerConfig"
+          },
+          {
+            "protocol": "tun",
+            "config": "TunConfig"
+          },
+          {
+            "protocol": "tunnel",
+            "config": "DokodemoConfig"
+          },
+          {
+            "protocol": "vless",
+            "config": "VLessInboundConfig"
+          },
+          {
+            "protocol": "vmess",
+            "config": "VMessInboundConfig"
+          },
+          {
+            "protocol": "wireguard",
+            "config": "WireGuardConfig"
+          }
+        ],
+        "infra/conf/xray.go:outboundConfigLoader": [
+          {
+            "protocol": "blackhole",
+            "config": "BlackholeConfig"
+          },
+          {
+            "protocol": "block",
+            "config": "BlackholeConfig"
+          },
+          {
+            "protocol": "direct",
+            "config": "FreedomConfig"
+          },
+          {
+            "protocol": "dns",
+            "config": "DNSOutboundConfig"
+          },
+          {
+            "protocol": "freedom",
+            "config": "FreedomConfig"
+          },
+          {
+            "protocol": "http",
+            "config": "HTTPClientConfig"
+          },
+          {
+            "protocol": "hysteria",
+            "config": "HysteriaClientConfig"
+          },
+          {
+            "protocol": "loopback",
+            "config": "LoopbackConfig"
+          },
+          {
+            "protocol": "shadowsocks",
+            "config": "ShadowsocksClientConfig"
+          },
+          {
+            "protocol": "socks",
+            "config": "SocksClientConfig"
+          },
+          {
+            "protocol": "trojan",
+            "config": "TrojanClientConfig"
+          },
+          {
+            "protocol": "vless",
+            "config": "VLessOutboundConfig"
+          },
+          {
+            "protocol": "vmess",
+            "config": "VMessOutboundConfig"
+          },
+          {
+            "protocol": "wireguard",
+            "config": "WireGuardConfig"
+          }
+        ]
+      },
+      "structs": {
+        "APIConfig": [
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "Listen",
+            "type": "string",
+            "json": "listen"
+          },
+          {
+            "go": "Services",
+            "type": "[]string",
+            "json": "services"
+          }
+        ],
+        "Authenticator": [
+          {
+            "go": "Request",
+            "type": "AuthenticatorRequest",
+            "json": "request"
+          },
+          {
+            "go": "Response",
+            "type": "AuthenticatorResponse",
+            "json": "response"
+          }
+        ],
+        "AuthenticatorRequest": [
+          {
+            "go": "Version",
+            "type": "string",
+            "json": "version"
+          },
+          {
+            "go": "Method",
+            "type": "string",
+            "json": "method"
+          },
+          {
+            "go": "Path",
+            "type": "StringList",
+            "json": "path"
+          },
+          {
+            "go": "Headers",
+            "type": "map[string]*StringList",
+            "json": "headers"
+          }
+        ],
+        "AuthenticatorResponse": [
+          {
+            "go": "Version",
+            "type": "string",
+            "json": "version"
+          },
+          {
+            "go": "Status",
+            "type": "string",
+            "json": "status"
+          },
+          {
+            "go": "Reason",
+            "type": "string",
+            "json": "reason"
+          },
+          {
+            "go": "Headers",
+            "type": "map[string]*StringList",
+            "json": "headers"
+          }
+        ],
+        "BalancingRule": [
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "Selectors",
+            "type": "StringList",
+            "json": "selector"
+          },
+          {
+            "go": "Strategy",
+            "type": "StrategyConfig",
+            "json": "strategy"
+          },
+          {
+            "go": "FallbackTag",
+            "type": "string",
+            "json": "fallbackTag"
+          }
+        ],
+        "BlackholeConfig": [
+          {
+            "go": "Response",
+            "type": "json.RawMessage",
+            "json": "response"
+          }
+        ],
+        "BridgeConfig": [
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "Domain",
+            "type": "string",
+            "json": "domain"
+          }
+        ],
+        "BurstObservatoryConfig": [
+          {
+            "go": "SubjectSelector",
+            "type": "[]string",
+            "json": "subjectSelector"
+          },
+          {
+            "go": "HealthCheck",
+            "type": "*healthCheckSettings",
+            "json": "pingConfig"
+          }
+        ],
+        "Config": [
+          {
+            "go": "Transport",
+            "type": "map[string]json.RawMessage",
+            "json": "transport"
+          },
+          {
+            "go": "LogConfig",
+            "type": "*LogConfig",
+            "json": "log"
+          },
+          {
+            "go": "RouterConfig",
+            "type": "*RouterConfig",
+            "json": "routing"
+          },
+          {
+            "go": "DNSConfig",
+            "type": "*DNSConfig",
+            "json": "dns"
+          },
+          {
+            "go": "InboundConfigs",
+            "type": "[]InboundDetourConfig",
+            "json": "inbounds"
+          },
+          {
+            "go": "OutboundConfigs",
+            "type": "[]OutboundDetourConfig",
+            "json": "outbounds"
+          },
+          {
+            "go": "Policy",
+            "type": "*PolicyConfig",
+            "json": "policy"
+          },
+          {
+            "go": "API",
+            "type": "*APIConfig",
+            "json": "api"
+          },
+          {
+            "go": "Metrics",
+            "type": "*MetricsConfig",
+            "json": "metrics"
+          },
+          {
+            "go": "Stats",
+            "type": "*StatsConfig",
+            "json": "stats"
+          },
+          {
+            "go": "Reverse",
+            "type": "*ReverseConfig",
+            "json": "reverse"
+          },
+          {
+            "go": "FakeDNS",
+            "type": "*FakeDNSConfig",
+            "json": "fakeDns"
+          },
+          {
+            "go": "Observatory",
+            "type": "*ObservatoryConfig",
+            "json": "observatory"
+          },
+          {
+            "go": "BurstObservatory",
+            "type": "*BurstObservatoryConfig",
+            "json": "burstObservatory"
+          },
+          {
+            "go": "Version",
+            "type": "*VersionConfig",
+            "json": "version"
+          },
+          {
+            "go": "Geodata",
+            "type": "*GeodataConfig",
+            "json": "geodata"
+          }
+        ],
+        "CustomSockoptConfig": [
+          {
+            "go": "Syetem",
+            "type": "string",
+            "json": "system"
+          },
+          {
+            "go": "Network",
+            "type": "string",
+            "json": "network"
+          },
+          {
+            "go": "Level",
+            "type": "string",
+            "json": "level"
+          },
+          {
+            "go": "Opt",
+            "type": "string",
+            "json": "opt"
+          },
+          {
+            "go": "Value",
+            "type": "string",
+            "json": "value"
+          },
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          }
+        ],
+        "CustomTransform": [
+          {
+            "go": "Op",
+            "type": "string",
+            "json": "op"
+          },
+          {
+            "go": "Args",
+            "type": "[]CustomTransformArg",
+            "json": "args"
+          }
+        ],
+        "CustomTransformArg": [
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Bytes",
+            "type": "json.RawMessage",
+            "json": "bytes"
+          },
+          {
+            "go": "U64",
+            "type": "*uint64",
+            "json": "u64"
+          },
+          {
+            "go": "Reuse",
+            "type": "string",
+            "json": "reuse"
+          },
+          {
+            "go": "Metadata",
+            "type": "string",
+            "json": "metadata"
+          },
+          {
+            "go": "Transform",
+            "type": "*CustomTransform",
+            "json": "transform"
+          }
+        ],
+        "DNSConfig": [
+          {
+            "go": "Servers",
+            "type": "[]*NameServerConfig",
+            "json": "servers"
+          },
+          {
+            "go": "Hosts",
+            "type": "*HostsWrapper",
+            "json": "hosts"
+          },
+          {
+            "go": "ClientIP",
+            "type": "*Address",
+            "json": "clientIp"
+          },
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "QueryStrategy",
+            "type": "string",
+            "json": "queryStrategy"
+          },
+          {
+            "go": "DisableCache",
+            "type": "bool",
+            "json": "disableCache"
+          },
+          {
+            "go": "ServeStale",
+            "type": "bool",
+            "json": "serveStale"
+          },
+          {
+            "go": "ServeExpiredTTL",
+            "type": "uint32",
+            "json": "serveExpiredTTL"
+          },
+          {
+            "go": "DisableFallback",
+            "type": "bool",
+            "json": "disableFallback"
+          },
+          {
+            "go": "DisableFallbackIfMatch",
+            "type": "bool",
+            "json": "disableFallbackIfMatch"
+          },
+          {
+            "go": "EnableParallelQuery",
+            "type": "bool",
+            "json": "enableParallelQuery"
+          },
+          {
+            "go": "UseSystemHosts",
+            "type": "bool",
+            "json": "useSystemHosts"
+          }
+        ],
+        "DNSOutboundConfig": [
+          {
+            "go": "RewriteNetwork",
+            "type": "Network",
+            "json": "rewriteNetwork"
+          },
+          {
+            "go": "RewriteAddress",
+            "type": "*Address",
+            "json": "rewriteAddress"
+          },
+          {
+            "go": "RewritePort",
+            "type": "uint16",
+            "json": "rewritePort"
+          },
+          {
+            "go": "Network",
+            "type": "Network",
+            "json": "network"
+          },
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "UserLevel",
+            "type": "uint32",
+            "json": "userLevel"
+          },
+          {
+            "go": "Rules",
+            "type": "[]*DNSOutboundRuleConfig",
+            "json": "rules"
+          },
+          {
+            "go": "NonIPQuery",
+            "type": "*string",
+            "json": "nonIPQuery"
+          },
+          {
+            "go": "BlockTypes",
+            "type": "*[]int32",
+            "json": "blockTypes"
+          }
+        ],
+        "DNSOutboundRuleConfig": [
+          {
+            "go": "Action",
+            "type": "string",
+            "json": "action"
+          },
+          {
+            "go": "QType",
+            "type": "*PortList",
+            "json": "qType"
+          },
+          {
+            "go": "Domain",
+            "type": "*StringList",
+            "json": "domain"
+          },
+          {
+            "go": "RCode",
+            "type": "uint32",
+            "json": "rCode"
+          }
+        ],
+        "DokodemoConfig": [
+          {
+            "go": "AllowedNetwork",
+            "type": "*NetworkList",
+            "json": "allowedNetwork"
+          },
+          {
+            "go": "RewriteAddress",
+            "type": "*Address",
+            "json": "rewriteAddress"
+          },
+          {
+            "go": "RewritePort",
+            "type": "uint16",
+            "json": "rewritePort"
+          },
+          {
+            "go": "Network",
+            "type": "*NetworkList",
+            "json": "network"
+          },
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "PortMap",
+            "type": "map[string]string",
+            "json": "portMap"
+          },
+          {
+            "go": "FollowRedirect",
+            "type": "bool",
+            "json": "followRedirect"
+          },
+          {
+            "go": "UserLevel",
+            "type": "uint32",
+            "json": "userLevel"
+          }
+        ],
+        "FakeDNSPoolElementConfig": [
+          {
+            "go": "IPPool",
+            "type": "string",
+            "json": "ipPool"
+          },
+          {
+            "go": "LRUSize",
+            "type": "int64",
+            "json": "poolSize"
+          }
+        ],
+        "FakeDNSPostProcessingStage": [],
+        "FinalMask": [
+          {
+            "go": "Tcp",
+            "type": "[]Mask",
+            "json": "tcp"
+          },
+          {
+            "go": "Udp",
+            "type": "[]Mask",
+            "json": "udp"
+          },
+          {
+            "go": "QuicParams",
+            "type": "*QuicParamsConfig",
+            "json": "quicParams"
+          }
+        ],
+        "Fragment": [
+          {
+            "go": "Packets",
+            "type": "string",
+            "json": "packets"
+          },
+          {
+            "go": "Length",
+            "type": "*Int32Range",
+            "json": "length"
+          },
+          {
+            "go": "Interval",
+            "type": "*Int32Range",
+            "json": "interval"
+          },
+          {
+            "go": "MaxSplit",
+            "type": "*Int32Range",
+            "json": "maxSplit"
+          }
+        ],
+        "FragmentMask": [
+          {
+            "go": "Packets",
+            "type": "string",
+            "json": "packets"
+          },
+          {
+            "go": "Length",
+            "type": "Int32Range",
+            "json": "length"
+          },
+          {
+            "go": "Delay",
+            "type": "Int32Range",
+            "json": "delay"
+          },
+          {
+            "go": "Lengths",
+            "type": "[]Int32Range",
+            "json": "lengths"
+          },
+          {
+            "go": "Delays",
+            "type": "[]Int32Range",
+            "json": "delays"
+          },
+          {
+            "go": "MaxSplit",
+            "type": "Int32Range",
+            "json": "maxSplit"
+          }
+        ],
+        "FreedomConfig": [
+          {
+            "go": "TargetStrategy",
+            "type": "string",
+            "json": "targetStrategy"
+          },
+          {
+            "go": "DomainStrategy",
+            "type": "string",
+            "json": "domainStrategy"
+          },
+          {
+            "go": "Redirect",
+            "type": "string",
+            "json": "redirect"
+          },
+          {
+            "go": "UserLevel",
+            "type": "uint32",
+            "json": "userLevel"
+          },
+          {
+            "go": "Fragment",
+            "type": "*Fragment",
+            "json": "fragment"
+          },
+          {
+            "go": "Noise",
+            "type": "*Noise",
+            "json": "noise"
+          },
+          {
+            "go": "Noises",
+            "type": "[]*Noise",
+            "json": "noises"
+          },
+          {
+            "go": "ProxyProtocol",
+            "type": "uint32",
+            "json": "proxyProtocol"
+          },
+          {
+            "go": "IPsBlocked",
+            "type": "*StringList",
+            "json": "ipsBlocked"
+          },
+          {
+            "go": "FinalRules",
+            "type": "[]*FreedomFinalRuleConfig",
+            "json": "finalRules"
+          }
+        ],
+        "FreedomFinalRuleConfig": [
+          {
+            "go": "Action",
+            "type": "string",
+            "json": "action"
+          },
+          {
+            "go": "Network",
+            "type": "*NetworkList",
+            "json": "network"
+          },
+          {
+            "go": "Port",
+            "type": "*PortList",
+            "json": "port"
+          },
+          {
+            "go": "IP",
+            "type": "*StringList",
+            "json": "ip"
+          },
+          {
+            "go": "BlockDelay",
+            "type": "*Int32Range",
+            "json": "blockDelay"
+          }
+        ],
+        "GeodataAssetConfig": [
+          {
+            "go": "URL",
+            "type": "string",
+            "json": "url"
+          },
+          {
+            "go": "File",
+            "type": "string",
+            "json": "file"
+          }
+        ],
+        "GeodataConfig": [
+          {
+            "go": "Cron",
+            "type": "*string",
+            "json": "cron"
+          },
+          {
+            "go": "Outbound",
+            "type": "string",
+            "json": "outbound"
+          },
+          {
+            "go": "Assets",
+            "type": "[]*GeodataAssetConfig",
+            "json": "assets"
+          }
+        ],
+        "GRPCConfig": [
+          {
+            "go": "Authority",
+            "type": "string",
+            "json": "authority"
+          },
+          {
+            "go": "ServiceName",
+            "type": "string",
+            "json": "serviceName"
+          },
+          {
+            "go": "MultiMode",
+            "type": "bool",
+            "json": "multiMode"
+          },
+          {
+            "go": "IdleTimeout",
+            "type": "int32",
+            "json": "idle_timeout"
+          },
+          {
+            "go": "HealthCheckTimeout",
+            "type": "int32",
+            "json": "health_check_timeout"
+          },
+          {
+            "go": "PermitWithoutStream",
+            "type": "bool",
+            "json": "permit_without_stream"
+          },
+          {
+            "go": "InitialWindowsSize",
+            "type": "int32",
+            "json": "initial_windows_size"
+          },
+          {
+            "go": "UserAgent",
+            "type": "string",
+            "json": "user_agent"
+          }
+        ],
+        "HappyEyeballsConfig": [
+          {
+            "go": "PrioritizeIPv6",
+            "type": "bool",
+            "json": "prioritizeIPv6"
+          },
+          {
+            "go": "TryDelayMs",
+            "type": "uint64",
+            "json": "tryDelayMs"
+          },
+          {
+            "go": "Interleave",
+            "type": "uint32",
+            "json": "interleave"
+          },
+          {
+            "go": "MaxConcurrentTry",
+            "type": "uint32",
+            "json": "maxConcurrentTry"
+          }
+        ],
+        "HeaderCustomTCP": [
+          {
+            "go": "Clients",
+            "type": "[][]TCPItem",
+            "json": "clients"
+          },
+          {
+            "go": "Servers",
+            "type": "[][]TCPItem",
+            "json": "servers"
+          },
+          {
+            "go": "Errors",
+            "type": "[][]TCPItem",
+            "json": "errors"
+          }
+        ],
+        "HeaderCustomUDP": [
+          {
+            "go": "Mode",
+            "type": "string",
+            "json": "mode"
+          },
+          {
+            "go": "Client",
+            "type": "[]UDPItem",
+            "json": "client"
+          },
+          {
+            "go": "Server",
+            "type": "[]UDPItem",
+            "json": "server"
+          }
+        ],
+        "healthCheckSettings": [
+          {
+            "go": "Destination",
+            "type": "string",
+            "json": "destination"
+          },
+          {
+            "go": "Connectivity",
+            "type": "string",
+            "json": "connectivity"
+          },
+          {
+            "go": "Interval",
+            "type": "duration.Duration",
+            "json": "interval"
+          },
+          {
+            "go": "SamplingCount",
+            "type": "int",
+            "json": "sampling"
+          },
+          {
+            "go": "Timeout",
+            "type": "duration.Duration",
+            "json": "timeout"
+          },
+          {
+            "go": "HttpMethod",
+            "type": "string",
+            "json": "httpMethod"
+          }
+        ],
+        "HTTPAccount": [
+          {
+            "go": "Username",
+            "type": "string",
+            "json": "user"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "pass"
+          }
+        ],
+        "HTTPClientConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Level",
+            "type": "uint32",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Username",
+            "type": "string",
+            "json": "user"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "pass"
+          },
+          {
+            "go": "Servers",
+            "type": "[]*HTTPRemoteConfig",
+            "json": "servers"
+          },
+          {
+            "go": "Headers",
+            "type": "map[string]string",
+            "json": "headers"
+          }
+        ],
+        "HTTPRemoteConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Users",
+            "type": "[]json.RawMessage",
+            "json": "users"
+          }
+        ],
+        "HTTPResponse": [],
+        "HTTPServerConfig": [
+          {
+            "go": "Users",
+            "type": "[]*HTTPAccount",
+            "json": "users"
+          },
+          {
+            "go": "Accounts",
+            "type": "[]*HTTPAccount",
+            "json": "accounts"
+          },
+          {
+            "go": "Transparent",
+            "type": "bool",
+            "json": "allowTransparent"
+          },
+          {
+            "go": "UserLevel",
+            "type": "uint32",
+            "json": "userLevel"
+          }
+        ],
+        "HttpUpgradeConfig": [
+          {
+            "go": "Host",
+            "type": "string",
+            "json": "host"
+          },
+          {
+            "go": "Path",
+            "type": "string",
+            "json": "path"
+          },
+          {
+            "go": "Headers",
+            "type": "map[string]string",
+            "json": "headers"
+          },
+          {
+            "go": "AcceptProxyProtocol",
+            "type": "bool",
+            "json": "acceptProxyProtocol"
+          }
+        ],
+        "HysteriaClientConfig": [
+          {
+            "go": "Version",
+            "type": "int32",
+            "json": "version"
+          },
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          }
+        ],
+        "HysteriaConfig": [
+          {
+            "go": "Version",
+            "type": "int32",
+            "json": "version"
+          },
+          {
+            "go": "Auth",
+            "type": "string",
+            "json": "auth"
+          },
+          {
+            "go": "Congestion",
+            "type": "*string",
+            "json": "congestion"
+          },
+          {
+            "go": "Up",
+            "type": "*Bandwidth",
+            "json": "up"
+          },
+          {
+            "go": "Down",
+            "type": "*Bandwidth",
+            "json": "down"
+          },
+          {
+            "go": "UdpHop",
+            "type": "*UdpHop",
+            "json": "udphop"
+          },
+          {
+            "go": "UdpIdleTimeout",
+            "type": "int64",
+            "json": "udpIdleTimeout"
+          },
+          {
+            "go": "Masquerade",
+            "type": "Masquerade",
+            "json": "masquerade"
+          }
+        ],
+        "HysteriaServerConfig": [
+          {
+            "go": "Version",
+            "type": "int32",
+            "json": "version"
+          },
+          {
+            "go": "Users",
+            "type": "[]*HysteriaUserConfig",
+            "json": "users"
+          },
+          {
+            "go": "Clients",
+            "type": "[]*HysteriaUserConfig",
+            "json": "clients"
+          }
+        ],
+        "HysteriaUserConfig": [
+          {
+            "go": "Auth",
+            "type": "string",
+            "json": "auth"
+          },
+          {
+            "go": "Level",
+            "type": "uint32",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          }
+        ],
+        "InboundDetourConfig": [
+          {
+            "go": "Protocol",
+            "type": "string",
+            "json": "protocol"
+          },
+          {
+            "go": "PortList",
+            "type": "*PortList",
+            "json": "port"
+          },
+          {
+            "go": "ListenOn",
+            "type": "*Address",
+            "json": "listen"
+          },
+          {
+            "go": "Settings",
+            "type": "*json.RawMessage",
+            "json": "settings"
+          },
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "StreamSetting",
+            "type": "*StreamConfig",
+            "json": "streamSettings"
+          },
+          {
+            "go": "SniffingConfig",
+            "type": "*SniffingConfig",
+            "json": "sniffing"
+          }
+        ],
+        "KCPConfig": [
+          {
+            "go": "Mtu",
+            "type": "*uint32",
+            "json": "mtu"
+          },
+          {
+            "go": "Tti",
+            "type": "*uint32",
+            "json": "tti"
+          },
+          {
+            "go": "UpCap",
+            "type": "*uint32",
+            "json": "uplinkCapacity"
+          },
+          {
+            "go": "DownCap",
+            "type": "*uint32",
+            "json": "downlinkCapacity"
+          },
+          {
+            "go": "CwndMultiplier",
+            "type": "*uint32",
+            "json": "cwndMultiplier"
+          },
+          {
+            "go": "MaxSendingWindow",
+            "type": "*uint32",
+            "json": "maxSendingWindow"
+          },
+          {
+            "go": "HeaderConfig",
+            "type": "json.RawMessage",
+            "json": "header"
+          },
+          {
+            "go": "Seed",
+            "type": "*string",
+            "json": "seed"
+          }
+        ],
+        "LogConfig": [
+          {
+            "go": "AccessLog",
+            "type": "string",
+            "json": "access"
+          },
+          {
+            "go": "ErrorLog",
+            "type": "string",
+            "json": "error"
+          },
+          {
+            "go": "LogLevel",
+            "type": "string",
+            "json": "loglevel"
+          },
+          {
+            "go": "DNSLog",
+            "type": "bool",
+            "json": "dnsLog"
+          },
+          {
+            "go": "MaskAddress",
+            "type": "string",
+            "json": "maskAddress"
+          }
+        ],
+        "LoopbackConfig": [
+          {
+            "go": "InboundTag",
+            "type": "string",
+            "json": "inboundTag"
+          },
+          {
+            "go": "Sniffing",
+            "type": "*SniffingConfig",
+            "json": "sniffing"
+          }
+        ],
+        "Mask": [
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Settings",
+            "type": "*json.RawMessage",
+            "json": "settings"
+          }
+        ],
+        "Masquerade": [
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Dir",
+            "type": "string",
+            "json": "dir"
+          },
+          {
+            "go": "Url",
+            "type": "string",
+            "json": "url"
+          },
+          {
+            "go": "RewriteHost",
+            "type": "bool",
+            "json": "rewriteHost"
+          },
+          {
+            "go": "Insecure",
+            "type": "bool",
+            "json": "insecure"
+          },
+          {
+            "go": "Content",
+            "type": "string",
+            "json": "content"
+          },
+          {
+            "go": "Headers",
+            "type": "map[string]string",
+            "json": "headers"
+          },
+          {
+            "go": "StatusCode",
+            "type": "int32",
+            "json": "statusCode"
+          }
+        ],
+        "MetricsConfig": [
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "Listen",
+            "type": "string",
+            "json": "listen"
+          }
+        ],
+        "MkcpLegacy": [
+          {
+            "go": "Header",
+            "type": "string",
+            "json": "header"
+          },
+          {
+            "go": "Value",
+            "type": "string",
+            "json": "value"
+          }
+        ],
+        "MuxConfig": [
+          {
+            "go": "Enabled",
+            "type": "bool",
+            "json": "enabled"
+          },
+          {
+            "go": "Concurrency",
+            "type": "int16",
+            "json": "concurrency"
+          },
+          {
+            "go": "XudpConcurrency",
+            "type": "int16",
+            "json": "xudpConcurrency"
+          },
+          {
+            "go": "XudpProxyUDP443",
+            "type": "string",
+            "json": "xudpProxyUDP443"
+          }
+        ],
+        "NameServerConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "ClientIP",
+            "type": "*Address",
+            "json": "clientIp"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "SkipFallback",
+            "type": "bool",
+            "json": "skipFallback"
+          },
+          {
+            "go": "Domains",
+            "type": "StringList",
+            "json": "domains"
+          },
+          {
+            "go": "ExpectedIPs",
+            "type": "StringList",
+            "json": "expectedIPs"
+          },
+          {
+            "go": "ExpectIPs",
+            "type": "StringList",
+            "json": "expectIPs"
+          },
+          {
+            "go": "QueryStrategy",
+            "type": "string",
+            "json": "queryStrategy"
+          },
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "TimeoutMs",
+            "type": "uint64",
+            "json": "timeoutMs"
+          },
+          {
+            "go": "DisableCache",
+            "type": "*bool",
+            "json": "disableCache"
+          },
+          {
+            "go": "ServeStale",
+            "type": "*bool",
+            "json": "serveStale"
+          },
+          {
+            "go": "ServeExpiredTTL",
+            "type": "*uint32",
+            "json": "serveExpiredTTL"
+          },
+          {
+            "go": "FinalQuery",
+            "type": "bool",
+            "json": "finalQuery"
+          },
+          {
+            "go": "UnexpectedIPs",
+            "type": "StringList",
+            "json": "unexpectedIPs"
+          }
+        ],
+        "Noise": [
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Packet",
+            "type": "string",
+            "json": "packet"
+          },
+          {
+            "go": "Delay",
+            "type": "*Int32Range",
+            "json": "delay"
+          },
+          {
+            "go": "ApplyTo",
+            "type": "string",
+            "json": "applyTo"
+          }
+        ],
+        "NoiseItem": [
+          {
+            "go": "Rand",
+            "type": "Int32Range",
+            "json": "rand"
+          },
+          {
+            "go": "RandRange",
+            "type": "*Int32Range",
+            "json": "randRange"
+          },
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Packet",
+            "type": "json.RawMessage",
+            "json": "packet"
+          },
+          {
+            "go": "Delay",
+            "type": "Int32Range",
+            "json": "delay"
+          }
+        ],
+        "NoiseMask": [
+          {
+            "go": "Reset",
+            "type": "Int32Range",
+            "json": "reset"
+          },
+          {
+            "go": "Noise",
+            "type": "[]NoiseItem",
+            "json": "noise"
+          }
+        ],
+        "NoneResponse": [],
+        "NoOpConnectionAuthenticator": [],
+        "ObservatoryConfig": [
+          {
+            "go": "SubjectSelector",
+            "type": "[]string",
+            "json": "subjectSelector"
+          },
+          {
+            "go": "ProbeURL",
+            "type": "string",
+            "json": "probeURL"
+          },
+          {
+            "go": "ProbeInterval",
+            "type": "duration.Duration",
+            "json": "probeInterval"
+          },
+          {
+            "go": "EnableConcurrency",
+            "type": "bool",
+            "json": "enableConcurrency"
+          }
+        ],
+        "OutboundDetourConfig": [
+          {
+            "go": "Protocol",
+            "type": "string",
+            "json": "protocol"
+          },
+          {
+            "go": "SendThrough",
+            "type": "*string",
+            "json": "sendThrough"
+          },
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "Settings",
+            "type": "*json.RawMessage",
+            "json": "settings"
+          },
+          {
+            "go": "StreamSetting",
+            "type": "*StreamConfig",
+            "json": "streamSettings"
+          },
+          {
+            "go": "ProxySettings",
+            "type": "*ProxyConfig",
+            "json": "proxySettings"
+          },
+          {
+            "go": "MuxSettings",
+            "type": "*MuxConfig",
+            "json": "mux"
+          },
+          {
+            "go": "TargetStrategy",
+            "type": "string",
+            "json": "targetStrategy"
+          }
+        ],
+        "Policy": [
+          {
+            "go": "Handshake",
+            "type": "*uint32",
+            "json": "handshake"
+          },
+          {
+            "go": "ConnectionIdle",
+            "type": "*uint32",
+            "json": "connIdle"
+          },
+          {
+            "go": "UplinkOnly",
+            "type": "*uint32",
+            "json": "uplinkOnly"
+          },
+          {
+            "go": "DownlinkOnly",
+            "type": "*uint32",
+            "json": "downlinkOnly"
+          },
+          {
+            "go": "StatsUserUplink",
+            "type": "bool",
+            "json": "statsUserUplink"
+          },
+          {
+            "go": "StatsUserDownlink",
+            "type": "bool",
+            "json": "statsUserDownlink"
+          },
+          {
+            "go": "StatsUserOnline",
+            "type": "bool",
+            "json": "statsUserOnline"
+          },
+          {
+            "go": "BufferSize",
+            "type": "*int32",
+            "json": "bufferSize"
+          }
+        ],
+        "PolicyConfig": [
+          {
+            "go": "Levels",
+            "type": "map[uint32]*Policy",
+            "json": "levels"
+          },
+          {
+            "go": "System",
+            "type": "*SystemPolicy",
+            "json": "system"
+          }
+        ],
+        "PortalConfig": [
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "Domain",
+            "type": "string",
+            "json": "domain"
+          }
+        ],
+        "ProxyConfig": [
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "TransportLayerProxy",
+            "type": "bool",
+            "json": "transportLayer"
+          }
+        ],
+        "QuicParamsConfig": [
+          {
+            "go": "Congestion",
+            "type": "string",
+            "json": "congestion"
+          },
+          {
+            "go": "Debug",
+            "type": "bool",
+            "json": "debug"
+          },
+          {
+            "go": "BbrProfile",
+            "type": "string",
+            "json": "bbrProfile"
+          },
+          {
+            "go": "BrutalUp",
+            "type": "Bandwidth",
+            "json": "brutalUp"
+          },
+          {
+            "go": "BrutalDown",
+            "type": "Bandwidth",
+            "json": "brutalDown"
+          },
+          {
+            "go": "UdpHop",
+            "type": "UdpHop",
+            "json": "udpHop"
+          },
+          {
+            "go": "InitStreamReceiveWindow",
+            "type": "uint64",
+            "json": "initStreamReceiveWindow"
+          },
+          {
+            "go": "MaxStreamReceiveWindow",
+            "type": "uint64",
+            "json": "maxStreamReceiveWindow"
+          },
+          {
+            "go": "InitConnectionReceiveWindow",
+            "type": "uint64",
+            "json": "initConnectionReceiveWindow"
+          },
+          {
+            "go": "MaxConnectionReceiveWindow",
+            "type": "uint64",
+            "json": "maxConnectionReceiveWindow"
+          },
+          {
+            "go": "MaxIdleTimeout",
+            "type": "int64",
+            "json": "maxIdleTimeout"
+          },
+          {
+            "go": "KeepAlivePeriod",
+            "type": "int64",
+            "json": "keepAlivePeriod"
+          },
+          {
+            "go": "DisablePathMTUDiscovery",
+            "type": "bool",
+            "json": "disablePathMTUDiscovery"
+          },
+          {
+            "go": "MaxIncomingStreams",
+            "type": "int64",
+            "json": "maxIncomingStreams"
+          }
+        ],
+        "RawFieldRule": [
+          {
+            "go": "Domain",
+            "type": "*StringList",
+            "json": "domain"
+          },
+          {
+            "go": "Domains",
+            "type": "*StringList",
+            "json": "domains"
+          },
+          {
+            "go": "IP",
+            "type": "*StringList",
+            "json": "ip"
+          },
+          {
+            "go": "Port",
+            "type": "*PortList",
+            "json": "port"
+          },
+          {
+            "go": "Network",
+            "type": "*NetworkList",
+            "json": "network"
+          },
+          {
+            "go": "SourceIP",
+            "type": "*StringList",
+            "json": "sourceIP"
+          },
+          {
+            "go": "Source",
+            "type": "*StringList",
+            "json": "source"
+          },
+          {
+            "go": "SourcePort",
+            "type": "*PortList",
+            "json": "sourcePort"
+          },
+          {
+            "go": "User",
+            "type": "*StringList",
+            "json": "user"
+          },
+          {
+            "go": "VlessRoute",
+            "type": "*PortList",
+            "json": "vlessRoute"
+          },
+          {
+            "go": "InboundTag",
+            "type": "*StringList",
+            "json": "inboundTag"
+          },
+          {
+            "go": "Protocols",
+            "type": "*StringList",
+            "json": "protocol"
+          },
+          {
+            "go": "Attributes",
+            "type": "map[string]string",
+            "json": "attrs"
+          },
+          {
+            "go": "LocalIP",
+            "type": "*StringList",
+            "json": "localIP"
+          },
+          {
+            "go": "LocalPort",
+            "type": "*PortList",
+            "json": "localPort"
+          },
+          {
+            "go": "Process",
+            "type": "*StringList",
+            "json": "process"
+          },
+          {
+            "go": "Webhook",
+            "type": "*WebhookRuleConfig",
+            "json": "webhook"
+          }
+        ],
+        "REALITYConfig": [
+          {
+            "go": "MasterKeyLog",
+            "type": "string",
+            "json": "masterKeyLog"
+          },
+          {
+            "go": "Show",
+            "type": "bool",
+            "json": "show"
+          },
+          {
+            "go": "Target",
+            "type": "json.RawMessage",
+            "json": "target"
+          },
+          {
+            "go": "Dest",
+            "type": "json.RawMessage",
+            "json": "dest"
+          },
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Xver",
+            "type": "uint64",
+            "json": "xver"
+          },
+          {
+            "go": "ServerNames",
+            "type": "[]string",
+            "json": "serverNames"
+          },
+          {
+            "go": "PrivateKey",
+            "type": "string",
+            "json": "privateKey"
+          },
+          {
+            "go": "MinClientVer",
+            "type": "string",
+            "json": "minClientVer"
+          },
+          {
+            "go": "MaxClientVer",
+            "type": "string",
+            "json": "maxClientVer"
+          },
+          {
+            "go": "MaxTimeDiff",
+            "type": "uint64",
+            "json": "maxTimeDiff"
+          },
+          {
+            "go": "ShortIds",
+            "type": "[]string",
+            "json": "shortIds"
+          },
+          {
+            "go": "Mldsa65Seed",
+            "type": "string",
+            "json": "mldsa65Seed"
+          },
+          {
+            "go": "LimitFallbackUpload",
+            "type": "LimitFallback",
+            "json": "limitFallbackUpload"
+          },
+          {
+            "go": "LimitFallbackDownload",
+            "type": "LimitFallback",
+            "json": "limitFallbackDownload"
+          },
+          {
+            "go": "Fingerprint",
+            "type": "string",
+            "json": "fingerprint"
+          },
+          {
+            "go": "ServerName",
+            "type": "string",
+            "json": "serverName"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          },
+          {
+            "go": "PublicKey",
+            "type": "string",
+            "json": "publicKey"
+          },
+          {
+            "go": "ShortId",
+            "type": "string",
+            "json": "shortId"
+          },
+          {
+            "go": "Mldsa65Verify",
+            "type": "string",
+            "json": "mldsa65Verify"
+          },
+          {
+            "go": "SpiderX",
+            "type": "string",
+            "json": "spiderX"
+          }
+        ],
+        "Realm": [
+          {
+            "go": "Url",
+            "type": "string",
+            "json": "url"
+          },
+          {
+            "go": "StunServers",
+            "type": "[]string",
+            "json": "stunServers"
+          },
+          {
+            "go": "TlsConfig",
+            "type": "*TLSConfig",
+            "json": "tlsConfig"
+          }
+        ],
+        "ReverseConfig": [
+          {
+            "go": "Bridges",
+            "type": "[]BridgeConfig",
+            "json": "bridges"
+          },
+          {
+            "go": "Portals",
+            "type": "[]PortalConfig",
+            "json": "portals"
+          }
+        ],
+        "RouterConfig": [
+          {
+            "go": "RuleList",
+            "type": "[]json.RawMessage",
+            "json": "rules"
+          },
+          {
+            "go": "DomainStrategy",
+            "type": "*string",
+            "json": "domainStrategy"
+          },
+          {
+            "go": "Balancers",
+            "type": "[]*BalancingRule",
+            "json": "balancers"
+          }
+        ],
+        "RouterRule": [
+          {
+            "go": "RuleTag",
+            "type": "string",
+            "json": "ruleTag"
+          },
+          {
+            "go": "OutboundTag",
+            "type": "string",
+            "json": "outboundTag"
+          },
+          {
+            "go": "BalancerTag",
+            "type": "string",
+            "json": "balancerTag"
+          }
+        ],
+        "Salamander": [
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          },
+          {
+            "go": "PacketSize",
+            "type": "Int32Range",
+            "json": "packetSize"
+          }
+        ],
+        "ShadowsocksClientConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Level",
+            "type": "byte",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Cipher",
+            "type": "string",
+            "json": "method"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          },
+          {
+            "go": "Servers",
+            "type": "[]*ShadowsocksServerTarget",
+            "json": "servers"
+          }
+        ],
+        "ShadowsocksServerConfig": [
+          {
+            "go": "Cipher",
+            "type": "string",
+            "json": "method"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          },
+          {
+            "go": "Level",
+            "type": "byte",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Users",
+            "type": "[]*ShadowsocksUserConfig",
+            "json": "users"
+          },
+          {
+            "go": "Clients",
+            "type": "[]*ShadowsocksUserConfig",
+            "json": "clients"
+          },
+          {
+            "go": "NetworkList",
+            "type": "*NetworkList",
+            "json": "network"
+          }
+        ],
+        "ShadowsocksServerTarget": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Level",
+            "type": "byte",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Cipher",
+            "type": "string",
+            "json": "method"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          }
+        ],
+        "ShadowsocksUserConfig": [
+          {
+            "go": "Cipher",
+            "type": "string",
+            "json": "method"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          },
+          {
+            "go": "Level",
+            "type": "byte",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          }
+        ],
+        "SniffingConfig": [
+          {
+            "go": "Enabled",
+            "type": "bool",
+            "json": "enabled"
+          },
+          {
+            "go": "DestOverride",
+            "type": "StringList",
+            "json": "destOverride"
+          },
+          {
+            "go": "DomainsExcluded",
+            "type": "StringList",
+            "json": "domainsExcluded"
+          },
+          {
+            "go": "IPsExcluded",
+            "type": "StringList",
+            "json": "ipsExcluded"
+          },
+          {
+            "go": "MetadataOnly",
+            "type": "bool",
+            "json": "metadataOnly"
+          },
+          {
+            "go": "RouteOnly",
+            "type": "bool",
+            "json": "routeOnly"
+          }
+        ],
+        "SocketConfig": [
+          {
+            "go": "Mark",
+            "type": "int32",
+            "json": "mark"
+          },
+          {
+            "go": "TFO",
+            "type": "interface{}",
+            "json": "tcpFastOpen"
+          },
+          {
+            "go": "TProxy",
+            "type": "string",
+            "json": "tproxy"
+          },
+          {
+            "go": "AcceptProxyProtocol",
+            "type": "bool",
+            "json": "acceptProxyProtocol"
+          },
+          {
+            "go": "DomainStrategy",
+            "type": "string",
+            "json": "domainStrategy"
+          },
+          {
+            "go": "DialerProxy",
+            "type": "string",
+            "json": "dialerProxy"
+          },
+          {
+            "go": "TCPKeepAliveInterval",
+            "type": "int32",
+            "json": "tcpKeepAliveInterval"
+          },
+          {
+            "go": "TCPKeepAliveIdle",
+            "type": "int32",
+            "json": "tcpKeepAliveIdle"
+          },
+          {
+            "go": "TCPCongestion",
+            "type": "string",
+            "json": "tcpCongestion"
+          },
+          {
+            "go": "TCPWindowClamp",
+            "type": "int32",
+            "json": "tcpWindowClamp"
+          },
+          {
+            "go": "TCPMaxSeg",
+            "type": "int32",
+            "json": "tcpMaxSeg"
+          },
+          {
+            "go": "Penetrate",
+            "type": "bool",
+            "json": "penetrate"
+          },
+          {
+            "go": "TCPUserTimeout",
+            "type": "int32",
+            "json": "tcpUserTimeout"
+          },
+          {
+            "go": "V6only",
+            "type": "bool",
+            "json": "v6only"
+          },
+          {
+            "go": "Interface",
+            "type": "string",
+            "json": "interface"
+          },
+          {
+            "go": "TcpMptcp",
+            "type": "bool",
+            "json": "tcpMptcp"
+          },
+          {
+            "go": "CustomSockopt",
+            "type": "[]*CustomSockoptConfig",
+            "json": "customSockopt"
+          },
+          {
+            "go": "AddressPortStrategy",
+            "type": "string",
+            "json": "addressPortStrategy"
+          },
+          {
+            "go": "HappyEyeballsSettings",
+            "type": "*HappyEyeballsConfig",
+            "json": "happyEyeballs"
+          },
+          {
+            "go": "TrustedXForwardedFor",
+            "type": "[]string",
+            "json": "trustedXForwardedFor"
+          }
+        ],
+        "SocksAccount": [
+          {
+            "go": "Username",
+            "type": "string",
+            "json": "user"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "pass"
+          }
+        ],
+        "SocksClientConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Level",
+            "type": "uint32",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Username",
+            "type": "string",
+            "json": "user"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "pass"
+          },
+          {
+            "go": "Servers",
+            "type": "[]*SocksRemoteConfig",
+            "json": "servers"
+          }
+        ],
+        "SocksRemoteConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Users",
+            "type": "[]json.RawMessage",
+            "json": "users"
+          }
+        ],
+        "SocksServerConfig": [
+          {
+            "go": "AuthMethod",
+            "type": "string",
+            "json": "auth"
+          },
+          {
+            "go": "Users",
+            "type": "[]*SocksAccount",
+            "json": "users"
+          },
+          {
+            "go": "Accounts",
+            "type": "[]*SocksAccount",
+            "json": "accounts"
+          },
+          {
+            "go": "UDP",
+            "type": "bool",
+            "json": "udp"
+          },
+          {
+            "go": "Host",
+            "type": "*Address",
+            "json": "ip"
+          },
+          {
+            "go": "UserLevel",
+            "type": "uint32",
+            "json": "userLevel"
+          }
+        ],
+        "SplitHTTPConfig": [
+          {
+            "go": "Host",
+            "type": "string",
+            "json": "host"
+          },
+          {
+            "go": "Path",
+            "type": "string",
+            "json": "path"
+          },
+          {
+            "go": "Mode",
+            "type": "string",
+            "json": "mode"
+          },
+          {
+            "go": "Headers",
+            "type": "map[string]string",
+            "json": "headers"
+          },
+          {
+            "go": "XPaddingBytes",
+            "type": "Int32Range",
+            "json": "xPaddingBytes"
+          },
+          {
+            "go": "XPaddingObfsMode",
+            "type": "bool",
+            "json": "xPaddingObfsMode"
+          },
+          {
+            "go": "XPaddingKey",
+            "type": "string",
+            "json": "xPaddingKey"
+          },
+          {
+            "go": "XPaddingHeader",
+            "type": "string",
+            "json": "xPaddingHeader"
+          },
+          {
+            "go": "XPaddingPlacement",
+            "type": "string",
+            "json": "xPaddingPlacement"
+          },
+          {
+            "go": "XPaddingMethod",
+            "type": "string",
+            "json": "xPaddingMethod"
+          },
+          {
+            "go": "UplinkHTTPMethod",
+            "type": "string",
+            "json": "uplinkHTTPMethod"
+          },
+          {
+            "go": "SessionIDPlacement",
+            "type": "string",
+            "json": "sessionIDPlacement"
+          },
+          {
+            "go": "SessionIDKey",
+            "type": "string",
+            "json": "sessionIDKey"
+          },
+          {
+            "go": "SessionIDTable",
+            "type": "string",
+            "json": "sessionIDTable"
+          },
+          {
+            "go": "SessionIDLength",
+            "type": "Int32Range",
+            "json": "sessionIDLength"
+          },
+          {
+            "go": "SeqPlacement",
+            "type": "string",
+            "json": "seqPlacement"
+          },
+          {
+            "go": "SeqKey",
+            "type": "string",
+            "json": "seqKey"
+          },
+          {
+            "go": "UplinkDataPlacement",
+            "type": "string",
+            "json": "uplinkDataPlacement"
+          },
+          {
+            "go": "UplinkDataKey",
+            "type": "string",
+            "json": "uplinkDataKey"
+          },
+          {
+            "go": "UplinkChunkSize",
+            "type": "Int32Range",
+            "json": "uplinkChunkSize"
+          },
+          {
+            "go": "NoGRPCHeader",
+            "type": "bool",
+            "json": "noGRPCHeader"
+          },
+          {
+            "go": "NoSSEHeader",
+            "type": "bool",
+            "json": "noSSEHeader"
+          },
+          {
+            "go": "ScMaxEachPostBytes",
+            "type": "Int32Range",
+            "json": "scMaxEachPostBytes"
+          },
+          {
+            "go": "ScMinPostsIntervalMs",
+            "type": "Int32Range",
+            "json": "scMinPostsIntervalMs"
+          },
+          {
+            "go": "ScMaxBufferedPosts",
+            "type": "int64",
+            "json": "scMaxBufferedPosts"
+          },
+          {
+            "go": "ScStreamUpServerSecs",
+            "type": "Int32Range",
+            "json": "scStreamUpServerSecs"
+          },
+          {
+            "go": "ServerMaxHeaderBytes",
+            "type": "int32",
+            "json": "serverMaxHeaderBytes"
+          },
+          {
+            "go": "Xmux",
+            "type": "XmuxConfig",
+            "json": "xmux"
+          },
+          {
+            "go": "DownloadSettings",
+            "type": "*StreamConfig",
+            "json": "downloadSettings"
+          },
+          {
+            "go": "Extra",
+            "type": "json.RawMessage",
+            "json": "extra"
+          }
+        ],
+        "StatsConfig": [],
+        "StrategyConfig": [
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Settings",
+            "type": "*json.RawMessage",
+            "json": "settings"
+          }
+        ],
+        "strategyEmptyConfig": [],
+        "strategyLeastLoadConfig": [
+          {
+            "go": "Costs",
+            "type": "[]*router.StrategyWeight",
+            "json": "costs"
+          },
+          {
+            "go": "Baselines",
+            "type": "[]duration.Duration",
+            "json": "baselines"
+          },
+          {
+            "go": "Expected",
+            "type": "int32",
+            "json": "expected"
+          },
+          {
+            "go": "MaxRTT",
+            "type": "duration.Duration",
+            "json": "maxRTT"
+          },
+          {
+            "go": "Tolerance",
+            "type": "float64",
+            "json": "tolerance"
+          }
+        ],
+        "StreamConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Network",
+            "type": "*TransportProtocol",
+            "json": "network"
+          },
+          {
+            "go": "Security",
+            "type": "string",
+            "json": "security"
+          },
+          {
+            "go": "FinalMask",
+            "type": "*FinalMask",
+            "json": "finalmask"
+          },
+          {
+            "go": "TLSSettings",
+            "type": "*TLSConfig",
+            "json": "tlsSettings"
+          },
+          {
+            "go": "REALITYSettings",
+            "type": "*REALITYConfig",
+            "json": "realitySettings"
+          },
+          {
+            "go": "RAWSettings",
+            "type": "*TCPConfig",
+            "json": "rawSettings"
+          },
+          {
+            "go": "TCPSettings",
+            "type": "*TCPConfig",
+            "json": "tcpSettings"
+          },
+          {
+            "go": "XHTTPSettings",
+            "type": "*SplitHTTPConfig",
+            "json": "xhttpSettings"
+          },
+          {
+            "go": "SplitHTTPSettings",
+            "type": "*SplitHTTPConfig",
+            "json": "splithttpSettings"
+          },
+          {
+            "go": "KCPSettings",
+            "type": "*KCPConfig",
+            "json": "kcpSettings"
+          },
+          {
+            "go": "GRPCSettings",
+            "type": "*GRPCConfig",
+            "json": "grpcSettings"
+          },
+          {
+            "go": "WSSettings",
+            "type": "*WebSocketConfig",
+            "json": "wsSettings"
+          },
+          {
+            "go": "HTTPUPGRADESettings",
+            "type": "*HttpUpgradeConfig",
+            "json": "httpupgradeSettings"
+          },
+          {
+            "go": "HysteriaSettings",
+            "type": "*HysteriaConfig",
+            "json": "hysteriaSettings"
+          },
+          {
+            "go": "SocketSettings",
+            "type": "*SocketConfig",
+            "json": "sockopt"
+          }
+        ],
+        "Sudoku": [
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          },
+          {
+            "go": "ASCII",
+            "type": "string",
+            "json": "ascii"
+          },
+          {
+            "go": "CustomTable",
+            "type": "string",
+            "json": "customTable"
+          },
+          {
+            "go": "LegacyCustomTable",
+            "type": "string",
+            "json": "custom_table"
+          },
+          {
+            "go": "CustomTables",
+            "type": "[]string",
+            "json": "customTables"
+          },
+          {
+            "go": "LegacyCustomSets",
+            "type": "[]string",
+            "json": "custom_tables"
+          },
+          {
+            "go": "PaddingMin",
+            "type": "uint32",
+            "json": "paddingMin"
+          },
+          {
+            "go": "LegacyPaddingMin",
+            "type": "uint32",
+            "json": "padding_min"
+          },
+          {
+            "go": "PaddingMax",
+            "type": "uint32",
+            "json": "paddingMax"
+          },
+          {
+            "go": "LegacyPaddingMax",
+            "type": "uint32",
+            "json": "padding_max"
+          }
+        ],
+        "SystemPolicy": [
+          {
+            "go": "StatsInboundUplink",
+            "type": "bool",
+            "json": "statsInboundUplink"
+          },
+          {
+            "go": "StatsInboundDownlink",
+            "type": "bool",
+            "json": "statsInboundDownlink"
+          },
+          {
+            "go": "StatsOutboundUplink",
+            "type": "bool",
+            "json": "statsOutboundUplink"
+          },
+          {
+            "go": "StatsOutboundDownlink",
+            "type": "bool",
+            "json": "statsOutboundDownlink"
+          }
+        ],
+        "TCPConfig": [
+          {
+            "go": "HeaderConfig",
+            "type": "json.RawMessage",
+            "json": "header"
+          },
+          {
+            "go": "AcceptProxyProtocol",
+            "type": "bool",
+            "json": "acceptProxyProtocol"
+          }
+        ],
+        "TCPItem": [
+          {
+            "go": "Delay",
+            "type": "Int32Range",
+            "json": "delay"
+          },
+          {
+            "go": "Rand",
+            "type": "int32",
+            "json": "rand"
+          },
+          {
+            "go": "RandRange",
+            "type": "*Int32Range",
+            "json": "randRange"
+          },
+          {
+            "go": "Capture",
+            "type": "string",
+            "json": "capture"
+          },
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Reuse",
+            "type": "string",
+            "json": "reuse"
+          },
+          {
+            "go": "Transform",
+            "type": "*CustomTransform",
+            "json": "transform"
+          },
+          {
+            "go": "Packet",
+            "type": "json.RawMessage",
+            "json": "packet"
+          }
+        ],
+        "TLSCertConfig": [
+          {
+            "go": "CertFile",
+            "type": "string",
+            "json": "certificateFile"
+          },
+          {
+            "go": "CertStr",
+            "type": "[]string",
+            "json": "certificate"
+          },
+          {
+            "go": "KeyFile",
+            "type": "string",
+            "json": "keyFile"
+          },
+          {
+            "go": "KeyStr",
+            "type": "[]string",
+            "json": "key"
+          },
+          {
+            "go": "Usage",
+            "type": "string",
+            "json": "usage"
+          },
+          {
+            "go": "OcspStapling",
+            "type": "uint64",
+            "json": "ocspStapling"
+          },
+          {
+            "go": "OneTimeLoading",
+            "type": "bool",
+            "json": "oneTimeLoading"
+          },
+          {
+            "go": "BuildChain",
+            "type": "bool",
+            "json": "buildChain"
+          }
+        ],
+        "TLSConfig": [
+          {
+            "go": "AllowInsecure",
+            "type": "bool",
+            "json": "allowInsecure"
+          },
+          {
+            "go": "Certs",
+            "type": "[]*TLSCertConfig",
+            "json": "certificates"
+          },
+          {
+            "go": "ServerName",
+            "type": "string",
+            "json": "serverName"
+          },
+          {
+            "go": "ALPN",
+            "type": "*StringList",
+            "json": "alpn"
+          },
+          {
+            "go": "EnableSessionResumption",
+            "type": "bool",
+            "json": "enableSessionResumption"
+          },
+          {
+            "go": "DisableSystemRoot",
+            "type": "bool",
+            "json": "disableSystemRoot"
+          },
+          {
+            "go": "MinVersion",
+            "type": "string",
+            "json": "minVersion"
+          },
+          {
+            "go": "MaxVersion",
+            "type": "string",
+            "json": "maxVersion"
+          },
+          {
+            "go": "CipherSuites",
+            "type": "string",
+            "json": "cipherSuites"
+          },
+          {
+            "go": "Fingerprint",
+            "type": "string",
+            "json": "fingerprint"
+          },
+          {
+            "go": "RejectUnknownSNI",
+            "type": "bool",
+            "json": "rejectUnknownSni"
+          },
+          {
+            "go": "CurvePreferences",
+            "type": "*StringList",
+            "json": "curvePreferences"
+          },
+          {
+            "go": "MasterKeyLog",
+            "type": "string",
+            "json": "masterKeyLog"
+          },
+          {
+            "go": "PinnedPeerCertSha256",
+            "type": "string",
+            "json": "pinnedPeerCertSha256"
+          },
+          {
+            "go": "VerifyPeerCertByName",
+            "type": "string",
+            "json": "verifyPeerCertByName"
+          },
+          {
+            "go": "ECHServerKeys",
+            "type": "string",
+            "json": "echServerKeys"
+          },
+          {
+            "go": "ECHConfigList",
+            "type": "string",
+            "json": "echConfigList"
+          },
+          {
+            "go": "ECHSocketSettings",
+            "type": "*SocketConfig",
+            "json": "echSockopt"
+          }
+        ],
+        "TrojanClientConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Level",
+            "type": "byte",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          },
+          {
+            "go": "Flow",
+            "type": "string",
+            "json": "flow"
+          },
+          {
+            "go": "Servers",
+            "type": "[]*TrojanServerTarget",
+            "json": "servers"
+          }
+        ],
+        "TrojanInboundFallback": [
+          {
+            "go": "Name",
+            "type": "string",
+            "json": "name"
+          },
+          {
+            "go": "Alpn",
+            "type": "string",
+            "json": "alpn"
+          },
+          {
+            "go": "Path",
+            "type": "string",
+            "json": "path"
+          },
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Dest",
+            "type": "json.RawMessage",
+            "json": "dest"
+          },
+          {
+            "go": "Xver",
+            "type": "uint64",
+            "json": "xver"
+          }
+        ],
+        "TrojanServerConfig": [
+          {
+            "go": "Users",
+            "type": "[]*TrojanUserConfig",
+            "json": "users"
+          },
+          {
+            "go": "Clients",
+            "type": "[]*TrojanUserConfig",
+            "json": "clients"
+          },
+          {
+            "go": "Fallbacks",
+            "type": "[]*TrojanInboundFallback",
+            "json": "fallbacks"
+          }
+        ],
+        "TrojanServerTarget": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Level",
+            "type": "byte",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          },
+          {
+            "go": "Flow",
+            "type": "string",
+            "json": "flow"
+          }
+        ],
+        "TrojanUserConfig": [
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          },
+          {
+            "go": "Level",
+            "type": "byte",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Flow",
+            "type": "string",
+            "json": "flow"
+          }
+        ],
+        "TunConfig": [
+          {
+            "go": "Name",
+            "type": "string",
+            "json": "name"
+          },
+          {
+            "go": "MTU",
+            "type": "uint32",
+            "json": "mtu"
+          },
+          {
+            "go": "Gateway",
+            "type": "[]string",
+            "json": "gateway"
+          },
+          {
+            "go": "DNS",
+            "type": "[]string",
+            "json": "dns"
+          },
+          {
+            "go": "UserLevel",
+            "type": "uint32",
+            "json": "userLevel"
+          },
+          {
+            "go": "AutoSystemRoutingTable",
+            "type": "[]string",
+            "json": "autoSystemRoutingTable"
+          },
+          {
+            "go": "AutoOutboundsInterface",
+            "type": "*string",
+            "json": "autoOutboundsInterface"
+          }
+        ],
+        "UdpHop": [
+          {
+            "go": "PortList",
+            "type": "PortList",
+            "json": "ports"
+          },
+          {
+            "go": "Interval",
+            "type": "Int32Range",
+            "json": "interval"
+          }
+        ],
+        "UDPItem": [
+          {
+            "go": "Rand",
+            "type": "int32",
+            "json": "rand"
+          },
+          {
+            "go": "RandRange",
+            "type": "*Int32Range",
+            "json": "randRange"
+          },
+          {
+            "go": "Capture",
+            "type": "string",
+            "json": "capture"
+          },
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Reuse",
+            "type": "string",
+            "json": "reuse"
+          },
+          {
+            "go": "Transform",
+            "type": "*CustomTransform",
+            "json": "transform"
+          },
+          {
+            "go": "Packet",
+            "type": "json.RawMessage",
+            "json": "packet"
+          }
+        ],
+        "User": [
+          {
+            "go": "EmailString",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "LevelByte",
+            "type": "byte",
+            "json": "level"
+          }
+        ],
+        "VersionConfig": [
+          {
+            "go": "MinVersion",
+            "type": "string",
+            "json": "min"
+          },
+          {
+            "go": "MaxVersion",
+            "type": "string",
+            "json": "max"
+          }
+        ],
+        "VLessInboundConfig": [
+          {
+            "go": "Users",
+            "type": "[]json.RawMessage",
+            "json": "users"
+          },
+          {
+            "go": "Clients",
+            "type": "[]json.RawMessage",
+            "json": "clients"
+          },
+          {
+            "go": "Decryption",
+            "type": "string",
+            "json": "decryption"
+          },
+          {
+            "go": "Fallbacks",
+            "type": "[]*VLessInboundFallback",
+            "json": "fallbacks"
+          },
+          {
+            "go": "Flow",
+            "type": "string",
+            "json": "flow"
+          },
+          {
+            "go": "Testseed",
+            "type": "[]uint32",
+            "json": "testseed"
+          }
+        ],
+        "VLessInboundFallback": [
+          {
+            "go": "Name",
+            "type": "string",
+            "json": "name"
+          },
+          {
+            "go": "Alpn",
+            "type": "string",
+            "json": "alpn"
+          },
+          {
+            "go": "Path",
+            "type": "string",
+            "json": "path"
+          },
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Dest",
+            "type": "json.RawMessage",
+            "json": "dest"
+          },
+          {
+            "go": "Xver",
+            "type": "uint64",
+            "json": "xver"
+          }
+        ],
+        "VLessOutboundConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Level",
+            "type": "uint32",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Id",
+            "type": "string",
+            "json": "id"
+          },
+          {
+            "go": "Flow",
+            "type": "string",
+            "json": "flow"
+          },
+          {
+            "go": "Seed",
+            "type": "string",
+            "json": "seed"
+          },
+          {
+            "go": "Encryption",
+            "type": "string",
+            "json": "encryption"
+          },
+          {
+            "go": "Reverse",
+            "type": "*VLessReverseConfig",
+            "json": "reverse"
+          },
+          {
+            "go": "Testpre",
+            "type": "uint32",
+            "json": "testpre"
+          },
+          {
+            "go": "Testseed",
+            "type": "[]uint32",
+            "json": "testseed"
+          },
+          {
+            "go": "Vnext",
+            "type": "[]*VLessOutboundVnext",
+            "json": "vnext"
+          }
+        ],
+        "VLessOutboundVnext": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Users",
+            "type": "[]json.RawMessage",
+            "json": "users"
+          }
+        ],
+        "VLessReverseConfig": [
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "Sniffing",
+            "type": "*SniffingConfig",
+            "json": "sniffing"
+          }
+        ],
+        "VMessAccount": [
+          {
+            "go": "ID",
+            "type": "string",
+            "json": "id"
+          },
+          {
+            "go": "Security",
+            "type": "string",
+            "json": "security"
+          },
+          {
+            "go": "Experiments",
+            "type": "string",
+            "json": "experiments"
+          }
+        ],
+        "VMessDefaultConfig": [
+          {
+            "go": "Level",
+            "type": "byte",
+            "json": "level"
+          }
+        ],
+        "VMessInboundConfig": [
+          {
+            "go": "Users",
+            "type": "[]json.RawMessage",
+            "json": "users"
+          },
+          {
+            "go": "Clients",
+            "type": "[]json.RawMessage",
+            "json": "clients"
+          },
+          {
+            "go": "Defaults",
+            "type": "*VMessDefaultConfig",
+            "json": "default"
+          }
+        ],
+        "VMessOutboundConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Level",
+            "type": "uint32",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "ID",
+            "type": "string",
+            "json": "id"
+          },
+          {
+            "go": "Security",
+            "type": "string",
+            "json": "security"
+          },
+          {
+            "go": "Experiments",
+            "type": "string",
+            "json": "experiments"
+          },
+          {
+            "go": "Receivers",
+            "type": "[]*VMessOutboundTarget",
+            "json": "vnext"
+          }
+        ],
+        "VMessOutboundTarget": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Users",
+            "type": "[]json.RawMessage",
+            "json": "users"
+          }
+        ],
+        "WebhookRuleConfig": [
+          {
+            "go": "URL",
+            "type": "string",
+            "json": "url"
+          },
+          {
+            "go": "Deduplication",
+            "type": "uint32",
+            "json": "deduplication"
+          },
+          {
+            "go": "Headers",
+            "type": "map[string]string",
+            "json": "headers"
+          }
+        ],
+        "WebSocketConfig": [
+          {
+            "go": "Host",
+            "type": "string",
+            "json": "host"
+          },
+          {
+            "go": "Path",
+            "type": "string",
+            "json": "path"
+          },
+          {
+            "go": "Headers",
+            "type": "map[string]string",
+            "json": "headers"
+          },
+          {
+            "go": "AcceptProxyProtocol",
+            "type": "bool",
+            "json": "acceptProxyProtocol"
+          },
+          {
+            "go": "HeartbeatPeriod",
+            "type": "uint32",
+            "json": "heartbeatPeriod"
+          }
+        ],
+        "WireGuardConfig": [
+          {
+            "go": "NoKernelTun",
+            "type": "bool",
+            "json": "noKernelTun"
+          },
+          {
+            "go": "SecretKey",
+            "type": "string",
+            "json": "secretKey"
+          },
+          {
+            "go": "Address",
+            "type": "[]string",
+            "json": "address"
+          },
+          {
+            "go": "Peers",
+            "type": "[]*WireGuardPeerConfig",
+            "json": "peers"
+          },
+          {
+            "go": "MTU",
+            "type": "int32",
+            "json": "mtu"
+          },
+          {
+            "go": "Reserved",
+            "type": "[]byte",
+            "json": "reserved"
+          },
+          {
+            "go": "DomainStrategy",
+            "type": "string",
+            "json": "domainStrategy"
+          }
+        ],
+        "WireGuardPeerConfig": [
+          {
+            "go": "PublicKey",
+            "type": "string",
+            "json": "publicKey"
+          },
+          {
+            "go": "PreSharedKey",
+            "type": "string",
+            "json": "preSharedKey"
+          },
+          {
+            "go": "Endpoint",
+            "type": "string",
+            "json": "endpoint"
+          },
+          {
+            "go": "KeepAlive",
+            "type": "uint32",
+            "json": "keepAlive"
+          },
+          {
+            "go": "AllowedIPs",
+            "type": "[]string",
+            "json": "allowedIPs"
+          }
+        ],
+        "Xdns": [
+          {
+            "go": "Domain",
+            "type": "json.RawMessage",
+            "json": "domain"
+          },
+          {
+            "go": "Domains",
+            "type": "[]string",
+            "json": "domains"
+          },
+          {
+            "go": "Resolvers",
+            "type": "[]string",
+            "json": "resolvers"
+          }
+        ],
+        "Xicmp": [
+          {
+            "go": "DGRAM",
+            "type": "bool",
+            "json": "dgram"
+          },
+          {
+            "go": "IPs",
+            "type": "[]string",
+            "json": "ips"
+          }
+        ],
+        "XmuxConfig": [
+          {
+            "go": "MaxConcurrency",
+            "type": "Int32Range",
+            "json": "maxConcurrency"
+          },
+          {
+            "go": "MaxConnections",
+            "type": "Int32Range",
+            "json": "maxConnections"
+          },
+          {
+            "go": "CMaxReuseTimes",
+            "type": "Int32Range",
+            "json": "cMaxReuseTimes"
+          },
+          {
+            "go": "HMaxRequestTimes",
+            "type": "Int32Range",
+            "json": "hMaxRequestTimes"
+          },
+          {
+            "go": "HMaxReusableSecs",
+            "type": "Int32Range",
+            "json": "hMaxReusableSecs"
+          },
+          {
+            "go": "HKeepAlivePeriod",
+            "type": "int64",
+            "json": "hKeepAlivePeriod"
+          }
+        ]
+      }
+    },
+    {
+      "tag": "v26.6.27",
+      "version": "26.6.27",
+      "commit": "45cf2898ab12e97a55dd8f1f3d78d903340bdc9e",
+      "removedFeatures": [
+        {
+          "feature": "noise = { ... }",
+          "replacement": "noises = [ { ... } ]",
+          "source": "infra/conf/freedom.go",
+          "keys": [
+            "freedom noise"
+          ]
+        },
+        {
+          "feature": "\"allowInsecure\"",
+          "replacement": "\"pinnedPeerCertSha256\"(pcs) and \"verifyPeerCertByName\"(vcn)",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "allowInsecure"
+          ]
+        },
+        {
+          "feature": "domain",
+          "replacement": "domains(server) & resolvers(client)",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "finalmask xdns domain"
+          ]
+        },
+        {
+          "feature": "HTTP transport (without header padding, etc.)",
+          "replacement": "XHTTP stream-one H2 & H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "http-transport"
+          ]
+        },
+        {
+          "feature": "Legacy XTLS",
+          "replacement": "xtls-rprx-vision with TLS or REALITY",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "xtls"
+          ]
+        },
+        {
+          "feature": "mkcp header & seed",
+          "replacement": "finalmask/udp header-* & mkcp-original & mkcp-aes128gcm",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "mkcp header/seed"
+          ]
+        },
+        {
+          "feature": "QUIC transport (without web service, etc.)",
+          "replacement": "XHTTP stream-one H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "quic"
+          ]
+        },
+        {
+          "feature": "Flow for Trojan",
+          "source": "infra/conf/trojan.go",
+          "keys": [
+            "trojan flow"
+          ]
+        },
+        {
+          "feature": "\"legacy reverse\"",
+          "replacement": "\"VLESS Reverse Proxy\"",
+          "source": "infra/conf/xray.go",
+          "keys": []
+        },
+        {
+          "feature": "Global transport config",
+          "replacement": "streamSettings in inbounds and outbounds",
+          "source": "infra/conf/xray.go",
+          "keys": [
+            "global transport"
+          ]
+        }
+      ],
+      "deprecatedFeatures": [
+        {
+          "feature": "\"nonIPQuery\" and \"blockTypes\"",
+          "replacement": "\"rules\"",
+          "source": "infra/conf/dns_proxy.go",
+          "keys": [
+            "dns legacy nonIPQuery blockTypes"
+          ]
+        },
+        {
+          "feature": "Shadowsocks (with no Forward Secrecy, etc.)",
+          "replacement": "VLESS Encryption",
+          "source": "infra/conf/shadowsocks.go",
+          "keys": [
+            "shadowsocks"
+          ]
+        },
+        {
+          "feature": "\"host\" in \"headers\"",
+          "replacement": "independent \"host\"",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "xhttp headers host"
+          ]
+        },
+        {
+          "feature": "gRPC transport (with unnecessary costs, etc.)",
+          "replacement": "XHTTP stream-up H2",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "grpc"
+          ]
+        },
+        {
+          "feature": "HTTPUpgrade transport (with ALPN http/1.1, etc.)",
+          "replacement": "XHTTP H2 & H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "httpupgrade"
+          ]
+        },
+        {
+          "feature": "WebSocket transport (with ALPN http/1.1, etc.)",
+          "replacement": "XHTTP H2 & H3",
+          "source": "infra/conf/transport_internet.go",
+          "keys": [
+            "websocket",
+            "ws"
+          ]
+        },
+        {
+          "feature": "Trojan (with no Flow, etc.)",
+          "replacement": "VLESS with Flow & Seed",
+          "source": "infra/conf/trojan.go",
+          "keys": [
+            "trojan"
+          ]
+        },
+        {
+          "feature": "VMess (with no Forward Secrecy, etc.)",
+          "replacement": "VLESS Encryption",
+          "source": "infra/conf/vmess.go",
+          "keys": [
+            "vmess"
+          ]
+        }
+      ],
+      "topLevelKeys": [
+        "api",
+        "burstObservatory",
+        "dns",
+        "fakeDns",
+        "geodata",
+        "inbounds",
+        "log",
+        "metrics",
+        "observatory",
+        "outbounds",
+        "policy",
+        "reverse",
+        "routing",
+        "stats",
+        "transport",
+        "version"
+      ],
+      "inboundProtocols": [
+        {
+          "protocol": "dokodemo-door",
+          "config": "DokodemoConfig"
+        },
+        {
+          "protocol": "http",
+          "config": "HTTPServerConfig"
+        },
+        {
+          "protocol": "hysteria",
+          "config": "HysteriaServerConfig"
+        },
+        {
+          "protocol": "mixed",
+          "config": "SocksServerConfig"
+        },
+        {
+          "protocol": "shadowsocks",
+          "config": "ShadowsocksServerConfig"
+        },
+        {
+          "protocol": "socks",
+          "config": "SocksServerConfig"
+        },
+        {
+          "protocol": "trojan",
+          "config": "TrojanServerConfig"
+        },
+        {
+          "protocol": "tun",
+          "config": "TunConfig"
+        },
+        {
+          "protocol": "tunnel",
+          "config": "DokodemoConfig"
+        },
+        {
+          "protocol": "vless",
+          "config": "VLessInboundConfig"
+        },
+        {
+          "protocol": "vmess",
+          "config": "VMessInboundConfig"
+        },
+        {
+          "protocol": "wireguard",
+          "config": "WireGuardConfig"
+        }
+      ],
+      "outboundProtocols": [
+        {
+          "protocol": "blackhole",
+          "config": "BlackholeConfig"
+        },
+        {
+          "protocol": "block",
+          "config": "BlackholeConfig"
+        },
+        {
+          "protocol": "direct",
+          "config": "FreedomConfig"
+        },
+        {
+          "protocol": "dns",
+          "config": "DNSOutboundConfig"
+        },
+        {
+          "protocol": "freedom",
+          "config": "FreedomConfig"
+        },
+        {
+          "protocol": "http",
+          "config": "HTTPClientConfig"
+        },
+        {
+          "protocol": "hysteria",
+          "config": "HysteriaClientConfig"
+        },
+        {
+          "protocol": "loopback",
+          "config": "LoopbackConfig"
+        },
+        {
+          "protocol": "shadowsocks",
+          "config": "ShadowsocksClientConfig"
+        },
+        {
+          "protocol": "socks",
+          "config": "SocksClientConfig"
+        },
+        {
+          "protocol": "trojan",
+          "config": "TrojanClientConfig"
+        },
+        {
+          "protocol": "vless",
+          "config": "VLessOutboundConfig"
+        },
+        {
+          "protocol": "vmess",
+          "config": "VMessOutboundConfig"
+        },
+        {
+          "protocol": "wireguard",
+          "config": "WireGuardConfig"
+        }
+      ],
+      "streamFields": [
+        {
+          "go": "Address",
+          "type": "*Address",
+          "json": "address"
+        },
+        {
+          "go": "Port",
+          "type": "uint16",
+          "json": "port"
+        },
+        {
+          "go": "Network",
+          "type": "*TransportProtocol",
+          "json": "network"
+        },
+        {
+          "go": "Security",
+          "type": "string",
+          "json": "security"
+        },
+        {
+          "go": "FinalMask",
+          "type": "*FinalMask",
+          "json": "finalmask"
+        },
+        {
+          "go": "TLSSettings",
+          "type": "*TLSConfig",
+          "json": "tlsSettings"
+        },
+        {
+          "go": "REALITYSettings",
+          "type": "*REALITYConfig",
+          "json": "realitySettings"
+        },
+        {
+          "go": "RAWSettings",
+          "type": "*TCPConfig",
+          "json": "rawSettings"
+        },
+        {
+          "go": "TCPSettings",
+          "type": "*TCPConfig",
+          "json": "tcpSettings"
+        },
+        {
+          "go": "XHTTPSettings",
+          "type": "*SplitHTTPConfig",
+          "json": "xhttpSettings"
+        },
+        {
+          "go": "SplitHTTPSettings",
+          "type": "*SplitHTTPConfig",
+          "json": "splithttpSettings"
+        },
+        {
+          "go": "KCPSettings",
+          "type": "*KCPConfig",
+          "json": "kcpSettings"
+        },
+        {
+          "go": "GRPCSettings",
+          "type": "*GRPCConfig",
+          "json": "grpcSettings"
+        },
+        {
+          "go": "WSSettings",
+          "type": "*WebSocketConfig",
+          "json": "wsSettings"
+        },
+        {
+          "go": "HTTPUPGRADESettings",
+          "type": "*HttpUpgradeConfig",
+          "json": "httpupgradeSettings"
+        },
+        {
+          "go": "HysteriaSettings",
+          "type": "*HysteriaConfig",
+          "json": "hysteriaSettings"
+        },
+        {
+          "go": "SocketSettings",
+          "type": "*SocketConfig",
+          "json": "sockopt"
+        }
+      ],
+      "transportAliases": {
+        "grpc": "grpc",
+        "httpupgrade": "httpupgrade",
+        "hysteria": "hysteria",
+        "kcp": "mkcp",
+        "mkcp": "mkcp",
+        "raw": "tcp",
+        "splithttp": "splithttp",
+        "tcp": "tcp",
+        "websocket": "websocket",
+        "ws": "websocket",
+        "xhttp": "splithttp"
+      },
+      "securityTypes": [
+        "none",
+        "reality",
+        "tls",
+        "xtls"
+      ],
+      "fingerprints": [
+        "360",
+        "android",
+        "chrome",
+        "edge",
+        "firefox",
+        "hello360_11_0",
+        "hello360_7_5",
+        "hello360_auto",
+        "helloandroid_11_okhttp",
+        "hellochrome_100",
+        "hellochrome_100_psk",
+        "hellochrome_102",
+        "hellochrome_106_shuffle",
+        "hellochrome_112_psk_shuf",
+        "hellochrome_114_padding_psk_shuf",
+        "hellochrome_115_pq",
+        "hellochrome_115_pq_psk",
+        "hellochrome_120",
+        "hellochrome_120_pq",
+        "hellochrome_131",
+        "hellochrome_133",
+        "hellochrome_58",
+        "hellochrome_62",
+        "hellochrome_70",
+        "hellochrome_72",
+        "hellochrome_83",
+        "hellochrome_87",
+        "hellochrome_96",
+        "hellochrome_auto",
+        "helloedge_106",
+        "helloedge_85",
+        "helloedge_auto",
+        "hellofirefox_102",
+        "hellofirefox_105",
+        "hellofirefox_120",
+        "hellofirefox_148",
+        "hellofirefox_55",
+        "hellofirefox_56",
+        "hellofirefox_63",
+        "hellofirefox_65",
+        "hellofirefox_99",
+        "hellofirefox_auto",
+        "hellogolang",
+        "helloios_11_1",
+        "helloios_12_1",
+        "helloios_13",
+        "helloios_14",
+        "helloios_auto",
+        "helloqq_11_1",
+        "helloqq_auto",
+        "hellorandomized",
+        "hellorandomizedalpn",
+        "hellorandomizednoalpn",
+        "hellosafari_16_0",
+        "hellosafari_26_3",
+        "hellosafari_auto",
+        "ios",
+        "qq",
+        "random",
+        "randomized",
+        "randomizednoalpn",
+        "safari",
+        "unsafe"
+      ],
+      "alpn": [
+        "h3",
+        "h2",
+        "http/1.1"
+      ],
+      "jsonLoaders": {
+        "infra/conf/transport_internet.go:tcpHeaderLoader": [
+          {
+            "protocol": "http",
+            "config": "Authenticator"
+          },
+          {
+            "protocol": "none",
+            "config": "NoOpConnectionAuthenticator"
+          }
+        ],
+        "infra/conf/transport_internet.go:tcpmaskLoader": [
+          {
+            "protocol": "fragment",
+            "config": "FragmentMask"
+          },
+          {
+            "protocol": "header-custom",
+            "config": "HeaderCustomTCP"
+          },
+          {
+            "protocol": "sudoku",
+            "config": "Sudoku"
+          }
+        ],
+        "infra/conf/transport_internet.go:udpmaskLoader": [
+          {
+            "protocol": "header-custom",
+            "config": "HeaderCustomUDP"
+          },
+          {
+            "protocol": "mkcp-legacy",
+            "config": "MkcpLegacy"
+          },
+          {
+            "protocol": "noise",
+            "config": "NoiseMask"
+          },
+          {
+            "protocol": "realm",
+            "config": "Realm"
+          },
+          {
+            "protocol": "salamander",
+            "config": "Salamander"
+          },
+          {
+            "protocol": "sudoku",
+            "config": "Sudoku"
+          },
+          {
+            "protocol": "xdns",
+            "config": "Xdns"
+          },
+          {
+            "protocol": "xicmp",
+            "config": "Xicmp"
+          }
+        ],
+        "infra/conf/xray.go:inboundConfigLoader": [
+          {
+            "protocol": "dokodemo-door",
+            "config": "DokodemoConfig"
+          },
+          {
+            "protocol": "http",
+            "config": "HTTPServerConfig"
+          },
+          {
+            "protocol": "hysteria",
+            "config": "HysteriaServerConfig"
+          },
+          {
+            "protocol": "mixed",
+            "config": "SocksServerConfig"
+          },
+          {
+            "protocol": "shadowsocks",
+            "config": "ShadowsocksServerConfig"
+          },
+          {
+            "protocol": "socks",
+            "config": "SocksServerConfig"
+          },
+          {
+            "protocol": "trojan",
+            "config": "TrojanServerConfig"
+          },
+          {
+            "protocol": "tun",
+            "config": "TunConfig"
+          },
+          {
+            "protocol": "tunnel",
+            "config": "DokodemoConfig"
+          },
+          {
+            "protocol": "vless",
+            "config": "VLessInboundConfig"
+          },
+          {
+            "protocol": "vmess",
+            "config": "VMessInboundConfig"
+          },
+          {
+            "protocol": "wireguard",
+            "config": "WireGuardConfig"
+          }
+        ],
+        "infra/conf/xray.go:outboundConfigLoader": [
+          {
+            "protocol": "blackhole",
+            "config": "BlackholeConfig"
+          },
+          {
+            "protocol": "block",
+            "config": "BlackholeConfig"
+          },
+          {
+            "protocol": "direct",
+            "config": "FreedomConfig"
+          },
+          {
+            "protocol": "dns",
+            "config": "DNSOutboundConfig"
+          },
+          {
+            "protocol": "freedom",
+            "config": "FreedomConfig"
+          },
+          {
+            "protocol": "http",
+            "config": "HTTPClientConfig"
+          },
+          {
+            "protocol": "hysteria",
+            "config": "HysteriaClientConfig"
+          },
+          {
+            "protocol": "loopback",
+            "config": "LoopbackConfig"
+          },
+          {
+            "protocol": "shadowsocks",
+            "config": "ShadowsocksClientConfig"
+          },
+          {
+            "protocol": "socks",
+            "config": "SocksClientConfig"
+          },
+          {
+            "protocol": "trojan",
+            "config": "TrojanClientConfig"
+          },
+          {
+            "protocol": "vless",
+            "config": "VLessOutboundConfig"
+          },
+          {
+            "protocol": "vmess",
+            "config": "VMessOutboundConfig"
+          },
+          {
+            "protocol": "wireguard",
+            "config": "WireGuardConfig"
+          }
+        ]
+      },
+      "structs": {
+        "APIConfig": [
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "Listen",
+            "type": "string",
+            "json": "listen"
+          },
+          {
+            "go": "Services",
+            "type": "[]string",
+            "json": "services"
+          }
+        ],
+        "Authenticator": [
+          {
+            "go": "Request",
+            "type": "AuthenticatorRequest",
+            "json": "request"
+          },
+          {
+            "go": "Response",
+            "type": "AuthenticatorResponse",
+            "json": "response"
+          }
+        ],
+        "AuthenticatorRequest": [
+          {
+            "go": "Version",
+            "type": "string",
+            "json": "version"
+          },
+          {
+            "go": "Method",
+            "type": "string",
+            "json": "method"
+          },
+          {
+            "go": "Path",
+            "type": "StringList",
+            "json": "path"
+          },
+          {
+            "go": "Headers",
+            "type": "map[string]*StringList",
+            "json": "headers"
+          }
+        ],
+        "AuthenticatorResponse": [
+          {
+            "go": "Version",
+            "type": "string",
+            "json": "version"
+          },
+          {
+            "go": "Status",
+            "type": "string",
+            "json": "status"
+          },
+          {
+            "go": "Reason",
+            "type": "string",
+            "json": "reason"
+          },
+          {
+            "go": "Headers",
+            "type": "map[string]*StringList",
+            "json": "headers"
+          }
+        ],
+        "BalancingRule": [
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "Selectors",
+            "type": "StringList",
+            "json": "selector"
+          },
+          {
+            "go": "Strategy",
+            "type": "StrategyConfig",
+            "json": "strategy"
+          },
+          {
+            "go": "FallbackTag",
+            "type": "string",
+            "json": "fallbackTag"
+          }
+        ],
+        "BlackholeConfig": [
+          {
+            "go": "Response",
+            "type": "json.RawMessage",
+            "json": "response"
+          }
+        ],
+        "BridgeConfig": [
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "Domain",
+            "type": "string",
+            "json": "domain"
+          }
+        ],
+        "BurstObservatoryConfig": [
+          {
+            "go": "SubjectSelector",
+            "type": "[]string",
+            "json": "subjectSelector"
+          },
+          {
+            "go": "HealthCheck",
+            "type": "*healthCheckSettings",
+            "json": "pingConfig"
+          }
+        ],
+        "Config": [
+          {
+            "go": "Transport",
+            "type": "map[string]json.RawMessage",
+            "json": "transport"
+          },
+          {
+            "go": "LogConfig",
+            "type": "*LogConfig",
+            "json": "log"
+          },
+          {
+            "go": "RouterConfig",
+            "type": "*RouterConfig",
+            "json": "routing"
+          },
+          {
+            "go": "DNSConfig",
+            "type": "*DNSConfig",
+            "json": "dns"
+          },
+          {
+            "go": "InboundConfigs",
+            "type": "[]InboundDetourConfig",
+            "json": "inbounds"
+          },
+          {
+            "go": "OutboundConfigs",
+            "type": "[]OutboundDetourConfig",
+            "json": "outbounds"
+          },
+          {
+            "go": "Policy",
+            "type": "*PolicyConfig",
+            "json": "policy"
+          },
+          {
+            "go": "API",
+            "type": "*APIConfig",
+            "json": "api"
+          },
+          {
+            "go": "Metrics",
+            "type": "*MetricsConfig",
+            "json": "metrics"
+          },
+          {
+            "go": "Stats",
+            "type": "*StatsConfig",
+            "json": "stats"
+          },
+          {
+            "go": "Reverse",
+            "type": "*ReverseConfig",
+            "json": "reverse"
+          },
+          {
+            "go": "FakeDNS",
+            "type": "*FakeDNSConfig",
+            "json": "fakeDns"
+          },
+          {
+            "go": "Observatory",
+            "type": "*ObservatoryConfig",
+            "json": "observatory"
+          },
+          {
+            "go": "BurstObservatory",
+            "type": "*BurstObservatoryConfig",
+            "json": "burstObservatory"
+          },
+          {
+            "go": "Version",
+            "type": "*VersionConfig",
+            "json": "version"
+          },
+          {
+            "go": "Geodata",
+            "type": "*GeodataConfig",
+            "json": "geodata"
+          }
+        ],
+        "CustomSockoptConfig": [
+          {
+            "go": "Syetem",
+            "type": "string",
+            "json": "system"
+          },
+          {
+            "go": "Network",
+            "type": "string",
+            "json": "network"
+          },
+          {
+            "go": "Level",
+            "type": "string",
+            "json": "level"
+          },
+          {
+            "go": "Opt",
+            "type": "string",
+            "json": "opt"
+          },
+          {
+            "go": "Value",
+            "type": "string",
+            "json": "value"
+          },
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          }
+        ],
+        "CustomTransform": [
+          {
+            "go": "Op",
+            "type": "string",
+            "json": "op"
+          },
+          {
+            "go": "Args",
+            "type": "[]CustomTransformArg",
+            "json": "args"
+          }
+        ],
+        "CustomTransformArg": [
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Bytes",
+            "type": "json.RawMessage",
+            "json": "bytes"
+          },
+          {
+            "go": "U64",
+            "type": "*uint64",
+            "json": "u64"
+          },
+          {
+            "go": "Reuse",
+            "type": "string",
+            "json": "reuse"
+          },
+          {
+            "go": "Metadata",
+            "type": "string",
+            "json": "metadata"
+          },
+          {
+            "go": "Transform",
+            "type": "*CustomTransform",
+            "json": "transform"
+          }
+        ],
+        "DNSConfig": [
+          {
+            "go": "Servers",
+            "type": "[]*NameServerConfig",
+            "json": "servers"
+          },
+          {
+            "go": "Hosts",
+            "type": "*HostsWrapper",
+            "json": "hosts"
+          },
+          {
+            "go": "ClientIP",
+            "type": "*Address",
+            "json": "clientIp"
+          },
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "QueryStrategy",
+            "type": "string",
+            "json": "queryStrategy"
+          },
+          {
+            "go": "DisableCache",
+            "type": "bool",
+            "json": "disableCache"
+          },
+          {
+            "go": "ServeStale",
+            "type": "bool",
+            "json": "serveStale"
+          },
+          {
+            "go": "ServeExpiredTTL",
+            "type": "uint32",
+            "json": "serveExpiredTTL"
+          },
+          {
+            "go": "DisableFallback",
+            "type": "bool",
+            "json": "disableFallback"
+          },
+          {
+            "go": "DisableFallbackIfMatch",
+            "type": "bool",
+            "json": "disableFallbackIfMatch"
+          },
+          {
+            "go": "EnableParallelQuery",
+            "type": "bool",
+            "json": "enableParallelQuery"
+          },
+          {
+            "go": "UseSystemHosts",
+            "type": "bool",
+            "json": "useSystemHosts"
+          }
+        ],
+        "DNSOutboundConfig": [
+          {
+            "go": "RewriteNetwork",
+            "type": "Network",
+            "json": "rewriteNetwork"
+          },
+          {
+            "go": "RewriteAddress",
+            "type": "*Address",
+            "json": "rewriteAddress"
+          },
+          {
+            "go": "RewritePort",
+            "type": "uint16",
+            "json": "rewritePort"
+          },
+          {
+            "go": "Network",
+            "type": "Network",
+            "json": "network"
+          },
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "UserLevel",
+            "type": "uint32",
+            "json": "userLevel"
+          },
+          {
+            "go": "Rules",
+            "type": "[]*DNSOutboundRuleConfig",
+            "json": "rules"
+          },
+          {
+            "go": "NonIPQuery",
+            "type": "*string",
+            "json": "nonIPQuery"
+          },
+          {
+            "go": "BlockTypes",
+            "type": "*[]int32",
+            "json": "blockTypes"
+          }
+        ],
+        "DNSOutboundRuleConfig": [
+          {
+            "go": "Action",
+            "type": "string",
+            "json": "action"
+          },
+          {
+            "go": "QType",
+            "type": "*PortList",
+            "json": "qType"
+          },
+          {
+            "go": "Domain",
+            "type": "*StringList",
+            "json": "domain"
+          },
+          {
+            "go": "RCode",
+            "type": "uint32",
+            "json": "rCode"
+          }
+        ],
+        "DokodemoConfig": [
+          {
+            "go": "AllowedNetwork",
+            "type": "*NetworkList",
+            "json": "allowedNetwork"
+          },
+          {
+            "go": "RewriteAddress",
+            "type": "*Address",
+            "json": "rewriteAddress"
+          },
+          {
+            "go": "RewritePort",
+            "type": "uint16",
+            "json": "rewritePort"
+          },
+          {
+            "go": "Network",
+            "type": "*NetworkList",
+            "json": "network"
+          },
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "PortMap",
+            "type": "map[string]string",
+            "json": "portMap"
+          },
+          {
+            "go": "FollowRedirect",
+            "type": "bool",
+            "json": "followRedirect"
+          },
+          {
+            "go": "UserLevel",
+            "type": "uint32",
+            "json": "userLevel"
+          }
+        ],
+        "FakeDNSPoolElementConfig": [
+          {
+            "go": "IPPool",
+            "type": "string",
+            "json": "ipPool"
+          },
+          {
+            "go": "LRUSize",
+            "type": "int64",
+            "json": "poolSize"
+          }
+        ],
+        "FakeDNSPostProcessingStage": [],
+        "FinalMask": [
+          {
+            "go": "Tcp",
+            "type": "[]Mask",
+            "json": "tcp"
+          },
+          {
+            "go": "Udp",
+            "type": "[]Mask",
+            "json": "udp"
+          },
+          {
+            "go": "QuicParams",
+            "type": "*QuicParamsConfig",
+            "json": "quicParams"
+          }
+        ],
+        "Fragment": [
+          {
+            "go": "Packets",
+            "type": "string",
+            "json": "packets"
+          },
+          {
+            "go": "Length",
+            "type": "*Int32Range",
+            "json": "length"
+          },
+          {
+            "go": "Interval",
+            "type": "*Int32Range",
+            "json": "interval"
+          },
+          {
+            "go": "MaxSplit",
+            "type": "*Int32Range",
+            "json": "maxSplit"
+          }
+        ],
+        "FragmentMask": [
+          {
+            "go": "Packets",
+            "type": "string",
+            "json": "packets"
+          },
+          {
+            "go": "Length",
+            "type": "Int32Range",
+            "json": "length"
+          },
+          {
+            "go": "Delay",
+            "type": "Int32Range",
+            "json": "delay"
+          },
+          {
+            "go": "Lengths",
+            "type": "[]Int32Range",
+            "json": "lengths"
+          },
+          {
+            "go": "Delays",
+            "type": "[]Int32Range",
+            "json": "delays"
+          },
+          {
+            "go": "MaxSplit",
+            "type": "Int32Range",
+            "json": "maxSplit"
+          }
+        ],
+        "FreedomConfig": [
+          {
+            "go": "TargetStrategy",
+            "type": "string",
+            "json": "targetStrategy"
+          },
+          {
+            "go": "DomainStrategy",
+            "type": "string",
+            "json": "domainStrategy"
+          },
+          {
+            "go": "Redirect",
+            "type": "string",
+            "json": "redirect"
+          },
+          {
+            "go": "UserLevel",
+            "type": "uint32",
+            "json": "userLevel"
+          },
+          {
+            "go": "Fragment",
+            "type": "*Fragment",
+            "json": "fragment"
+          },
+          {
+            "go": "Noise",
+            "type": "*Noise",
+            "json": "noise"
+          },
+          {
+            "go": "Noises",
+            "type": "[]*Noise",
+            "json": "noises"
+          },
+          {
+            "go": "ProxyProtocol",
+            "type": "uint32",
+            "json": "proxyProtocol"
+          },
+          {
+            "go": "IPsBlocked",
+            "type": "*StringList",
+            "json": "ipsBlocked"
+          },
+          {
+            "go": "FinalRules",
+            "type": "[]*FreedomFinalRuleConfig",
+            "json": "finalRules"
+          }
+        ],
+        "FreedomFinalRuleConfig": [
+          {
+            "go": "Action",
+            "type": "string",
+            "json": "action"
+          },
+          {
+            "go": "Network",
+            "type": "*NetworkList",
+            "json": "network"
+          },
+          {
+            "go": "Port",
+            "type": "*PortList",
+            "json": "port"
+          },
+          {
+            "go": "IP",
+            "type": "*StringList",
+            "json": "ip"
+          },
+          {
+            "go": "BlockDelay",
+            "type": "*Int32Range",
+            "json": "blockDelay"
+          }
+        ],
+        "GeodataAssetConfig": [
+          {
+            "go": "URL",
+            "type": "string",
+            "json": "url"
+          },
+          {
+            "go": "File",
+            "type": "string",
+            "json": "file"
+          }
+        ],
+        "GeodataConfig": [
+          {
+            "go": "Cron",
+            "type": "*string",
+            "json": "cron"
+          },
+          {
+            "go": "Outbound",
+            "type": "string",
+            "json": "outbound"
+          },
+          {
+            "go": "Assets",
+            "type": "[]*GeodataAssetConfig",
+            "json": "assets"
+          }
+        ],
+        "GRPCConfig": [
+          {
+            "go": "Authority",
+            "type": "string",
+            "json": "authority"
+          },
+          {
+            "go": "ServiceName",
+            "type": "string",
+            "json": "serviceName"
+          },
+          {
+            "go": "MultiMode",
+            "type": "bool",
+            "json": "multiMode"
+          },
+          {
+            "go": "IdleTimeout",
+            "type": "int32",
+            "json": "idle_timeout"
+          },
+          {
+            "go": "HealthCheckTimeout",
+            "type": "int32",
+            "json": "health_check_timeout"
+          },
+          {
+            "go": "PermitWithoutStream",
+            "type": "bool",
+            "json": "permit_without_stream"
+          },
+          {
+            "go": "InitialWindowsSize",
+            "type": "int32",
+            "json": "initial_windows_size"
+          },
+          {
+            "go": "UserAgent",
+            "type": "string",
+            "json": "user_agent"
+          }
+        ],
+        "HappyEyeballsConfig": [
+          {
+            "go": "PrioritizeIPv6",
+            "type": "bool",
+            "json": "prioritizeIPv6"
+          },
+          {
+            "go": "TryDelayMs",
+            "type": "uint64",
+            "json": "tryDelayMs"
+          },
+          {
+            "go": "Interleave",
+            "type": "uint32",
+            "json": "interleave"
+          },
+          {
+            "go": "MaxConcurrentTry",
+            "type": "uint32",
+            "json": "maxConcurrentTry"
+          }
+        ],
+        "HeaderCustomTCP": [
+          {
+            "go": "Clients",
+            "type": "[][]TCPItem",
+            "json": "clients"
+          },
+          {
+            "go": "Servers",
+            "type": "[][]TCPItem",
+            "json": "servers"
+          },
+          {
+            "go": "Errors",
+            "type": "[][]TCPItem",
+            "json": "errors"
+          }
+        ],
+        "HeaderCustomUDP": [
+          {
+            "go": "Mode",
+            "type": "string",
+            "json": "mode"
+          },
+          {
+            "go": "Client",
+            "type": "[]UDPItem",
+            "json": "client"
+          },
+          {
+            "go": "Server",
+            "type": "[]UDPItem",
+            "json": "server"
+          }
+        ],
+        "healthCheckSettings": [
+          {
+            "go": "Destination",
+            "type": "string",
+            "json": "destination"
+          },
+          {
+            "go": "Connectivity",
+            "type": "string",
+            "json": "connectivity"
+          },
+          {
+            "go": "Interval",
+            "type": "duration.Duration",
+            "json": "interval"
+          },
+          {
+            "go": "SamplingCount",
+            "type": "int",
+            "json": "sampling"
+          },
+          {
+            "go": "Timeout",
+            "type": "duration.Duration",
+            "json": "timeout"
+          },
+          {
+            "go": "HttpMethod",
+            "type": "string",
+            "json": "httpMethod"
+          }
+        ],
+        "HTTPAccount": [
+          {
+            "go": "Username",
+            "type": "string",
+            "json": "user"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "pass"
+          }
+        ],
+        "HTTPClientConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Level",
+            "type": "uint32",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Username",
+            "type": "string",
+            "json": "user"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "pass"
+          },
+          {
+            "go": "Servers",
+            "type": "[]*HTTPRemoteConfig",
+            "json": "servers"
+          },
+          {
+            "go": "Headers",
+            "type": "map[string]string",
+            "json": "headers"
+          }
+        ],
+        "HTTPRemoteConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Users",
+            "type": "[]json.RawMessage",
+            "json": "users"
+          }
+        ],
+        "HTTPResponse": [],
+        "HTTPServerConfig": [
+          {
+            "go": "Users",
+            "type": "[]*HTTPAccount",
+            "json": "users"
+          },
+          {
+            "go": "Accounts",
+            "type": "[]*HTTPAccount",
+            "json": "accounts"
+          },
+          {
+            "go": "Transparent",
+            "type": "bool",
+            "json": "allowTransparent"
+          },
+          {
+            "go": "UserLevel",
+            "type": "uint32",
+            "json": "userLevel"
+          }
+        ],
+        "HttpUpgradeConfig": [
+          {
+            "go": "Host",
+            "type": "string",
+            "json": "host"
+          },
+          {
+            "go": "Path",
+            "type": "string",
+            "json": "path"
+          },
+          {
+            "go": "Headers",
+            "type": "map[string]string",
+            "json": "headers"
+          },
+          {
+            "go": "AcceptProxyProtocol",
+            "type": "bool",
+            "json": "acceptProxyProtocol"
+          }
+        ],
+        "HysteriaClientConfig": [
+          {
+            "go": "Version",
+            "type": "int32",
+            "json": "version"
+          },
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          }
+        ],
+        "HysteriaConfig": [
+          {
+            "go": "Version",
+            "type": "int32",
+            "json": "version"
+          },
+          {
+            "go": "Auth",
+            "type": "string",
+            "json": "auth"
+          },
+          {
+            "go": "Congestion",
+            "type": "*string",
+            "json": "congestion"
+          },
+          {
+            "go": "Up",
+            "type": "*Bandwidth",
+            "json": "up"
+          },
+          {
+            "go": "Down",
+            "type": "*Bandwidth",
+            "json": "down"
+          },
+          {
+            "go": "UdpHop",
+            "type": "*UdpHop",
+            "json": "udphop"
+          },
+          {
+            "go": "UdpIdleTimeout",
+            "type": "int64",
+            "json": "udpIdleTimeout"
+          },
+          {
+            "go": "Masquerade",
+            "type": "Masquerade",
+            "json": "masquerade"
+          }
+        ],
+        "HysteriaServerConfig": [
+          {
+            "go": "Version",
+            "type": "int32",
+            "json": "version"
+          },
+          {
+            "go": "Users",
+            "type": "[]*HysteriaUserConfig",
+            "json": "users"
+          },
+          {
+            "go": "Clients",
+            "type": "[]*HysteriaUserConfig",
+            "json": "clients"
+          }
+        ],
+        "HysteriaUserConfig": [
+          {
+            "go": "Auth",
+            "type": "string",
+            "json": "auth"
+          },
+          {
+            "go": "Level",
+            "type": "uint32",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          }
+        ],
+        "InboundDetourConfig": [
+          {
+            "go": "Protocol",
+            "type": "string",
+            "json": "protocol"
+          },
+          {
+            "go": "PortList",
+            "type": "*PortList",
+            "json": "port"
+          },
+          {
+            "go": "ListenOn",
+            "type": "*Address",
+            "json": "listen"
+          },
+          {
+            "go": "Settings",
+            "type": "*json.RawMessage",
+            "json": "settings"
+          },
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "StreamSetting",
+            "type": "*StreamConfig",
+            "json": "streamSettings"
+          },
+          {
+            "go": "SniffingConfig",
+            "type": "*SniffingConfig",
+            "json": "sniffing"
+          }
+        ],
+        "KCPConfig": [
+          {
+            "go": "Mtu",
+            "type": "*uint32",
+            "json": "mtu"
+          },
+          {
+            "go": "Tti",
+            "type": "*uint32",
+            "json": "tti"
+          },
+          {
+            "go": "UpCap",
+            "type": "*uint32",
+            "json": "uplinkCapacity"
+          },
+          {
+            "go": "DownCap",
+            "type": "*uint32",
+            "json": "downlinkCapacity"
+          },
+          {
+            "go": "CwndMultiplier",
+            "type": "*uint32",
+            "json": "cwndMultiplier"
+          },
+          {
+            "go": "MaxSendingWindow",
+            "type": "*uint32",
+            "json": "maxSendingWindow"
+          },
+          {
+            "go": "HeaderConfig",
+            "type": "json.RawMessage",
+            "json": "header"
+          },
+          {
+            "go": "Seed",
+            "type": "*string",
+            "json": "seed"
+          }
+        ],
+        "LogConfig": [
+          {
+            "go": "AccessLog",
+            "type": "string",
+            "json": "access"
+          },
+          {
+            "go": "ErrorLog",
+            "type": "string",
+            "json": "error"
+          },
+          {
+            "go": "LogLevel",
+            "type": "string",
+            "json": "loglevel"
+          },
+          {
+            "go": "DNSLog",
+            "type": "bool",
+            "json": "dnsLog"
+          },
+          {
+            "go": "MaskAddress",
+            "type": "string",
+            "json": "maskAddress"
+          }
+        ],
+        "LoopbackConfig": [
+          {
+            "go": "InboundTag",
+            "type": "string",
+            "json": "inboundTag"
+          },
+          {
+            "go": "Sniffing",
+            "type": "*SniffingConfig",
+            "json": "sniffing"
+          }
+        ],
+        "Mask": [
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Settings",
+            "type": "*json.RawMessage",
+            "json": "settings"
+          }
+        ],
+        "Masquerade": [
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Dir",
+            "type": "string",
+            "json": "dir"
+          },
+          {
+            "go": "Url",
+            "type": "string",
+            "json": "url"
+          },
+          {
+            "go": "RewriteHost",
+            "type": "bool",
+            "json": "rewriteHost"
+          },
+          {
+            "go": "Insecure",
+            "type": "bool",
+            "json": "insecure"
+          },
+          {
+            "go": "Content",
+            "type": "string",
+            "json": "content"
+          },
+          {
+            "go": "Headers",
+            "type": "map[string]string",
+            "json": "headers"
+          },
+          {
+            "go": "StatusCode",
+            "type": "int32",
+            "json": "statusCode"
+          }
+        ],
+        "MetricsConfig": [
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "Listen",
+            "type": "string",
+            "json": "listen"
+          }
+        ],
+        "MkcpLegacy": [
+          {
+            "go": "Header",
+            "type": "string",
+            "json": "header"
+          },
+          {
+            "go": "Value",
+            "type": "string",
+            "json": "value"
+          }
+        ],
+        "MuxConfig": [
+          {
+            "go": "Enabled",
+            "type": "bool",
+            "json": "enabled"
+          },
+          {
+            "go": "Concurrency",
+            "type": "int16",
+            "json": "concurrency"
+          },
+          {
+            "go": "XudpConcurrency",
+            "type": "int16",
+            "json": "xudpConcurrency"
+          },
+          {
+            "go": "XudpProxyUDP443",
+            "type": "string",
+            "json": "xudpProxyUDP443"
+          }
+        ],
+        "NameServerConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "ClientIP",
+            "type": "*Address",
+            "json": "clientIp"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "SkipFallback",
+            "type": "bool",
+            "json": "skipFallback"
+          },
+          {
+            "go": "Domains",
+            "type": "StringList",
+            "json": "domains"
+          },
+          {
+            "go": "ExpectedIPs",
+            "type": "StringList",
+            "json": "expectedIPs"
+          },
+          {
+            "go": "ExpectIPs",
+            "type": "StringList",
+            "json": "expectIPs"
+          },
+          {
+            "go": "QueryStrategy",
+            "type": "string",
+            "json": "queryStrategy"
+          },
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "TimeoutMs",
+            "type": "uint64",
+            "json": "timeoutMs"
+          },
+          {
+            "go": "DisableCache",
+            "type": "*bool",
+            "json": "disableCache"
+          },
+          {
+            "go": "ServeStale",
+            "type": "*bool",
+            "json": "serveStale"
+          },
+          {
+            "go": "ServeExpiredTTL",
+            "type": "*uint32",
+            "json": "serveExpiredTTL"
+          },
+          {
+            "go": "FinalQuery",
+            "type": "bool",
+            "json": "finalQuery"
+          },
+          {
+            "go": "UnexpectedIPs",
+            "type": "StringList",
+            "json": "unexpectedIPs"
+          }
+        ],
+        "Noise": [
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Packet",
+            "type": "string",
+            "json": "packet"
+          },
+          {
+            "go": "Delay",
+            "type": "*Int32Range",
+            "json": "delay"
+          },
+          {
+            "go": "ApplyTo",
+            "type": "string",
+            "json": "applyTo"
+          }
+        ],
+        "NoiseItem": [
+          {
+            "go": "Rand",
+            "type": "Int32Range",
+            "json": "rand"
+          },
+          {
+            "go": "RandRange",
+            "type": "*Int32Range",
+            "json": "randRange"
+          },
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Packet",
+            "type": "json.RawMessage",
+            "json": "packet"
+          },
+          {
+            "go": "Delay",
+            "type": "Int32Range",
+            "json": "delay"
+          }
+        ],
+        "NoiseMask": [
+          {
+            "go": "Reset",
+            "type": "Int32Range",
+            "json": "reset"
+          },
+          {
+            "go": "Noise",
+            "type": "[]NoiseItem",
+            "json": "noise"
+          }
+        ],
+        "NoneResponse": [],
+        "NoOpConnectionAuthenticator": [],
+        "ObservatoryConfig": [
+          {
+            "go": "SubjectSelector",
+            "type": "[]string",
+            "json": "subjectSelector"
+          },
+          {
+            "go": "ProbeURL",
+            "type": "string",
+            "json": "probeURL"
+          },
+          {
+            "go": "ProbeInterval",
+            "type": "duration.Duration",
+            "json": "probeInterval"
+          },
+          {
+            "go": "EnableConcurrency",
+            "type": "bool",
+            "json": "enableConcurrency"
+          }
+        ],
+        "OutboundDetourConfig": [
+          {
+            "go": "Protocol",
+            "type": "string",
+            "json": "protocol"
+          },
+          {
+            "go": "SendThrough",
+            "type": "*string",
+            "json": "sendThrough"
+          },
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "Settings",
+            "type": "*json.RawMessage",
+            "json": "settings"
+          },
+          {
+            "go": "StreamSetting",
+            "type": "*StreamConfig",
+            "json": "streamSettings"
+          },
+          {
+            "go": "ProxySettings",
+            "type": "*ProxyConfig",
+            "json": "proxySettings"
+          },
+          {
+            "go": "MuxSettings",
+            "type": "*MuxConfig",
+            "json": "mux"
+          },
+          {
+            "go": "TargetStrategy",
+            "type": "string",
+            "json": "targetStrategy"
+          }
+        ],
+        "Policy": [
+          {
+            "go": "Handshake",
+            "type": "*uint32",
+            "json": "handshake"
+          },
+          {
+            "go": "ConnectionIdle",
+            "type": "*uint32",
+            "json": "connIdle"
+          },
+          {
+            "go": "UplinkOnly",
+            "type": "*uint32",
+            "json": "uplinkOnly"
+          },
+          {
+            "go": "DownlinkOnly",
+            "type": "*uint32",
+            "json": "downlinkOnly"
+          },
+          {
+            "go": "StatsUserUplink",
+            "type": "bool",
+            "json": "statsUserUplink"
+          },
+          {
+            "go": "StatsUserDownlink",
+            "type": "bool",
+            "json": "statsUserDownlink"
+          },
+          {
+            "go": "StatsUserOnline",
+            "type": "bool",
+            "json": "statsUserOnline"
+          },
+          {
+            "go": "BufferSize",
+            "type": "*int32",
+            "json": "bufferSize"
+          }
+        ],
+        "PolicyConfig": [
+          {
+            "go": "Levels",
+            "type": "map[uint32]*Policy",
+            "json": "levels"
+          },
+          {
+            "go": "System",
+            "type": "*SystemPolicy",
+            "json": "system"
+          }
+        ],
+        "PortalConfig": [
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "Domain",
+            "type": "string",
+            "json": "domain"
+          }
+        ],
+        "ProxyConfig": [
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "TransportLayerProxy",
+            "type": "bool",
+            "json": "transportLayer"
+          }
+        ],
+        "QuicParamsConfig": [
+          {
+            "go": "Congestion",
+            "type": "string",
+            "json": "congestion"
+          },
+          {
+            "go": "Debug",
+            "type": "bool",
+            "json": "debug"
+          },
+          {
+            "go": "BbrProfile",
+            "type": "string",
+            "json": "bbrProfile"
+          },
+          {
+            "go": "BrutalUp",
+            "type": "Bandwidth",
+            "json": "brutalUp"
+          },
+          {
+            "go": "BrutalDown",
+            "type": "Bandwidth",
+            "json": "brutalDown"
+          },
+          {
+            "go": "UdpHop",
+            "type": "UdpHop",
+            "json": "udpHop"
+          },
+          {
+            "go": "InitStreamReceiveWindow",
+            "type": "uint64",
+            "json": "initStreamReceiveWindow"
+          },
+          {
+            "go": "MaxStreamReceiveWindow",
+            "type": "uint64",
+            "json": "maxStreamReceiveWindow"
+          },
+          {
+            "go": "InitConnectionReceiveWindow",
+            "type": "uint64",
+            "json": "initConnectionReceiveWindow"
+          },
+          {
+            "go": "MaxConnectionReceiveWindow",
+            "type": "uint64",
+            "json": "maxConnectionReceiveWindow"
+          },
+          {
+            "go": "MaxIdleTimeout",
+            "type": "int64",
+            "json": "maxIdleTimeout"
+          },
+          {
+            "go": "KeepAlivePeriod",
+            "type": "int64",
+            "json": "keepAlivePeriod"
+          },
+          {
+            "go": "DisablePathMTUDiscovery",
+            "type": "bool",
+            "json": "disablePathMTUDiscovery"
+          },
+          {
+            "go": "MaxIncomingStreams",
+            "type": "int64",
+            "json": "maxIncomingStreams"
+          }
+        ],
+        "RawFieldRule": [
+          {
+            "go": "Domain",
+            "type": "*StringList",
+            "json": "domain"
+          },
+          {
+            "go": "Domains",
+            "type": "*StringList",
+            "json": "domains"
+          },
+          {
+            "go": "IP",
+            "type": "*StringList",
+            "json": "ip"
+          },
+          {
+            "go": "Port",
+            "type": "*PortList",
+            "json": "port"
+          },
+          {
+            "go": "Network",
+            "type": "*NetworkList",
+            "json": "network"
+          },
+          {
+            "go": "SourceIP",
+            "type": "*StringList",
+            "json": "sourceIP"
+          },
+          {
+            "go": "Source",
+            "type": "*StringList",
+            "json": "source"
+          },
+          {
+            "go": "SourcePort",
+            "type": "*PortList",
+            "json": "sourcePort"
+          },
+          {
+            "go": "User",
+            "type": "*StringList",
+            "json": "user"
+          },
+          {
+            "go": "VlessRoute",
+            "type": "*PortList",
+            "json": "vlessRoute"
+          },
+          {
+            "go": "InboundTag",
+            "type": "*StringList",
+            "json": "inboundTag"
+          },
+          {
+            "go": "Protocols",
+            "type": "*StringList",
+            "json": "protocol"
+          },
+          {
+            "go": "Attributes",
+            "type": "map[string]string",
+            "json": "attrs"
+          },
+          {
+            "go": "LocalIP",
+            "type": "*StringList",
+            "json": "localIP"
+          },
+          {
+            "go": "LocalPort",
+            "type": "*PortList",
+            "json": "localPort"
+          },
+          {
+            "go": "Process",
+            "type": "*StringList",
+            "json": "process"
+          },
+          {
+            "go": "Webhook",
+            "type": "*WebhookRuleConfig",
+            "json": "webhook"
+          }
+        ],
+        "REALITYConfig": [
+          {
+            "go": "MasterKeyLog",
+            "type": "string",
+            "json": "masterKeyLog"
+          },
+          {
+            "go": "Show",
+            "type": "bool",
+            "json": "show"
+          },
+          {
+            "go": "Target",
+            "type": "json.RawMessage",
+            "json": "target"
+          },
+          {
+            "go": "Dest",
+            "type": "json.RawMessage",
+            "json": "dest"
+          },
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Xver",
+            "type": "uint64",
+            "json": "xver"
+          },
+          {
+            "go": "ServerNames",
+            "type": "[]string",
+            "json": "serverNames"
+          },
+          {
+            "go": "PrivateKey",
+            "type": "string",
+            "json": "privateKey"
+          },
+          {
+            "go": "MinClientVer",
+            "type": "string",
+            "json": "minClientVer"
+          },
+          {
+            "go": "MaxClientVer",
+            "type": "string",
+            "json": "maxClientVer"
+          },
+          {
+            "go": "MaxTimeDiff",
+            "type": "uint64",
+            "json": "maxTimeDiff"
+          },
+          {
+            "go": "ShortIds",
+            "type": "[]string",
+            "json": "shortIds"
+          },
+          {
+            "go": "Mldsa65Seed",
+            "type": "string",
+            "json": "mldsa65Seed"
+          },
+          {
+            "go": "LimitFallbackUpload",
+            "type": "LimitFallback",
+            "json": "limitFallbackUpload"
+          },
+          {
+            "go": "LimitFallbackDownload",
+            "type": "LimitFallback",
+            "json": "limitFallbackDownload"
+          },
+          {
+            "go": "Fingerprint",
+            "type": "string",
+            "json": "fingerprint"
+          },
+          {
+            "go": "ServerName",
+            "type": "string",
+            "json": "serverName"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          },
+          {
+            "go": "PublicKey",
+            "type": "string",
+            "json": "publicKey"
+          },
+          {
+            "go": "ShortId",
+            "type": "string",
+            "json": "shortId"
+          },
+          {
+            "go": "Mldsa65Verify",
+            "type": "string",
+            "json": "mldsa65Verify"
+          },
+          {
+            "go": "SpiderX",
+            "type": "string",
+            "json": "spiderX"
+          }
+        ],
+        "Realm": [
+          {
+            "go": "Url",
+            "type": "string",
+            "json": "url"
+          },
+          {
+            "go": "StunServers",
+            "type": "[]string",
+            "json": "stunServers"
+          },
+          {
+            "go": "TlsConfig",
+            "type": "*TLSConfig",
+            "json": "tlsConfig"
+          }
+        ],
+        "ReverseConfig": [
+          {
+            "go": "Bridges",
+            "type": "[]BridgeConfig",
+            "json": "bridges"
+          },
+          {
+            "go": "Portals",
+            "type": "[]PortalConfig",
+            "json": "portals"
+          }
+        ],
+        "RouterConfig": [
+          {
+            "go": "RuleList",
+            "type": "[]json.RawMessage",
+            "json": "rules"
+          },
+          {
+            "go": "DomainStrategy",
+            "type": "*string",
+            "json": "domainStrategy"
+          },
+          {
+            "go": "Balancers",
+            "type": "[]*BalancingRule",
+            "json": "balancers"
+          }
+        ],
+        "RouterRule": [
+          {
+            "go": "RuleTag",
+            "type": "string",
+            "json": "ruleTag"
+          },
+          {
+            "go": "OutboundTag",
+            "type": "string",
+            "json": "outboundTag"
+          },
+          {
+            "go": "BalancerTag",
+            "type": "string",
+            "json": "balancerTag"
+          }
+        ],
+        "Salamander": [
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          },
+          {
+            "go": "PacketSize",
+            "type": "Int32Range",
+            "json": "packetSize"
+          }
+        ],
+        "ShadowsocksClientConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Level",
+            "type": "byte",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Cipher",
+            "type": "string",
+            "json": "method"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          },
+          {
+            "go": "Servers",
+            "type": "[]*ShadowsocksServerTarget",
+            "json": "servers"
+          }
+        ],
+        "ShadowsocksServerConfig": [
+          {
+            "go": "Cipher",
+            "type": "string",
+            "json": "method"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          },
+          {
+            "go": "Level",
+            "type": "byte",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Users",
+            "type": "[]*ShadowsocksUserConfig",
+            "json": "users"
+          },
+          {
+            "go": "Clients",
+            "type": "[]*ShadowsocksUserConfig",
+            "json": "clients"
+          },
+          {
+            "go": "NetworkList",
+            "type": "*NetworkList",
+            "json": "network"
+          }
+        ],
+        "ShadowsocksServerTarget": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Level",
+            "type": "byte",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Cipher",
+            "type": "string",
+            "json": "method"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          }
+        ],
+        "ShadowsocksUserConfig": [
+          {
+            "go": "Cipher",
+            "type": "string",
+            "json": "method"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          },
+          {
+            "go": "Level",
+            "type": "byte",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          }
+        ],
+        "SniffingConfig": [
+          {
+            "go": "Enabled",
+            "type": "bool",
+            "json": "enabled"
+          },
+          {
+            "go": "DestOverride",
+            "type": "StringList",
+            "json": "destOverride"
+          },
+          {
+            "go": "DomainsExcluded",
+            "type": "StringList",
+            "json": "domainsExcluded"
+          },
+          {
+            "go": "IPsExcluded",
+            "type": "StringList",
+            "json": "ipsExcluded"
+          },
+          {
+            "go": "MetadataOnly",
+            "type": "bool",
+            "json": "metadataOnly"
+          },
+          {
+            "go": "RouteOnly",
+            "type": "bool",
+            "json": "routeOnly"
+          }
+        ],
+        "SocketConfig": [
+          {
+            "go": "Mark",
+            "type": "int32",
+            "json": "mark"
+          },
+          {
+            "go": "TFO",
+            "type": "interface{}",
+            "json": "tcpFastOpen"
+          },
+          {
+            "go": "TProxy",
+            "type": "string",
+            "json": "tproxy"
+          },
+          {
+            "go": "AcceptProxyProtocol",
+            "type": "bool",
+            "json": "acceptProxyProtocol"
+          },
+          {
+            "go": "DomainStrategy",
+            "type": "string",
+            "json": "domainStrategy"
+          },
+          {
+            "go": "DialerProxy",
+            "type": "string",
+            "json": "dialerProxy"
+          },
+          {
+            "go": "TCPKeepAliveInterval",
+            "type": "int32",
+            "json": "tcpKeepAliveInterval"
+          },
+          {
+            "go": "TCPKeepAliveIdle",
+            "type": "int32",
+            "json": "tcpKeepAliveIdle"
+          },
+          {
+            "go": "TCPCongestion",
+            "type": "string",
+            "json": "tcpCongestion"
+          },
+          {
+            "go": "TCPWindowClamp",
+            "type": "int32",
+            "json": "tcpWindowClamp"
+          },
+          {
+            "go": "TCPMaxSeg",
+            "type": "int32",
+            "json": "tcpMaxSeg"
+          },
+          {
+            "go": "Penetrate",
+            "type": "bool",
+            "json": "penetrate"
+          },
+          {
+            "go": "TCPUserTimeout",
+            "type": "int32",
+            "json": "tcpUserTimeout"
+          },
+          {
+            "go": "V6only",
+            "type": "bool",
+            "json": "v6only"
+          },
+          {
+            "go": "Interface",
+            "type": "string",
+            "json": "interface"
+          },
+          {
+            "go": "TcpMptcp",
+            "type": "bool",
+            "json": "tcpMptcp"
+          },
+          {
+            "go": "CustomSockopt",
+            "type": "[]*CustomSockoptConfig",
+            "json": "customSockopt"
+          },
+          {
+            "go": "AddressPortStrategy",
+            "type": "string",
+            "json": "addressPortStrategy"
+          },
+          {
+            "go": "HappyEyeballsSettings",
+            "type": "*HappyEyeballsConfig",
+            "json": "happyEyeballs"
+          },
+          {
+            "go": "TrustedXForwardedFor",
+            "type": "[]string",
+            "json": "trustedXForwardedFor"
+          }
+        ],
+        "SocksAccount": [
+          {
+            "go": "Username",
+            "type": "string",
+            "json": "user"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "pass"
+          }
+        ],
+        "SocksClientConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Level",
+            "type": "uint32",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Username",
+            "type": "string",
+            "json": "user"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "pass"
+          },
+          {
+            "go": "Servers",
+            "type": "[]*SocksRemoteConfig",
+            "json": "servers"
+          }
+        ],
+        "SocksRemoteConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Users",
+            "type": "[]json.RawMessage",
+            "json": "users"
+          }
+        ],
+        "SocksServerConfig": [
+          {
+            "go": "AuthMethod",
+            "type": "string",
+            "json": "auth"
+          },
+          {
+            "go": "Users",
+            "type": "[]*SocksAccount",
+            "json": "users"
+          },
+          {
+            "go": "Accounts",
+            "type": "[]*SocksAccount",
+            "json": "accounts"
+          },
+          {
+            "go": "UDP",
+            "type": "bool",
+            "json": "udp"
+          },
+          {
+            "go": "Host",
+            "type": "*Address",
+            "json": "ip"
+          },
+          {
+            "go": "UserLevel",
+            "type": "uint32",
+            "json": "userLevel"
+          }
+        ],
+        "SplitHTTPConfig": [
+          {
+            "go": "Host",
+            "type": "string",
+            "json": "host"
+          },
+          {
+            "go": "Path",
+            "type": "string",
+            "json": "path"
+          },
+          {
+            "go": "Mode",
+            "type": "string",
+            "json": "mode"
+          },
+          {
+            "go": "Headers",
+            "type": "map[string]string",
+            "json": "headers"
+          },
+          {
+            "go": "XPaddingBytes",
+            "type": "Int32Range",
+            "json": "xPaddingBytes"
+          },
+          {
+            "go": "XPaddingObfsMode",
+            "type": "bool",
+            "json": "xPaddingObfsMode"
+          },
+          {
+            "go": "XPaddingKey",
+            "type": "string",
+            "json": "xPaddingKey"
+          },
+          {
+            "go": "XPaddingHeader",
+            "type": "string",
+            "json": "xPaddingHeader"
+          },
+          {
+            "go": "XPaddingPlacement",
+            "type": "string",
+            "json": "xPaddingPlacement"
+          },
+          {
+            "go": "XPaddingMethod",
+            "type": "string",
+            "json": "xPaddingMethod"
+          },
+          {
+            "go": "UplinkHTTPMethod",
+            "type": "string",
+            "json": "uplinkHTTPMethod"
+          },
+          {
+            "go": "SessionIDPlacement",
+            "type": "string",
+            "json": "sessionIDPlacement"
+          },
+          {
+            "go": "SessionIDKey",
+            "type": "string",
+            "json": "sessionIDKey"
+          },
+          {
+            "go": "SessionIDTable",
+            "type": "string",
+            "json": "sessionIDTable"
+          },
+          {
+            "go": "SessionIDLength",
+            "type": "Int32Range",
+            "json": "sessionIDLength"
+          },
+          {
+            "go": "SeqPlacement",
+            "type": "string",
+            "json": "seqPlacement"
+          },
+          {
+            "go": "SeqKey",
+            "type": "string",
+            "json": "seqKey"
+          },
+          {
+            "go": "UplinkDataPlacement",
+            "type": "string",
+            "json": "uplinkDataPlacement"
+          },
+          {
+            "go": "UplinkDataKey",
+            "type": "string",
+            "json": "uplinkDataKey"
+          },
+          {
+            "go": "UplinkChunkSize",
+            "type": "Int32Range",
+            "json": "uplinkChunkSize"
+          },
+          {
+            "go": "NoGRPCHeader",
+            "type": "bool",
+            "json": "noGRPCHeader"
+          },
+          {
+            "go": "NoSSEHeader",
+            "type": "bool",
+            "json": "noSSEHeader"
+          },
+          {
+            "go": "ScMaxEachPostBytes",
+            "type": "Int32Range",
+            "json": "scMaxEachPostBytes"
+          },
+          {
+            "go": "ScMinPostsIntervalMs",
+            "type": "Int32Range",
+            "json": "scMinPostsIntervalMs"
+          },
+          {
+            "go": "ScMaxBufferedPosts",
+            "type": "int64",
+            "json": "scMaxBufferedPosts"
+          },
+          {
+            "go": "ScStreamUpServerSecs",
+            "type": "Int32Range",
+            "json": "scStreamUpServerSecs"
+          },
+          {
+            "go": "ServerMaxHeaderBytes",
+            "type": "int32",
+            "json": "serverMaxHeaderBytes"
+          },
+          {
+            "go": "Xmux",
+            "type": "XmuxConfig",
+            "json": "xmux"
+          },
+          {
+            "go": "DownloadSettings",
+            "type": "*StreamConfig",
+            "json": "downloadSettings"
+          },
+          {
+            "go": "Extra",
+            "type": "json.RawMessage",
+            "json": "extra"
+          }
+        ],
+        "StatsConfig": [],
+        "StrategyConfig": [
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Settings",
+            "type": "*json.RawMessage",
+            "json": "settings"
+          }
+        ],
+        "strategyEmptyConfig": [],
+        "strategyLeastLoadConfig": [
+          {
+            "go": "Costs",
+            "type": "[]*router.StrategyWeight",
+            "json": "costs"
+          },
+          {
+            "go": "Baselines",
+            "type": "[]duration.Duration",
+            "json": "baselines"
+          },
+          {
+            "go": "Expected",
+            "type": "int32",
+            "json": "expected"
+          },
+          {
+            "go": "MaxRTT",
+            "type": "duration.Duration",
+            "json": "maxRTT"
+          },
+          {
+            "go": "Tolerance",
+            "type": "float64",
+            "json": "tolerance"
+          }
+        ],
+        "StreamConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Network",
+            "type": "*TransportProtocol",
+            "json": "network"
+          },
+          {
+            "go": "Security",
+            "type": "string",
+            "json": "security"
+          },
+          {
+            "go": "FinalMask",
+            "type": "*FinalMask",
+            "json": "finalmask"
+          },
+          {
+            "go": "TLSSettings",
+            "type": "*TLSConfig",
+            "json": "tlsSettings"
+          },
+          {
+            "go": "REALITYSettings",
+            "type": "*REALITYConfig",
+            "json": "realitySettings"
+          },
+          {
+            "go": "RAWSettings",
+            "type": "*TCPConfig",
+            "json": "rawSettings"
+          },
+          {
+            "go": "TCPSettings",
+            "type": "*TCPConfig",
+            "json": "tcpSettings"
+          },
+          {
+            "go": "XHTTPSettings",
+            "type": "*SplitHTTPConfig",
+            "json": "xhttpSettings"
+          },
+          {
+            "go": "SplitHTTPSettings",
+            "type": "*SplitHTTPConfig",
+            "json": "splithttpSettings"
+          },
+          {
+            "go": "KCPSettings",
+            "type": "*KCPConfig",
+            "json": "kcpSettings"
+          },
+          {
+            "go": "GRPCSettings",
+            "type": "*GRPCConfig",
+            "json": "grpcSettings"
+          },
+          {
+            "go": "WSSettings",
+            "type": "*WebSocketConfig",
+            "json": "wsSettings"
+          },
+          {
+            "go": "HTTPUPGRADESettings",
+            "type": "*HttpUpgradeConfig",
+            "json": "httpupgradeSettings"
+          },
+          {
+            "go": "HysteriaSettings",
+            "type": "*HysteriaConfig",
+            "json": "hysteriaSettings"
+          },
+          {
+            "go": "SocketSettings",
+            "type": "*SocketConfig",
+            "json": "sockopt"
+          }
+        ],
+        "Sudoku": [
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          },
+          {
+            "go": "ASCII",
+            "type": "string",
+            "json": "ascii"
+          },
+          {
+            "go": "CustomTable",
+            "type": "string",
+            "json": "customTable"
+          },
+          {
+            "go": "LegacyCustomTable",
+            "type": "string",
+            "json": "custom_table"
+          },
+          {
+            "go": "CustomTables",
+            "type": "[]string",
+            "json": "customTables"
+          },
+          {
+            "go": "LegacyCustomSets",
+            "type": "[]string",
+            "json": "custom_tables"
+          },
+          {
+            "go": "PaddingMin",
+            "type": "uint32",
+            "json": "paddingMin"
+          },
+          {
+            "go": "LegacyPaddingMin",
+            "type": "uint32",
+            "json": "padding_min"
+          },
+          {
+            "go": "PaddingMax",
+            "type": "uint32",
+            "json": "paddingMax"
+          },
+          {
+            "go": "LegacyPaddingMax",
+            "type": "uint32",
+            "json": "padding_max"
+          }
+        ],
+        "SystemPolicy": [
+          {
+            "go": "StatsInboundUplink",
+            "type": "bool",
+            "json": "statsInboundUplink"
+          },
+          {
+            "go": "StatsInboundDownlink",
+            "type": "bool",
+            "json": "statsInboundDownlink"
+          },
+          {
+            "go": "StatsOutboundUplink",
+            "type": "bool",
+            "json": "statsOutboundUplink"
+          },
+          {
+            "go": "StatsOutboundDownlink",
+            "type": "bool",
+            "json": "statsOutboundDownlink"
+          }
+        ],
+        "TCPConfig": [
+          {
+            "go": "HeaderConfig",
+            "type": "json.RawMessage",
+            "json": "header"
+          },
+          {
+            "go": "AcceptProxyProtocol",
+            "type": "bool",
+            "json": "acceptProxyProtocol"
+          }
+        ],
+        "TCPItem": [
+          {
+            "go": "Delay",
+            "type": "Int32Range",
+            "json": "delay"
+          },
+          {
+            "go": "Rand",
+            "type": "int32",
+            "json": "rand"
+          },
+          {
+            "go": "RandRange",
+            "type": "*Int32Range",
+            "json": "randRange"
+          },
+          {
+            "go": "Capture",
+            "type": "string",
+            "json": "capture"
+          },
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Reuse",
+            "type": "string",
+            "json": "reuse"
+          },
+          {
+            "go": "Transform",
+            "type": "*CustomTransform",
+            "json": "transform"
+          },
+          {
+            "go": "Packet",
+            "type": "json.RawMessage",
+            "json": "packet"
+          }
+        ],
+        "TLSCertConfig": [
+          {
+            "go": "CertFile",
+            "type": "string",
+            "json": "certificateFile"
+          },
+          {
+            "go": "CertStr",
+            "type": "[]string",
+            "json": "certificate"
+          },
+          {
+            "go": "KeyFile",
+            "type": "string",
+            "json": "keyFile"
+          },
+          {
+            "go": "KeyStr",
+            "type": "[]string",
+            "json": "key"
+          },
+          {
+            "go": "Usage",
+            "type": "string",
+            "json": "usage"
+          },
+          {
+            "go": "OcspStapling",
+            "type": "uint64",
+            "json": "ocspStapling"
+          },
+          {
+            "go": "OneTimeLoading",
+            "type": "bool",
+            "json": "oneTimeLoading"
+          },
+          {
+            "go": "BuildChain",
+            "type": "bool",
+            "json": "buildChain"
+          }
+        ],
+        "TLSConfig": [
+          {
+            "go": "AllowInsecure",
+            "type": "bool",
+            "json": "allowInsecure"
+          },
+          {
+            "go": "Certs",
+            "type": "[]*TLSCertConfig",
+            "json": "certificates"
+          },
+          {
+            "go": "ServerName",
+            "type": "string",
+            "json": "serverName"
+          },
+          {
+            "go": "ALPN",
+            "type": "*StringList",
+            "json": "alpn"
+          },
+          {
+            "go": "EnableSessionResumption",
+            "type": "bool",
+            "json": "enableSessionResumption"
+          },
+          {
+            "go": "DisableSystemRoot",
+            "type": "bool",
+            "json": "disableSystemRoot"
+          },
+          {
+            "go": "MinVersion",
+            "type": "string",
+            "json": "minVersion"
+          },
+          {
+            "go": "MaxVersion",
+            "type": "string",
+            "json": "maxVersion"
+          },
+          {
+            "go": "CipherSuites",
+            "type": "string",
+            "json": "cipherSuites"
+          },
+          {
+            "go": "Fingerprint",
+            "type": "string",
+            "json": "fingerprint"
+          },
+          {
+            "go": "RejectUnknownSNI",
+            "type": "bool",
+            "json": "rejectUnknownSni"
+          },
+          {
+            "go": "CurvePreferences",
+            "type": "*StringList",
+            "json": "curvePreferences"
+          },
+          {
+            "go": "MasterKeyLog",
+            "type": "string",
+            "json": "masterKeyLog"
+          },
+          {
+            "go": "PinnedPeerCertSha256",
+            "type": "string",
+            "json": "pinnedPeerCertSha256"
+          },
+          {
+            "go": "VerifyPeerCertByName",
+            "type": "string",
+            "json": "verifyPeerCertByName"
+          },
+          {
+            "go": "ECHServerKeys",
+            "type": "string",
+            "json": "echServerKeys"
+          },
+          {
+            "go": "ECHConfigList",
+            "type": "string",
+            "json": "echConfigList"
+          },
+          {
+            "go": "ECHSocketSettings",
+            "type": "*SocketConfig",
+            "json": "echSockopt"
+          }
+        ],
+        "TrojanClientConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Level",
+            "type": "byte",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          },
+          {
+            "go": "Flow",
+            "type": "string",
+            "json": "flow"
+          },
+          {
+            "go": "Servers",
+            "type": "[]*TrojanServerTarget",
+            "json": "servers"
+          }
+        ],
+        "TrojanInboundFallback": [
+          {
+            "go": "Name",
+            "type": "string",
+            "json": "name"
+          },
+          {
+            "go": "Alpn",
+            "type": "string",
+            "json": "alpn"
+          },
+          {
+            "go": "Path",
+            "type": "string",
+            "json": "path"
+          },
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Dest",
+            "type": "json.RawMessage",
+            "json": "dest"
+          },
+          {
+            "go": "Xver",
+            "type": "uint64",
+            "json": "xver"
+          }
+        ],
+        "TrojanServerConfig": [
+          {
+            "go": "Users",
+            "type": "[]*TrojanUserConfig",
+            "json": "users"
+          },
+          {
+            "go": "Clients",
+            "type": "[]*TrojanUserConfig",
+            "json": "clients"
+          },
+          {
+            "go": "Fallbacks",
+            "type": "[]*TrojanInboundFallback",
+            "json": "fallbacks"
+          }
+        ],
+        "TrojanServerTarget": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Level",
+            "type": "byte",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          },
+          {
+            "go": "Flow",
+            "type": "string",
+            "json": "flow"
+          }
+        ],
+        "TrojanUserConfig": [
+          {
+            "go": "Password",
+            "type": "string",
+            "json": "password"
+          },
+          {
+            "go": "Level",
+            "type": "byte",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Flow",
+            "type": "string",
+            "json": "flow"
+          }
+        ],
+        "TunConfig": [
+          {
+            "go": "Name",
+            "type": "string",
+            "json": "name"
+          },
+          {
+            "go": "MTU",
+            "type": "uint32",
+            "json": "mtu"
+          },
+          {
+            "go": "Gateway",
+            "type": "[]string",
+            "json": "gateway"
+          },
+          {
+            "go": "DNS",
+            "type": "[]string",
+            "json": "dns"
+          },
+          {
+            "go": "UserLevel",
+            "type": "uint32",
+            "json": "userLevel"
+          },
+          {
+            "go": "AutoSystemRoutingTable",
+            "type": "[]string",
+            "json": "autoSystemRoutingTable"
+          },
+          {
+            "go": "AutoOutboundsInterface",
+            "type": "*string",
+            "json": "autoOutboundsInterface"
+          }
+        ],
+        "UdpHop": [
+          {
+            "go": "PortList",
+            "type": "PortList",
+            "json": "ports"
+          },
+          {
+            "go": "Interval",
+            "type": "Int32Range",
+            "json": "interval"
+          }
+        ],
+        "UDPItem": [
+          {
+            "go": "Rand",
+            "type": "int32",
+            "json": "rand"
+          },
+          {
+            "go": "RandRange",
+            "type": "*Int32Range",
+            "json": "randRange"
+          },
+          {
+            "go": "Capture",
+            "type": "string",
+            "json": "capture"
+          },
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Reuse",
+            "type": "string",
+            "json": "reuse"
+          },
+          {
+            "go": "Transform",
+            "type": "*CustomTransform",
+            "json": "transform"
+          },
+          {
+            "go": "Packet",
+            "type": "json.RawMessage",
+            "json": "packet"
+          }
+        ],
+        "User": [
+          {
+            "go": "EmailString",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "LevelByte",
+            "type": "byte",
+            "json": "level"
+          }
+        ],
+        "VersionConfig": [
+          {
+            "go": "MinVersion",
+            "type": "string",
+            "json": "min"
+          },
+          {
+            "go": "MaxVersion",
+            "type": "string",
+            "json": "max"
+          }
+        ],
+        "VLessInboundConfig": [
+          {
+            "go": "Users",
+            "type": "[]json.RawMessage",
+            "json": "users"
+          },
+          {
+            "go": "Clients",
+            "type": "[]json.RawMessage",
+            "json": "clients"
+          },
+          {
+            "go": "Decryption",
+            "type": "string",
+            "json": "decryption"
+          },
+          {
+            "go": "Fallbacks",
+            "type": "[]*VLessInboundFallback",
+            "json": "fallbacks"
+          },
+          {
+            "go": "Flow",
+            "type": "string",
+            "json": "flow"
+          },
+          {
+            "go": "Testseed",
+            "type": "[]uint32",
+            "json": "testseed"
+          }
+        ],
+        "VLessInboundFallback": [
+          {
+            "go": "Name",
+            "type": "string",
+            "json": "name"
+          },
+          {
+            "go": "Alpn",
+            "type": "string",
+            "json": "alpn"
+          },
+          {
+            "go": "Path",
+            "type": "string",
+            "json": "path"
+          },
+          {
+            "go": "Type",
+            "type": "string",
+            "json": "type"
+          },
+          {
+            "go": "Dest",
+            "type": "json.RawMessage",
+            "json": "dest"
+          },
+          {
+            "go": "Xver",
+            "type": "uint64",
+            "json": "xver"
+          }
+        ],
+        "VLessOutboundConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Level",
+            "type": "uint32",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "Id",
+            "type": "string",
+            "json": "id"
+          },
+          {
+            "go": "Flow",
+            "type": "string",
+            "json": "flow"
+          },
+          {
+            "go": "Seed",
+            "type": "string",
+            "json": "seed"
+          },
+          {
+            "go": "Encryption",
+            "type": "string",
+            "json": "encryption"
+          },
+          {
+            "go": "Reverse",
+            "type": "*VLessReverseConfig",
+            "json": "reverse"
+          },
+          {
+            "go": "Testpre",
+            "type": "uint32",
+            "json": "testpre"
+          },
+          {
+            "go": "Testseed",
+            "type": "[]uint32",
+            "json": "testseed"
+          },
+          {
+            "go": "Vnext",
+            "type": "[]*VLessOutboundVnext",
+            "json": "vnext"
+          }
+        ],
+        "VLessOutboundVnext": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Users",
+            "type": "[]json.RawMessage",
+            "json": "users"
+          }
+        ],
+        "VLessReverseConfig": [
+          {
+            "go": "Tag",
+            "type": "string",
+            "json": "tag"
+          },
+          {
+            "go": "Sniffing",
+            "type": "*SniffingConfig",
+            "json": "sniffing"
+          }
+        ],
+        "VMessAccount": [
+          {
+            "go": "ID",
+            "type": "string",
+            "json": "id"
+          },
+          {
+            "go": "Security",
+            "type": "string",
+            "json": "security"
+          },
+          {
+            "go": "Experiments",
+            "type": "string",
+            "json": "experiments"
+          }
+        ],
+        "VMessDefaultConfig": [
+          {
+            "go": "Level",
+            "type": "byte",
+            "json": "level"
+          }
+        ],
+        "VMessInboundConfig": [
+          {
+            "go": "Users",
+            "type": "[]json.RawMessage",
+            "json": "users"
+          },
+          {
+            "go": "Clients",
+            "type": "[]json.RawMessage",
+            "json": "clients"
+          },
+          {
+            "go": "Defaults",
+            "type": "*VMessDefaultConfig",
+            "json": "default"
+          }
+        ],
+        "VMessOutboundConfig": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Level",
+            "type": "uint32",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          },
+          {
+            "go": "ID",
+            "type": "string",
+            "json": "id"
+          },
+          {
+            "go": "Security",
+            "type": "string",
+            "json": "security"
+          },
+          {
+            "go": "Experiments",
+            "type": "string",
+            "json": "experiments"
+          },
+          {
+            "go": "Receivers",
+            "type": "[]*VMessOutboundTarget",
+            "json": "vnext"
+          }
+        ],
+        "VMessOutboundTarget": [
+          {
+            "go": "Address",
+            "type": "*Address",
+            "json": "address"
+          },
+          {
+            "go": "Port",
+            "type": "uint16",
+            "json": "port"
+          },
+          {
+            "go": "Users",
+            "type": "[]json.RawMessage",
+            "json": "users"
+          }
+        ],
+        "WebhookRuleConfig": [
+          {
+            "go": "URL",
+            "type": "string",
+            "json": "url"
+          },
+          {
+            "go": "Deduplication",
+            "type": "uint32",
+            "json": "deduplication"
+          },
+          {
+            "go": "Headers",
+            "type": "map[string]string",
+            "json": "headers"
+          }
+        ],
+        "WebSocketConfig": [
+          {
+            "go": "Host",
+            "type": "string",
+            "json": "host"
+          },
+          {
+            "go": "Path",
+            "type": "string",
+            "json": "path"
+          },
+          {
+            "go": "Headers",
+            "type": "map[string]string",
+            "json": "headers"
+          },
+          {
+            "go": "AcceptProxyProtocol",
+            "type": "bool",
+            "json": "acceptProxyProtocol"
+          },
+          {
+            "go": "HeartbeatPeriod",
+            "type": "uint32",
+            "json": "heartbeatPeriod"
+          }
+        ],
+        "WireGuardConfig": [
+          {
+            "go": "NoKernelTun",
+            "type": "bool",
+            "json": "noKernelTun"
+          },
+          {
+            "go": "SecretKey",
+            "type": "string",
+            "json": "secretKey"
+          },
+          {
+            "go": "Address",
+            "type": "[]string",
+            "json": "address"
+          },
+          {
+            "go": "Peers",
+            "type": "[]*WireGuardPeerConfig",
+            "json": "peers"
+          },
+          {
+            "go": "MTU",
+            "type": "int32",
+            "json": "mtu"
+          },
+          {
+            "go": "Reserved",
+            "type": "[]byte",
+            "json": "reserved"
+          },
+          {
+            "go": "DomainStrategy",
+            "type": "string",
+            "json": "domainStrategy"
+          }
+        ],
+        "WireGuardPeerConfig": [
+          {
+            "go": "PublicKey",
+            "type": "string",
+            "json": "publicKey"
+          },
+          {
+            "go": "PreSharedKey",
+            "type": "string",
+            "json": "preSharedKey"
+          },
+          {
+            "go": "Endpoint",
+            "type": "string",
+            "json": "endpoint"
+          },
+          {
+            "go": "KeepAlive",
+            "type": "uint32",
+            "json": "keepAlive"
+          },
+          {
+            "go": "AllowedIPs",
+            "type": "[]string",
+            "json": "allowedIPs"
+          },
+          {
+            "go": "Level",
+            "type": "uint32",
+            "json": "level"
+          },
+          {
+            "go": "Email",
+            "type": "string",
+            "json": "email"
+          }
+        ],
+        "Xdns": [
+          {
+            "go": "Domain",
+            "type": "json.RawMessage",
+            "json": "domain"
+          },
+          {
+            "go": "Domains",
+            "type": "[]string",
+            "json": "domains"
+          },
+          {
+            "go": "Resolvers",
+            "type": "[]string",
+            "json": "resolvers"
+          }
+        ],
+        "Xicmp": [
+          {
+            "go": "DGRAM",
+            "type": "bool",
+            "json": "dgram"
+          },
+          {
+            "go": "IPs",
+            "type": "[]string",
+            "json": "ips"
           }
         ],
         "XmuxConfig": [
