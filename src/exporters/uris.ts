@@ -387,7 +387,7 @@ function appendTransportParamsFromStream(
   streamSettings: JsonObject | undefined,
   protocol: Exclude<ClientUriProtocol, "vmess">
 ): void {
-  const network = asString(streamSettings?.network) ?? "tcp";
+  const network = (asString(streamSettings?.method) ?? asString(streamSettings?.network) ?? "tcp").toLowerCase();
   params.set("type", network);
   const settings = streamSettingsForNetwork(streamSettings, network);
 
@@ -427,7 +427,7 @@ function appendTransportParamsFromStream(
 }
 
 function appendTransportToVmessPayload(payload: Record<string, LooseJsonValue>, streamSettings: JsonObject | undefined): void {
-  const network = asString(streamSettings?.network) ?? "tcp";
+  const network = (asString(streamSettings?.method) ?? asString(streamSettings?.network) ?? "tcp").toLowerCase();
   payload.net = network;
   const settings = streamSettingsForNetwork(streamSettings, network);
 

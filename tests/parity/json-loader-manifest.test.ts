@@ -25,9 +25,9 @@ describe("xray json loader manifest coverage", () => {
 
   it("captures transport header and finalmask loaders separately from stream network aliases", () => {
     const release = getXrayParityRelease({ releaseTag: latestGeneratedRelease.tag });
-    const tcpHeader = release.jsonLoaders["infra/conf/transport_internet.go:tcpHeaderLoader"] ?? [];
-    const tcpMask = release.jsonLoaders["infra/conf/transport_internet.go:tcpmaskLoader"] ?? [];
-    const udpMask = release.jsonLoaders["infra/conf/transport_internet.go:udpmaskLoader"] ?? [];
+    const tcpHeader = release.jsonLoaders["infra/conf/transport_method.go:tcpHeaderLoader"] ?? [];
+    const tcpMask = release.jsonLoaders["infra/conf/transport_finalmask.go:tcpmaskLoader"] ?? [];
+    const udpMask = release.jsonLoaders["infra/conf/transport_finalmask.go:udpmaskLoader"] ?? [];
 
     expect(tcpHeader.map((entry) => entry.protocol)).toEqual(expect.arrayContaining(["http", "none"]));
     expect(tcpMask.map((entry) => entry.protocol)).toEqual(expect.arrayContaining(["fragment", "header-custom", "sudoku"]));

@@ -66,9 +66,15 @@ function isEmptyJsonObject(value: JsonValue): boolean {
   return isJsonObject(value) && Object.keys(value).length === 0;
 }
 
-function shouldSkipMissingSourceField(parentKey: string | undefined, key: string, value: JsonValue): boolean {
+function shouldSkipMissingSourceField(parentKey: string | undefined, key: string, value: JsonValue, source: JsonObject): boolean {
   if (isEmptyJsonObject(value)) return true;
-  return parentKey === "streamSettings" && key === "network" && value === "tcp";
+  if (parentKey === "streamSettings" && key === "network") {
+    // Method (new field) takes priority over network; don't reintroduce the
+    // legacy key when the source already declares the transport via method.
+    if (typeof source.method === "string" && source.method !== "") return true;
+    return value === "tcp";
+  }
+  return false;
 }
 
 const tcpRawSharedFields = new Set(["acceptProxyProtocol", "header"]);
@@ -124,6 +130,7 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
   ["users", new Set(["id", "alterId", "security", "encryption", "flow", "password", "method", "level", "email", "experiments"])],
   ["streamSettings", new Set([
     "network",
+    "method",
     "security",
     "tlsSettings",
     "realitySettings",
@@ -233,7 +240,7 @@ function mergeJsonPreservingSource(source: JsonValue, compiled: JsonValue, paren
       if (value === undefined) continue;
       const sourceValue = source[key];
       if (sourceValue === undefined) {
-        if (shouldSkipMissingSourceField(parentKey, key, value)) continue;
+        if (shouldSkipMissingSourceField(parentKey, key, value, source)) continue;
         output[key] = cloneJson(value);
         continue;
       }

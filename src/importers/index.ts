@@ -169,7 +169,8 @@ function parseSecurity(streamSettings: JsonObject | undefined): Security | undef
 }
 
 function parseTransport(streamSettings: JsonObject | undefined): Transport | undefined {
-  const network = String(streamSettings?.network ?? "tcp").toLowerCase();
+  /** streamSettings.method (new) takes priority over the deprecated streamSettings.network. */
+  const network = String(streamSettings?.method ?? streamSettings?.network ?? "tcp").toLowerCase();
   if (network === "tcp" || network === "raw") {
     const settings = isJsonObject(streamSettings?.tcpSettings) ? streamSettings.tcpSettings : isJsonObject(streamSettings?.rawSettings) ? streamSettings.rawSettings : {};
     return {
