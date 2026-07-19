@@ -7,7 +7,7 @@ describe("xray parity manifest", () => {
     const releases = getXrayParityReleases();
 
     expect(releases.map((release) => release.tag)).toEqual(["v25.10.15", "v26.4.25", "v26.5.3", "v26.6.22", "v26.6.27", "v26.7.11"]);
-    expect(xrayParityManifest.source.selectedTags).toEqual(["v25.10.15", "v26.4.25", "v26.5.3", "v26.6.22", "v26.6.27"]);
+    expect(xrayParityManifest.source.selectedTags).toEqual(["v25.10.15", "v26.4.25", "v26.5.3", "v26.6.22", "v26.6.27", "v26.7.11"]);
   });
 
   it("captures loader protocols, top-level sections, and stream aliases", () => {

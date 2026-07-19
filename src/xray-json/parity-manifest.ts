@@ -13,6 +13,7 @@ export const xrayParityManifest = {
       "v26.5.3",
       "v26.6.22",
       "v26.6.27",
+      "v26.7.11",
       "latest"
     ],
     "selectedTags": [
@@ -20,7 +21,8 @@ export const xrayParityManifest = {
       "v26.4.25",
       "v26.5.3",
       "v26.6.22",
-      "v26.6.27"
+      "v26.6.27",
+      "v26.7.11"
     ],
     "tags": [
       "v25.10.15",
