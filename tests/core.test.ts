@@ -115,7 +115,7 @@ describe("@pasarguard/xray-config-kit core", () => {
   it("builds VLESS REALITY TCP Xray JSON", () => {
     const built = buildXrayConfig(realityProfile(), { xrayVersion: latestGeneratedRelease.version });
 
-    expect(built.adapterId).toBe("xray@26.9");
+    expect(built.adapterId).toBe(`xray@${latestGeneratedRelease.version.split(".").slice(0, 2).join(".")}`);
     expect(built.issues.filter((issue) => issue.severity === "error")).toEqual([]);
     expect(built.config.inbounds?.[0]?.protocol).toBe("vless");
     expect(built.config.inbounds?.[0]?.streamSettings).toMatchObject({

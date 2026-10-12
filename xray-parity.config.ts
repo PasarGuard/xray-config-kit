@@ -14,6 +14,7 @@ export default {
     "v26.7.11",
     "v26.7.28",
     "v26.9.8",
+    "v26.9.30",
     "latest"
   ],
   outputs: {

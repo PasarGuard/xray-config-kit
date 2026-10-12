@@ -398,17 +398,17 @@ function capabilityMatrix(release: ReleaseManifest): Record<string, {
   return Object.fromEntries(Object.entries(matrix).sort(([a], [b]) => a.localeCompare(b)));
 }
 
-function releaseManifest(tag: string): ReleaseManifest {
-  const paths = listInfraConf(tag);
-  const files = Object.fromEntries(paths.map((path) => [path, show(tag, path)]));
+function releaseManifest(tag: string, ref: string): ReleaseManifest {
+  const paths = listInfraConf(ref);
+  const files = Object.fromEntries(paths.map((path) => [path, show(ref, path)]));
   const xray = files["infra/conf/xray.go"] ?? "";
   const transport = files["infra/conf/transport_internet.go"] ?? "";
-  const tls = showOptional(tag, "transport/internet/tls/tls.go");
+  const tls = showOptional(ref, "transport/internet/tls/tls.go");
   const structs = parseStructs(files);
   return {
     tag,
     version: tag.replace(/^v/, ""),
-    commit: git(["rev-list", "-n", "1", tag]),
+    commit: git(["rev-list", "-n", "1", ref]),
     removedFeatures: parseFeatureNotices(files, "removed"),
     deprecatedFeatures: parseFeatureNotices(files, "deprecated"),
     topLevelKeys: (structs.Config ?? []).map((field) => field.json).sort(),
@@ -424,17 +424,46 @@ function releaseManifest(tag: string): ReleaseManifest {
   };
 }
 
-function latestTag(fallbackTags: readonly string[]): string {
-  const tags = git(["tag", "--list", "v*", "--sort=-v:refname"]).split(/\r?\n/).filter(Boolean);
-  return tags[0] ?? fallbackTags[fallbackTags.length - 1] ?? "v0.0.0";
+function compareVersions(left: string, right: string): number {
+  const a = left.split(".").map(Number);
+  const b = right.split(".").map(Number);
+  for (let index = 0; index < Math.max(a.length, b.length); index += 1) {
+    const difference = (a[index] ?? 0) - (b[index] ?? 0);
+    if (difference !== 0) return difference;
+  }
+  return 0;
 }
 
-function resolveReleaseTags(inputs: readonly string[]): { readonly selectedTags: string[]; readonly tags: string[] } {
+function sourceReleaseRefs(): Map<string, string> {
+  const log = git(["log", "--all", "--format=%H%x09%s", "--grep=^Xray-core v"]);
+  const releases = new Map<string, string>();
+  for (const line of log.split(/\r?\n/)) {
+    const [commit, subject] = line.split("\t", 2);
+    const match = subject?.match(/^Xray-core v(\d+\.\d+\.\d+)$/);
+    if (commit && match?.[1]) releases.set(`v${match[1]}`, commit);
+  }
+  return releases;
+}
+
+function resolveReleaseTags(inputs: readonly string[]): {
+  readonly selectedTags: string[];
+  readonly releases: { readonly tag: string; readonly ref: string }[];
+} {
+  const sourceReleases = sourceReleaseRefs();
+  const latestRelease = [...sourceReleases.keys()].sort((a, b) => compareVersions(a.slice(1), b.slice(1))).at(-1);
   const selectedTags = inputs.filter((tag) => tag !== "latest");
-  const latest = inputs.includes("latest") ? latestTag(selectedTags) : undefined;
-  const tags = [...new Set([...selectedTags, ...(latest ? [latest] : [])])]
-    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  return { selectedTags, tags };
+  const tags = [...new Set([...selectedTags, ...(inputs.includes("latest") && latestRelease ? [latestRelease] : [])])]
+    .sort((a, b) => compareVersions(a.replace(/^v/, ""), b.replace(/^v/, "")));
+  const releases = tags.map((tag) => {
+    const ref = sourceReleases.get(tag) ?? tag;
+    try {
+      git(["rev-parse", "--verify", `${ref}^{commit}`]);
+    } catch {
+      throw new Error(`Xray release ${tag} is not available as a tag or release commit in ${xrayRoot}.`);
+    }
+    return { tag, ref };
+  });
+  return { selectedTags, releases };
 }
 
 function generatedManifestContent(manifest: unknown, config: NormalizedConfig): string {
@@ -533,8 +562,9 @@ if (!existsSync(xrayRoot)) {
   throw new Error(`Xray-core checkout not found: ${xrayRoot}`);
 }
 
-const { selectedTags, tags } = resolveReleaseTags(config.releases);
-const releases = tags.map(releaseManifest);
+const { selectedTags, releases: releaseRefs } = resolveReleaseTags(config.releases);
+const tags = releaseRefs.map(({ tag }) => tag);
+const releases = releaseRefs.map(({ tag, ref }) => releaseManifest(tag, ref));
 const manifest = {
   source: {
     repo: config.sourceRepo,
