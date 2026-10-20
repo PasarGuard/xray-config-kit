@@ -4,6 +4,7 @@ import type { IpFamily } from "./ip.js";
 import { makeIssue } from "./issues.js";
 import { escapePointerSegment, isJsonObject } from "./json.js";
 import { expandMasquePathTemplate, MASQUE_LIMITS, XDRIVE_GOOGLE_DRIVE_SERVICES, XDRIVE_LIMITS, XDRIVE_SERVICES } from "./masque-xdrive.js";
+import { parsePortSegment } from "./ports.js";
 import type { Inbound, InboundPort, Issue, JsonObject, MasqueInbound, Outbound, ProxyOutbound } from "./types.js";
 
 /** httpguts.ValidHeaderFieldName: an RFC 7230 token. */
@@ -542,19 +543,19 @@ function portListSize(port: InboundPort): number | undefined {
   if (typeof port === "number") return 1;
   let size = 0;
   for (const segment of port.split(",")) {
-    const trimmed = segment.trim();
-    if (trimmed === "") continue;
-    const range = /^(\d+)(?:-(\d+))?$/.exec(trimmed);
-    if (!range) return undefined;
-    const from = Number(range[1]);
-    const to = range[2] === undefined ? from : Number(range[2]);
-    if (to < from) return undefined;
-    size += to - from + 1;
+    // Xray skips empty segments.
+    if (segment.trim() === "") continue;
+    const parsed = parsePortSegment(segment);
+    if (!parsed || "env" in parsed) return undefined;
+    size += parsed.to - parsed.from + 1;
   }
   return size;
 }
 
-/** Xray listens on a Unix socket (and drops the port list) when listen is an absolute path or starts with "@". */
+/**
+ * Xray listens on a Unix socket (and drops the port list) when listen is an absolute path or starts with "@".
+ * Mirrors Xray on POSIX hosts, where its filepath.IsAbs check means a leading "/" (Windows reads drive paths instead).
+ */
 function listensOnUnixSocket(listen: string | undefined): boolean {
   return listen !== undefined && (listen.startsWith("/") || listen.startsWith("@"));
 }

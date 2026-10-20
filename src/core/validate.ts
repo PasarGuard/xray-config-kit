@@ -3,12 +3,12 @@ import { profileSchema } from "../schemas/profile.js";
 import { base64UrlByteLength } from "./base64.js";
 import { hasErrors, makeIssue, pathForZod } from "./issues.js";
 import { normalizeProfile } from "./profile.js";
+import { parsePortSegment } from "./ports.js";
 import { inboundTransportIssues, masqueInboundIssues, outboundTransportIssues } from "./validate-masque-xdrive.js";
 import type { Client, Inbound, InboundPort, Issue, Profile, RawPatch, RoutingRule, ValidateOptions, ValidationResult, XrayPortList } from "./types.js";
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const shortIdRegex = /^[0-9a-fA-F]*$/;
-const envPortRegex = /^env:[A-Za-z_][A-Za-z0-9_]*$/;
 /** Inbound protocols that warn when no client is enabled. */
 const clientRequiredProtocols: ReadonlySet<Inbound["protocol"]> = new Set(["vmess", "vless", "trojan", "hysteria", "masque"]);
 
@@ -299,16 +299,8 @@ function isValidPortNumber(value: number): boolean {
 }
 
 function isValidPortSegment(segment: string): boolean {
-  const trimmed = segment.trim();
-  if (trimmed === "") return false;
-  if (envPortRegex.test(trimmed)) return true;
-  if (/^\d+$/.test(trimmed)) return isValidPortNumber(Number(trimmed));
-
-  const range = trimmed.match(/^(\d+)-(\d+)$/);
-  if (!range) return false;
-  const from = Number(range[1]);
-  const to = Number(range[2]);
-  return isValidPortNumber(from) && isValidPortNumber(to) && from <= to;
+  const parsed = parsePortSegment(segment);
+  return parsed !== undefined && ("env" in parsed || (isValidPortNumber(parsed.from) && isValidPortNumber(parsed.to)));
 }
 
 function validatePortList(port: XrayPortList, path: string, label: string): Issue[] {

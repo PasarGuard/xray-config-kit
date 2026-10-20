@@ -61,6 +61,8 @@ describe("XDrive VLESS rules (Xray validateXDrive)", () => {
       expect(inboundRows(vlessInbound({ decryption: "none" }))).toEqual(["error XCK_SEMANTIC_XDRIVE_VLESS_ENCRYPTION /decryption"]);
       // A missing decryption compiles to "none".
       expect(inboundRows(vlessInbound({ decryption: undefined }))).toEqual(["error XCK_SEMANTIC_XDRIVE_VLESS_ENCRYPTION /decryption"]);
+      // An empty decryption fails Xray's VLESS build before validateXDrive runs.
+      expect(inboundRows(vlessInbound({ decryption: "" }))).toEqual(["error XCK_SEMANTIC_XDRIVE_VLESS_ENCRYPTION /decryption"]);
       expect(validateInboundDraft(vlessInbound({ decryption: "none" })).find((issue) => issue.code === "XCK_SEMANTIC_XDRIVE_VLESS_ENCRYPTION")?.message)
         .toBe('The xdrive transport needs VLESS "decryption"; run "xray vlessenc" to get one.');
     });
@@ -84,6 +86,11 @@ describe("XDrive VLESS rules (Xray validateXDrive)", () => {
         .toBe("The xdrive transport can only listen on one port.");
       expect(inboundRows(vlessInbound({ port: "8443" }))).toEqual([]);
       expect(inboundRows(vlessInbound({ port: "8443-8443" }))).toEqual([]);
+      // Xray skips empty segments; a list that does not parse is left to XCK_SEMANTIC_INVALID_PORT.
+      expect(inboundRows(vlessInbound({ port: "443," }))).toEqual([]);
+      expect(inboundRows(vlessInbound({ port: "443,,8443" }))).toEqual(["error XCK_SEMANTIC_XDRIVE_SINGLE_PORT /port"]);
+      expect(inboundRows(vlessInbound({ port: "8443-8440" }))).toEqual([]);
+      expect(inboundRows(vlessInbound({ port: "443,nope" }))).toEqual([]);
       // Xray cannot count an env port before it runs, and a Unix socket listener has no port list.
       expect(inboundRows(vlessInbound({ port: "env:XDRIVE_PORT" }))).toEqual([]);
       expect(inboundRows(vlessInbound({ listen: "@xdrive", port: "10800-10803" }))).toEqual([]);
@@ -116,6 +123,11 @@ describe("XDrive VLESS rules (Xray validateXDrive)", () => {
     it("needs VLESS encryption in the flat and vnext shapes", () => {
       expect(outboundRows(outbound({ ...flat, encryption: "none" }, mux))).toEqual(["error XCK_SEMANTIC_XDRIVE_VLESS_ENCRYPTION /settings/encryption"]);
       expect(outboundRows(outbound(vnext({ encryption: "none" }), mux))).toEqual(["error XCK_SEMANTIC_XDRIVE_VLESS_ENCRYPTION /settings/vnext/0/users/0/encryption"]);
+      // A missing or empty encryption fails Xray's VLESS build before validateXDrive runs.
+      const { encryption: _encryption, ...flatWithoutEncryption } = flat;
+      expect(outboundRows(outbound(flatWithoutEncryption, mux))).toEqual(["error XCK_SEMANTIC_XDRIVE_VLESS_ENCRYPTION /settings/encryption"]);
+      expect(outboundRows(outbound({ ...flat, encryption: "" }, mux))).toEqual(["error XCK_SEMANTIC_XDRIVE_VLESS_ENCRYPTION /settings/encryption"]);
+      expect(outboundRows(outbound(vnext({ encryption: "" }), mux))).toEqual(["error XCK_SEMANTIC_XDRIVE_VLESS_ENCRYPTION /settings/vnext/0/users/0/encryption"]);
       expect(validateOutboundDraft(outbound({ ...flat, encryption: "none" }, mux)).find((issue) => issue.code === "XCK_SEMANTIC_XDRIVE_VLESS_ENCRYPTION")?.message)
         .toBe('The xdrive transport needs VLESS "encryption"; run "xray vlessenc" to get one.');
       // Xray reads the flat fields whenever settings.address is set and ignores vnext then.
