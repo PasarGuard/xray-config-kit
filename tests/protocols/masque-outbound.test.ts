@@ -61,6 +61,11 @@ describe("MASQUE outbound", () => {
     expect(codes(out({ settings: { address: "masque.example.com", port: 443, remoteDNS: "1.1.1.1" } }))).toEqual(["error XCK_SEMANTIC_MASQUE_REMOTE_DNS_INVALID /settings/remoteDNS"]);
   });
 
+  it("treats a null remoteDNS as absent, as Xray loads null into []string", () => {
+    const settings: JsonObject = { address: "masque.example.com", port: 443, remoteDNS: null };
+    expect(codes(out({ settings }))).toEqual([]);
+  });
+
   it("drops a remoteDNS cleared in the model on edit and keeps the other settings", () => {
     const raw = { outbounds: [{ tag: "masque-out", protocol: "masque", settings: { address: "masque.example.com", port: 443, remoteDNS: ["1.1.1.1"] },
       streamSettings: { network: "masque", security: "tls", tlsSettings: { serverName: "masque.example.com" }, masqueSettings: { user: "alice@example.com", pass: "alice-masque-pass-1" } } }] };

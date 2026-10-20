@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { buildXrayConfig, createDefaultInbound, createProfile, normalizeProfile, validateProfile } from "../../src/index.js";
+import { buildXrayConfig, createDefaultInbound, createProfile, importXrayConfig, normalizeProfile, validateProfile } from "../../src/index.js";
 import type { Profile } from "../../src/index.js";
 import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
@@ -20,5 +20,14 @@ describe("normalizeProfile for MASQUE fields", () => {
     const masque = createDefaultInbound({ protocol: "masque", tag: "masque-in", port: 443 });
     expect(normalizeProfile(createProfile({ inbounds: [{ ...masque, remoteDNS: ["1.1.1.1"] }] })).inbounds[0]).toMatchObject({ remoteDNS: ["1.1.1.1"] });
     expect(normalizeProfile(createProfile({ inbounds: [{ ...masque, remoteDNS: [] }] })).inbounds[0]).not.toHaveProperty("remoteDNS");
+  });
+
+  it("builds an unchanged import with an empty MASQUE remoteDNS to the raw source verbatim", () => {
+    const raw = { inbounds: [{ tag: "masque-in", port: 443, protocol: "masque",
+      settings: { users: [{ email: "alice@example.com", pass: "alice-masque-pass-1" }], address: ["10.14.0.1/16"], remoteDNS: [] },
+      streamSettings: { network: "masque", security: "tls", tlsSettings: { serverName: "masque.example.com" } } }] };
+    const built = buildXrayConfig(importXrayConfig(raw).profile, { xrayVersion: latestGeneratedRelease.version });
+    expect(built.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+    expect(built.config).toEqual(raw);
   });
 });

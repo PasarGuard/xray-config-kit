@@ -253,7 +253,11 @@ function masqueAddressIssues(inbound: MasqueInbound, base: string): Issue[] {
   return issues;
 }
 
-/** Checks a MASQUE `remoteDNS` value found at `path`. Xray loads it as []string, so absent or null is fine. */
+/**
+ * Checks a MASQUE `remoteDNS` value found at `path`. On inbounds the key is a PasarGuard convention
+ * (client DNS for MASQUE users) that Xray ignores; on outbounds it is Xray's own []string, which
+ * loads absent or null without error. Both sides get the same IP-list rules.
+ */
 function remoteDnsIssues(entries: unknown, path: string): Issue[] {
   if (entries === undefined || entries === null) return [];
   if (!Array.isArray(entries)) {
