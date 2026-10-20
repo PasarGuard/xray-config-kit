@@ -688,7 +688,7 @@ export function getInboundFormCapabilities(options: { readonly xrayVersion?: str
     Object.entries(transportFieldRowsByType).map(([type, rows]) => [type, rows.map((row) => row.json)])
   );
   const protocolOrder = protocolRows.map((entry) => entry.protocol);
-  const availableTransports = new Set(capabilities.transports.map((item) => kitTransportByXrayTransport[item]));
+  const availableTransports = new Set(capabilities.transports.flatMap((item) => kitTransportByXrayTransport[item] ?? []));
   const availableSecurities = new Set<string>(capabilities.securities);
   return {
     protocols: Object.fromEntries(protocolRows.map((entry) => [entry.protocol, true])),
@@ -830,9 +830,12 @@ export function createDefaultOutbound<P extends Exclude<Outbound["protocol"], "u
       ? "blackhole"
       : options.protocol;
   const tag = options.tag ?? (protocol === "freedom" ? "direct" : protocol === "blackhole" ? "block" : `${protocol}-outbound`);
+  const streamSettings = protocol === "masque"
+    ? options.streamSettings ?? { network: "masque", security: "tls", tlsSettings: {}, masqueSettings: {} }
+    : options.streamSettings;
   const envelope = {
     sendThrough: options.sendThrough,
-    streamSettings: options.streamSettings,
+    streamSettings,
     proxySettings: options.proxySettings,
     mux: options.mux,
     targetStrategy: options.targetStrategy
@@ -863,17 +866,6 @@ export function createDefaultOutbound<P extends Exclude<Outbound["protocol"], "u
       settings: options.settings,
       ...envelope
     } as DnsOutbound;
-  }
-
-  if (protocol === "masque") {
-    return {
-      protocol,
-      tag,
-      settings: options.settings ?? {},
-      raw: [],
-      ...envelope,
-      streamSettings: options.streamSettings ?? { network: "masque", security: "tls", tlsSettings: {}, masqueSettings: {} }
-    } as ProxyOutbound;
   }
 
   return {

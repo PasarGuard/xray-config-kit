@@ -41,6 +41,8 @@ describe("XDrive validation", () => {
   it("rejects unknown or empty services", () => {
     expect(codes(validateInboundDraft(inbound({ service: "Dropbox" })))).toEqual(["error XCK_SEMANTIC_XDRIVE_SERVICE /transport/service"]);
     expect(codes(validateInboundDraft(inbound({ service: "" })))).toEqual(["error XCK_SEMANTIC_XDRIVE_SERVICE /transport/service"]);
+    expect(validateInboundDraft(inbound({ service: "Dropbox" })).find((issue) => issue.code === "XCK_SEMANTIC_XDRIVE_SERVICE")?.message)
+      .toBe('XDrive service must be "local", "Google Drive", or "template".');
   });
 
   it("requires remoteFolder for local and Google Drive", () => {
@@ -64,6 +66,8 @@ describe("XDrive validation", () => {
       "warning XCK_SEMANTIC_XDRIVE_SEGMENT_BYTES_CAPPED /transport/segmentBytes",
       "warning XCK_SEMANTIC_XDRIVE_CONCURRENCY_CAPPED /transport/concurrency"
     ]);
+    expect(validateInboundDraft(inbound({ segmentBytes: 16777217, concurrency: 65 })).filter((issue) => issue.code.endsWith("_CAPPED")).map((issue) => issue.message))
+      .toEqual(["Xray caps segmentBytes at 16777216 (16 MiB).", "Xray caps concurrency at 64."]);
     expect(codes(validateInboundDraft(inbound({ segmentBytes: 16777216, concurrency: 64 })))).toEqual([]);
   });
 

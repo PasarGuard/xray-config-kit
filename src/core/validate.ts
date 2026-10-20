@@ -9,6 +9,8 @@ import type { Client, Inbound, InboundPort, Issue, Profile, RawPatch, RoutingRul
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const shortIdRegex = /^[0-9a-fA-F]*$/;
 const envPortRegex = /^env:[A-Za-z_][A-Za-z0-9_]*$/;
+/** Inbound protocols that warn when no client is enabled. */
+const clientRequiredProtocols: ReadonlySet<Inbound["protocol"]> = new Set(["vmess", "vless", "trojan", "hysteria", "masque"]);
 
 /** Identity Xray uses to tell clients apart, or undefined when the client has none to compare. */
 function clientKey(client: Client): string | undefined {
@@ -104,7 +106,7 @@ function validateClients(inbound: Inbound, inboundIndex: number): Issue[] {
   if (!("clients" in inbound)) return [];
   const clients = inbound.clients;
 
-  if ((inbound.protocol === "vmess" || inbound.protocol === "vless" || inbound.protocol === "trojan" || inbound.protocol === "hysteria" || inbound.protocol === "masque") && clients.filter((client) => client.enabled !== false).length === 0) {
+  if (clientRequiredProtocols.has(inbound.protocol) && clients.filter((client) => client.enabled !== false).length === 0) {
     issues.push(makeIssue({
       code: "XCK_SEMANTIC_MISSING_CLIENTS",
       severity: "warning",

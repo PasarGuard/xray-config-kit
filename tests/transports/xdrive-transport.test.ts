@@ -69,6 +69,7 @@ describe("XDrive transport model", () => {
   it("drops stale Google Drive secrets when an imported XDrive inbound switches to local", () => {
     const raw = { inbounds: [vlessInbound({ network: "xdrive", security: "tls", tlsSettings: { serverName: "www.googleapis.com" }, xdriveSettings: driveSettings })] };
     const built = editAndBuild(raw, (inbound) => {
+      if (inbound.protocol !== "vless") throw new Error("expected the imported VLESS inbound");
       const { secrets: _secrets, ...transport } = inbound.transport as XDriveTransport;
       return { ...inbound, transport: { ...transport, service: "local", remoteFolder: "/var/lib/xray/xdrive" } } as Inbound;
     });

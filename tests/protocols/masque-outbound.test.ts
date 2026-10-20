@@ -58,7 +58,7 @@ describe("MASQUE outbound", () => {
 
   it("requires IP remoteDNS", () => {
     expect(codes(out({ settings: { address: "masque.example.com", port: 443, remoteDNS: ["dns.google"] } }))).toEqual(["error XCK_SEMANTIC_MASQUE_REMOTE_DNS_INVALID /settings/remoteDNS/0"]);
-    expect(codes(out({ settings: { address: "masque.example.com", port: 443, remoteDNS: "1.1.1.1" } }))).toEqual(["error XCK_SEMANTIC_MASQUE_REMOTE_DNS_INVALID /settings/remoteDNS"]);
+    expect(codes(out({ settings: { address: "masque.example.com", port: 443, remoteDNS: "1.1.1.1" } as JsonObject }))).toEqual(["error XCK_SEMANTIC_MASQUE_REMOTE_DNS_INVALID /settings/remoteDNS"]);
   });
 
   it("treats a null remoteDNS as absent, as Xray loads null into []string", () => {

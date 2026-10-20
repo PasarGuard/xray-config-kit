@@ -12,6 +12,9 @@ const headerNamePattern = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
 const headerValueControlPattern = /[\u0000-\u0008\u000A-\u001F\u007F]/;
 const pemKeyPattern = /^-----BEGIN [A-Z0-9 ]+-----[\s\S]+-----END [A-Z0-9 ]+-----$/;
 const base64KeyPattern = /^[A-Za-z0-9+/]+={0,2}$/;
+const quotedXdriveServices = XDRIVE_SERVICES.map((service) => `"${service}"`);
+/** The XDrive services as message text: `"local", "Google Drive", or "template"`. */
+const xdriveServiceChoices = `${quotedXdriveServices.slice(0, -1).join(", ")}, or ${quotedXdriveServices.at(-1)}`;
 
 function isNonBlankString(value: unknown): value is string {
   return typeof value === "string" && value.trim() !== "";
@@ -418,7 +421,7 @@ export function xdriveSettingsIssues(settings: JsonObject, path: string, selecte
       severity: "error",
       category: "semantic",
       path: `${path}/service`,
-      message: `XDrive service must be "local", "Google Drive", or "template".`
+      message: `XDrive service must be ${xdriveServiceChoices}.`
     }));
   }
 
@@ -459,7 +462,7 @@ export function xdriveSettingsIssues(settings: JsonObject, path: string, selecte
       severity: "warning",
       category: "semantic",
       path: `${path}/segmentBytes`,
-      message: "Xray caps segmentBytes at 16777216 (16 MiB)."
+      message: `Xray caps segmentBytes at ${XDRIVE_LIMITS.segmentBytes} (${XDRIVE_LIMITS.segmentBytes / (1024 * 1024)} MiB).`
     }));
   }
 
@@ -469,7 +472,7 @@ export function xdriveSettingsIssues(settings: JsonObject, path: string, selecte
       severity: "warning",
       category: "semantic",
       path: `${path}/concurrency`,
-      message: "Xray caps concurrency at 64."
+      message: `Xray caps concurrency at ${XDRIVE_LIMITS.concurrency}.`
     }));
   }
 
