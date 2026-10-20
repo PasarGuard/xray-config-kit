@@ -770,6 +770,7 @@ function parseOutbound(raw: JsonObject, index: number, issues: Issue[]): Outboun
     || protocol === "hysteria"
     || protocol === "wireguard"
     || protocol === "loopback"
+    || protocol === "masque"
   ) {
     return {
       protocol,

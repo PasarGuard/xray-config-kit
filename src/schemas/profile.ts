@@ -700,7 +700,7 @@ export const dnsOutboundSchema = z.object({
 }).strict();
 
 export const proxyOutboundSchema = z.object({
-  protocol: z.enum(["http", "socks", "shadowsocks", "vless", "vmess", "trojan", "hysteria", "wireguard", "loopback"]),
+  protocol: z.enum(["http", "socks", "shadowsocks", "vless", "vmess", "trojan", "hysteria", "wireguard", "loopback", "masque"]),
   tag: z.string(),
   sendThrough: z.string().optional(),
   settings: jsonObjectSchema.optional(),

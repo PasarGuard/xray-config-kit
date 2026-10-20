@@ -36,6 +36,7 @@ import type {
   TrojanOutboundSettings,
   WireGuardOutboundSettings,
   LoopbackOutboundSettings,
+  MasqueOutboundSettings,
   StreamSettings,
   MuxSettings,
   ProxySettings
@@ -207,6 +208,7 @@ type OutboundSettingsForProtocol<P extends Exclude<Outbound["protocol"], "unmana
   P extends "trojan" ? TrojanOutboundSettings :
   P extends "wireguard" ? WireGuardOutboundSettings :
   P extends "loopback" ? LoopbackOutboundSettings :
+  P extends "masque" ? MasqueOutboundSettings :
   JsonObject; // Fallback for any other protocols
 
 export type CreateDefaultOutboundOptions<P extends Exclude<Outbound["protocol"], "unmanaged"> | "direct" | "block" = Exclude<Outbound["protocol"], "unmanaged"> | "direct" | "block"> = {
@@ -776,6 +778,17 @@ export function createDefaultOutbound<P extends Exclude<Outbound["protocol"], "u
     } as DnsOutbound;
   }
 
+  if (protocol === "masque") {
+    return {
+      protocol,
+      tag,
+      settings: options.settings ?? {},
+      raw: [],
+      ...envelope,
+      streamSettings: options.streamSettings ?? { network: "masque", security: "tls", tlsSettings: {}, masqueSettings: {} }
+    } as ProxyOutbound;
+  }
+
   return {
     protocol: protocol as ProxyOutboundProtocol,
     tag,
@@ -830,7 +843,8 @@ export function getOutboundFieldVisibility(draft: Outbound, capabilities: Outbou
   return {
     settings: Object.keys(capabilities.settingsFields[draft.protocol] ?? {}).length > 0 || "settings" in draft,
     streamSettings: capabilities.envelopeFields.streamSettings === true,
-    mux: capabilities.envelopeFields.mux === true,
+    // MASQUE outbounds do not support mux (XCK_SEMANTIC_MASQUE_MUX_UNSUPPORTED).
+    mux: capabilities.envelopeFields.mux === true && draft.protocol !== "masque",
     proxySettings: capabilities.envelopeFields.proxySettings === true,
     raw: true
   };

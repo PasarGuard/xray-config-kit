@@ -782,6 +782,13 @@ export type LoopbackOutboundSettings = {
   readonly inboundTag?: string;
 };
 
+// MASQUE outbound settings based on Xray parity MasqueClientConfig
+export type MasqueOutboundSettings = {
+  readonly address?: string;
+  readonly port?: number;
+  readonly remoteDNS?: readonly string[];
+};
+
 // TLS certificate config based on Xray parity TLSCertConfig
 export type TlsCertificateConfig = {
   readonly certificateFile?: string;
@@ -907,7 +914,8 @@ export type OutboundSettings =
   | VlessOutboundSettings
   | TrojanOutboundSettings
   | WireGuardOutboundSettings
-  | LoopbackOutboundSettings;
+  | LoopbackOutboundSettings
+  | MasqueOutboundSettings;
 
 export type FreedomOutbound = {
   readonly protocol: "freedom";
@@ -951,7 +959,8 @@ export type ProxyOutboundProtocol =
   | "trojan"
   | "hysteria"
   | "wireguard"
-  | "loopback";
+  | "loopback"
+  | "masque";
 
 export type ProxyOutbound = {
   readonly protocol: ProxyOutboundProtocol;

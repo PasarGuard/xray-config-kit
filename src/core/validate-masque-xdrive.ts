@@ -1,9 +1,10 @@
+import { portSchema } from "../schemas/shared.js";
 import { firstHostPrefix, masquePoolProblem, parseIpAddress, parseIpPrefix } from "./ip.js";
 import type { IpFamily } from "./ip.js";
 import { makeIssue } from "./issues.js";
 import { isJsonObject } from "./json.js";
 import { expandMasquePathTemplate, MASQUE_LIMITS, XDRIVE_LIMITS, XDRIVE_SERVICES } from "./masque-xdrive.js";
-import type { Inbound, Issue, JsonObject, MasqueInbound, Outbound } from "./types.js";
+import type { Inbound, Issue, JsonObject, MasqueInbound, Outbound, ProxyOutbound } from "./types.js";
 
 /** httpguts.ValidHeaderFieldName: an RFC 7230 token. */
 const headerNamePattern = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
@@ -317,6 +318,87 @@ export function transportName(stream: JsonObject | undefined): string | undefine
   return typeof name === "string" ? name.toLowerCase() : undefined;
 }
 
+/** The stream key that names the transport: `method` when present, else `network`. */
+function transportKey(stream: JsonObject | undefined): "method" | "network" {
+  return stream?.method === undefined || stream.method === null ? "network" : "method";
+}
+
+export function masqueOutboundIssues(outbound: ProxyOutbound, outboundIndex: number): Issue[] {
+  const base = `/outbounds/${outboundIndex + 1}`;
+  const stream = outbound.streamSettings as JsonObject | undefined;
+  const settings = outbound.settings ?? {};
+  const issues: Issue[] = [];
+
+  if (transportName(stream) !== "masque") {
+    const key = transportKey(stream);
+    issues.push(makeIssue({
+      code: "XCK_SEMANTIC_MASQUE_TRANSPORT_REQUIRED",
+      severity: "error",
+      category: "semantic",
+      path: `${base}/streamSettings/${key}`,
+      message: "MASQUE outbounds need the masque transport.",
+      suggestion: `Set streamSettings.${key} to "masque".`
+    }));
+  }
+
+  if (String(stream?.security ?? "").toLowerCase() !== "tls") {
+    issues.push(makeIssue({
+      code: "XCK_SEMANTIC_MASQUE_TLS_REQUIRED",
+      severity: "error",
+      category: "semantic",
+      path: `${base}/streamSettings/security`,
+      message: "MASQUE requires TLS."
+    }));
+  }
+
+  if (outbound.mux?.enabled === true) {
+    issues.push(makeIssue({
+      code: "XCK_SEMANTIC_MASQUE_MUX_UNSUPPORTED",
+      severity: "error",
+      category: "semantic",
+      path: `${base}/mux/enabled`,
+      message: "MASQUE outbounds do not support mux."
+    }));
+  }
+
+  if (!isNonBlankString(settings.address)) {
+    issues.push(makeIssue({
+      code: "XCK_SEMANTIC_MASQUE_SERVER_REQUIRED",
+      severity: "error",
+      category: "semantic",
+      path: `${base}/settings/address`,
+      message: "MASQUE outbounds need the server address."
+    }));
+  }
+
+  if (!portSchema.safeParse(settings.port).success) {
+    issues.push(makeIssue({
+      code: "XCK_SEMANTIC_MASQUE_SERVER_REQUIRED",
+      severity: "error",
+      category: "semantic",
+      path: `${base}/settings/port`,
+      message: "MASQUE outbounds need a server port between 1 and 65535."
+    }));
+  }
+
+  const remoteDNS = settings.remoteDNS;
+  if (Array.isArray(remoteDNS)) {
+    remoteDNS.forEach((entry, entryIndex) => {
+      if (typeof entry !== "string" || !parseIpAddress(entry)) {
+        issues.push(makeIssue({
+          code: "XCK_SEMANTIC_MASQUE_REMOTE_DNS_INVALID",
+          severity: "error",
+          category: "semantic",
+          path: `${base}/settings/remoteDNS/${entryIndex}`,
+          message: `MASQUE remoteDNS entry ${JSON.stringify(entry)} must be an IP address.`
+        }));
+      }
+    });
+  }
+
+  return issues;
+}
+
 /** Checks one XDrive settings object (an inbound `transport` or an outbound `xdriveSettings` block) found at `path`. */
 export function xdriveSettingsIssues(settings: JsonObject, path: string): Issue[] {
   const issues: Issue[] = [];
@@ -403,11 +485,32 @@ export function inboundTransportIssues(inbound: Inbound, inboundIndex: number): 
 
 export function outboundTransportIssues(outbound: Outbound, outboundIndex: number): Issue[] {
   if (outbound.protocol === "unmanaged") return [];
+  const base = `/outbounds/${outboundIndex + 1}`;
   const stream = outbound.streamSettings as JsonObject | undefined;
-  const settings = stream?.xdriveSettings;
-  const path = `/outbounds/${outboundIndex + 1}/streamSettings/xdriveSettings`;
+  const issues: Issue[] = [];
+
+  if (outbound.protocol === "masque") {
+    issues.push(...masqueOutboundIssues(outbound, outboundIndex));
+  } else if (transportName(stream) === "masque") {
+    issues.push(makeIssue({
+      code: "XCK_SEMANTIC_MASQUE_TRANSPORT_PROTOCOL",
+      severity: "error",
+      category: "semantic",
+      path: `${base}/streamSettings/${transportKey(stream)}`,
+      message: "The masque transport can only be used by the masque protocol."
+    }));
+  }
+
   // Xray builds every *Settings block that is present, even when the stream selects another transport.
-  if (isJsonObject(settings)) return xdriveSettingsIssues(settings, path);
-  if (transportName(stream) === "xdrive") return xdriveSettingsIssues({}, path);
-  return [];
+  const masqueSettings = stream?.masqueSettings;
+  if (isJsonObject(masqueSettings)) {
+    issues.push(...masqueSettingsIssues(masqueSettings, `${base}/streamSettings/masqueSettings`, "client"));
+  }
+
+  const xdriveSettings = stream?.xdriveSettings;
+  const xdrivePath = `${base}/streamSettings/xdriveSettings`;
+  if (isJsonObject(xdriveSettings)) issues.push(...xdriveSettingsIssues(xdriveSettings, xdrivePath));
+  else if (transportName(stream) === "xdrive") issues.push(...xdriveSettingsIssues({}, xdrivePath));
+
+  return issues;
 }
