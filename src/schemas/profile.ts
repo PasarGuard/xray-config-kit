@@ -217,6 +217,9 @@ const intRangeSchema = z.union([
   z.string().regex(/^-?\d+(?:--?\d+)?$/)
 ]);
 
+/** Xray XmuxConfig as raw JSON, shared by XHTTP `extra.xmux` and the masque transport. */
+const xmuxSchema = z.record(jsonValueSchema);
+
 export const xhttpExtraSchema = z.object({
   headers: z.record(z.string()).optional(),
   scMaxBufferedPosts: intRangeSchema.optional(),
@@ -243,7 +246,7 @@ export const xhttpExtraSchema = z.object({
   uplinkDataKey: z.string().optional(),
   uplinkChunkSize: intRangeSchema.optional(),
   noGRPCHeader: z.boolean().optional(),
-  xmux: z.record(jsonValueSchema).optional(),
+  xmux: xmuxSchema.optional(),
   unknown: z.record(jsonValueSchema).optional()
 }).strict();
 
@@ -362,7 +365,8 @@ export const masqueTransportSchema = z.object({
   user: z.string().optional(),
   pass: z.string().optional(),
   headers: z.record(z.string()).optional(),
-  warp: masqueWarpSchema.optional()
+  warp: masqueWarpSchema.optional(),
+  xmux: xmuxSchema.optional()
 }).strict();
 
 export const transportSchema = z.discriminatedUnion("type", [

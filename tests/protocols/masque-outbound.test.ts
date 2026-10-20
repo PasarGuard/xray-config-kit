@@ -77,6 +77,45 @@ describe("MASQUE outbound", () => {
     expect(built.config.outbounds).toEqual([{ ...raw.outbounds[0]!, settings: { address: "masque.example.com", port: 443 } }]);
   });
 
+  describe("xmux", () => {
+    const masqueSettings = { user: "alice@example.com", pass: "alice-masque-pass-1", xmux: { maxConcurrency: "16-32", hMaxRequestTimes: "600-900", hKeepAlivePeriod: 30 } };
+    const raw = { outbounds: [{ tag: "masque-out", protocol: "masque", settings: { address: "masque.example.com", port: 443 },
+      streamSettings: { network: "masque", security: "tls", tlsSettings: { serverName: "masque.example.com" }, masqueSettings } }] };
+    const withXmux = (outbound: Outbound, xmux: JsonObject | undefined): Outbound => {
+      const stream = (outbound as ProxyOutbound).streamSettings!;
+      const { xmux: _imported, ...settings } = stream.masqueSettings ?? {};
+      return { ...outbound, streamSettings: { ...stream, masqueSettings: xmux ? { ...settings, xmux } : settings } } as Outbound;
+    };
+    const editedMasqueSettings = (xmux: JsonObject | undefined) =>
+      (editOutboundAndBuild(raw, (outbound) => withXmux(outbound, xmux)).config.outbounds?.[0]?.streamSettings as JsonObject).masqueSettings;
+    const xmuxCodes = (xmux: JsonObject) => codes(out({ streamSettings: { network: "masque", security: "tls", masqueSettings: { xmux } } }));
+
+    it("round-trips byte for byte", () => {
+      const { built } = rebuildWithoutSource(raw);
+      expect(built.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+      expect(JSON.stringify(built.config.outbounds)).toBe(JSON.stringify(raw.outbounds));
+      expect(JSON.stringify(editOutboundAndBuild(raw, (outbound) => outbound).config)).toBe(JSON.stringify(raw));
+    });
+
+    it("removes xmux keys and a whole xmux deleted in the model instead of keeping the imported ones", () => {
+      expect(editedMasqueSettings({ maxConcurrency: "16-32" })).toEqual({ user: "alice@example.com", pass: "alice-masque-pass-1", xmux: { maxConcurrency: "16-32" } });
+      expect(editedMasqueSettings(undefined)).toEqual({ user: "alice@example.com", pass: "alice-masque-pass-1" });
+    });
+
+    it("rejects maxConnections together with maxConcurrency when both have a positive upper bound", () => {
+      for (const xmux of [{ maxConnections: 2, maxConcurrency: "16-32" }, { maxConnections: "1-3", maxConcurrency: 16 }, { maxConnections: "-1-2", maxConcurrency: "4" }]) {
+        expect(xmuxCodes(xmux), JSON.stringify(xmux)).toEqual(["error XCK_SEMANTIC_MASQUE_XMUX_CONFLICT /streamSettings/masqueSettings/xmux"]);
+      }
+    });
+
+    it("accepts Int32Range numbers and \"a-b\" strings and a zero or negative bound beside the other field", () => {
+      for (const xmux of [{}, { maxConcurrency: "1-3" }, { maxConnections: "1-3", hMaxReusableSecs: "1800-3000", hKeepAlivePeriod: 30 },
+        { maxConnections: 0, maxConcurrency: "16-32" }, { maxConnections: "0-0", maxConcurrency: 8 }, { maxConnections: "-3--1", maxConcurrency: 8 }, { maxConnections: "", maxConcurrency: 8 }]) {
+        expect(xmuxCodes(xmux), JSON.stringify(xmux)).toEqual([]);
+      }
+    });
+  });
+
   it("rejects Basic auth and WARP conflicts", () => {
     const stream = (masqueSettings: JsonObject) => out({ streamSettings: { network: "masque", security: "tls", masqueSettings } });
     expect(codes(stream({ user: "a:b" }))).toEqual(["error XCK_SEMANTIC_MASQUE_USER /streamSettings/masqueSettings/user"]);

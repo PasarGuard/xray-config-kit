@@ -351,7 +351,8 @@ function parseTransport(streamSettings: JsonObject | undefined): Transport | und
         privateKey: asString(warp.privateKey) ?? "",
         publicKey: asString(warp.publicKey) ?? "",
         address: asStringArray(warp.address) ?? []
-      } : undefined
+      } : undefined,
+      xmux: isJsonObject(settings.xmux) ? settings.xmux as Record<string, JsonValue> : undefined
     };
   }
   return undefined;

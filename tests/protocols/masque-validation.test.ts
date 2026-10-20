@@ -7,7 +7,7 @@ import {
   MASQUE_LIMITS,
   validateInboundDraft
 } from "../../src/index.js";
-import type { Inbound, MasqueInbound, MasqueTransport } from "../../src/index.js";
+import type { Inbound, JsonValue, MasqueInbound, MasqueTransport } from "../../src/index.js";
 import { masqueSettingsIssues } from "../../src/core/validate-masque-xdrive.js";
 
 const masque = (overrides: Partial<MasqueInbound> = {}): MasqueInbound => ({ kind: "inbound", protocol: "masque", tag: "masque-in", port: 443,
@@ -111,6 +111,16 @@ describe("MASQUE validation", () => {
       "warning XCK_SEMANTIC_MASQUE_CLIENT_ONLY_FIELD /transport/user",
       "warning XCK_SEMANTIC_MASQUE_CLIENT_ONLY_FIELD /transport/pass"
     ]);
+  });
+
+  it("flags a non-empty xmux on an inbound as client-only and still rejects an xmux conflict", () => {
+    const xmux = (value: Record<string, JsonValue>) => codes(masque({ transport: { type: "masque", xmux: value } }));
+    expect(xmux({ maxConcurrency: "1-3" })).toEqual(["warning XCK_SEMANTIC_MASQUE_CLIENT_ONLY_FIELD /transport/xmux"]);
+    expect(xmux({ maxConnections: 2, maxConcurrency: "16-32" })).toEqual([
+      "error XCK_SEMANTIC_MASQUE_XMUX_CONFLICT /transport/xmux",
+      "warning XCK_SEMANTIC_MASQUE_CLIENT_ONLY_FIELD /transport/xmux"
+    ]);
+    expect(xmux({})).toEqual([]);
   });
 
   it("rejects the masque transport on other protocols", () => {

@@ -377,6 +377,8 @@ export type MasqueTransport = {
   readonly pass?: string;
   readonly headers?: Record<string, string>;
   readonly warp?: MasqueWarp;
+  /** Xray XmuxConfig, kept as raw JSON like XHTTP's `extra.xmux`. Only clients use it. */
+  readonly xmux?: Record<string, JsonValue>;
 };
 
 export type Transport =

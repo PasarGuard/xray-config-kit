@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { generateClientLink, generateSubscription, importXrayConfig } from "../../src/index.js";
-import type { Inbound, JsonObject, MasqueInbound } from "../../src/index.js";
+import type { Inbound, JsonObject, MasqueInbound, MasqueTransport } from "../../src/index.js";
 import { editAndBuild, rebuildWithoutSource } from "../helpers/profile-round-trip.js";
 
 const masqueRaw = { inbounds: [{ tag: "masque-in", port: 443, protocol: "masque",
@@ -66,6 +66,29 @@ describe("MASQUE inbound model", () => {
     const raw = { inbounds: [{ ...masqueRaw.inbounds[0]!, streamSettings: { ...masqueRaw.inbounds[0]!.streamSettings, masqueSettings: { headers: { "X-A": "1", "X-B": "2" } } } }] };
     const built = editAndBuild(raw, (inbound) => ({ ...inbound, transport: { type: "masque", headers: { "X-A": "1" } } }) as Inbound);
     expect((built.config.inbounds?.[0]?.streamSettings as JsonObject).masqueSettings).toEqual({ headers: { "X-A": "1" } });
+  });
+
+  it("round-trips MASQUE xmux on the transport byte for byte", () => {
+    const xmux = { maxConcurrency: "16-32", cMaxReuseTimes: 64, hMaxReusableSecs: "1800-3000", hKeepAlivePeriod: 30 };
+    const raw = { inbounds: [{ ...masqueRaw.inbounds[0]!, streamSettings: { ...masqueRaw.inbounds[0]!.streamSettings,
+      masqueSettings: { ...masqueRaw.inbounds[0]!.streamSettings.masqueSettings, xmux } } }] };
+    const { imported, built } = rebuildWithoutSource(raw);
+    expect(imported.profile.inbounds[0]).toMatchObject({ transport: { type: "masque", xmux } });
+    expect(built.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+    expect(built.config.inbounds).toEqual(raw.inbounds);
+    // The model-only build writes user keys in compiler order, so only masqueSettings is compared byte for byte there.
+    expect(JSON.stringify((built.config.inbounds?.[0]?.streamSettings as JsonObject).masqueSettings))
+      .toBe(JSON.stringify(raw.inbounds[0]!.streamSettings.masqueSettings));
+    expect(JSON.stringify(editAndBuild(raw, (inbound) => inbound).config)).toBe(JSON.stringify(raw));
+  });
+
+  it("removes xmux keys and a whole xmux deleted in the model instead of keeping the imported ones", () => {
+    const raw = { inbounds: [{ ...masqueRaw.inbounds[0]!, streamSettings: { ...masqueRaw.inbounds[0]!.streamSettings,
+      masqueSettings: { xmux: { maxConcurrency: "16-32", hKeepAlivePeriod: 30 } } } }] };
+    const masqueSettings = (transport: MasqueTransport) =>
+      (editAndBuild(raw, (inbound) => ({ ...inbound, transport }) as Inbound).config.inbounds?.[0]?.streamSettings as JsonObject).masqueSettings;
+    expect(masqueSettings({ type: "masque", xmux: { maxConcurrency: "16-32" } })).toEqual({ xmux: { maxConcurrency: "16-32" } });
+    expect(masqueSettings({ type: "masque" })).toEqual({});
   });
 
   it("keeps MASQUE with REALITY security unmanaged, like Xray rejects it", () => {

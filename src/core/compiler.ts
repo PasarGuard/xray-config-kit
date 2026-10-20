@@ -197,7 +197,7 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
   ["kcpSettings", new Set(["mtu", "tti", "uplinkCapacity", "downlinkCapacity", "cwndMultiplier", "maxSendingWindow"])],
   ["hysteriaSettings", new Set(["version", "auth", "udpIdleTimeout", "masquerade", "udpmasks", "ignoreClientBandwidth"])],
   ["xdriveSettings", new Set(["remoteFolder", "service", "secrets", "segmentBytes", "flushIntervalMs", "pollIntervalMs", "maxPollIntervalMs", "sessionTtlSeconds", "concurrency", "eagerWindowMs", "holeTimeoutMs", "template"])],
-  ["masqueSettings", new Set(["host", "path", "user", "pass", "headers", "warp"])],
+  ["masqueSettings", new Set(["host", "path", "user", "pass", "headers", "warp", "xmux"])],
   ["warp", new Set(["privateKey", "publicKey", "address"])],
   ["sniffing", new Set(["enabled", "destOverride", "domainsExcluded", "ipsExcluded", "metadataOnly", "routeOnly"])],
   ["proxySettings", new Set(["tag", "transportLayer"])],
@@ -216,7 +216,7 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
 /** Children replaced as a whole on merge, so keys removed in the model do not survive from the source. */
 const wholesaleChildrenByParent: ReadonlyMap<string, ReadonlySet<string>> = new Map([
   ["xdriveSettings", new Set(["template"])],
-  ["masqueSettings", new Set(["headers"])]
+  ["masqueSettings", new Set(["headers", "xmux"])]
 ]);
 
 /**
@@ -536,7 +536,8 @@ function compileMasque(transport: MasqueTransport): JsonObject {
       privateKey: transport.warp.privateKey,
       publicKey: transport.warp.publicKey,
       address: transport.warp.address
-    }) : undefined
+    }) : undefined,
+    xmux: transport.xmux
   });
 }
 

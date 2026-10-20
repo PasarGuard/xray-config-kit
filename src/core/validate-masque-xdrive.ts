@@ -24,6 +24,20 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value !== "";
 }
 
+/**
+ * Upper bound (Xray's `To`) of an Int32Range: an integer, or a string "n" or "a-b" where either side may be
+ * negative and "" means 0. Undefined when Xray cannot parse the value.
+ */
+function int32RangeUpperBound(value: unknown): number | undefined {
+  if (typeof value === "number") return Number.isInteger(value) ? value : undefined;
+  if (typeof value !== "string") return undefined;
+  if (value === "") return 0;
+  const match = /^([+-]?\d+)(?:-([+-]?\d+))?$/.exec(value);
+  if (!match) return undefined;
+  const left = Number(match[1]);
+  return match[2] === undefined ? left : Math.max(left, Number(match[2]));
+}
+
 /** Mirrors decodeWarpKey: a PEM block or standard base64 DER, after trimming. */
 function isWarpKeyEncoding(value: unknown): boolean {
   if (typeof value !== "string") return false;
@@ -168,10 +182,27 @@ export function masqueSettingsIssues(settings: JsonObject, path: string, side: "
     issues.push(...masqueWarpIssues(settings.warp, `${path}/warp`));
   }
 
+  if (isJsonObject(settings.xmux)) {
+    const maxConnections = int32RangeUpperBound(settings.xmux.maxConnections) ?? 0;
+    const maxConcurrency = int32RangeUpperBound(settings.xmux.maxConcurrency) ?? 0;
+    if (maxConnections > 0 && maxConcurrency > 0) {
+      issues.push(makeIssue({
+        code: "XCK_SEMANTIC_MASQUE_XMUX_CONFLICT",
+        severity: "error",
+        category: "semantic",
+        path: `${path}/xmux`,
+        message: "MASQUE xmux cannot set both maxConnections and maxConcurrency.",
+        suggestion: "Keep one of maxConnections or maxConcurrency, or set the other to 0."
+      }));
+    }
+  }
+
   if (side === "server") {
-    for (const key of ["user", "pass", "warp"] as const) {
+    for (const key of ["user", "pass", "warp", "xmux"] as const) {
       const value = settings[key];
-      if (value !== undefined && value !== null && value !== "") {
+      // An empty xmux is Xray's zero XmuxConfig (client defaults apply), so only a non-empty one is flagged.
+      const isEmptyXmux = key === "xmux" && isJsonObject(value) && Object.keys(value).length === 0;
+      if (value !== undefined && value !== null && value !== "" && !isEmptyXmux) {
         issues.push(makeIssue({
           code: "XCK_SEMANTIC_MASQUE_CLIENT_ONLY_FIELD",
           severity: "warning",
