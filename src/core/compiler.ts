@@ -73,6 +73,7 @@ function shouldSkipMissingSourceField(parentKey: string | undefined, key: string
   if (parentKey === "streamSettings" && key === "network") {
     // Method (new field) takes priority over network; don't reintroduce the
     // legacy key when the source already declares the transport via method.
+    // preferSourceTransportKey renames network to method first, so this only matters when the compiled stream has both keys.
     if (typeof source.method === "string" && source.method !== "") return true;
     return value === "tcp";
   }

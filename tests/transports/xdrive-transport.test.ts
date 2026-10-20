@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { importXrayConfig } from "../../src/index.js";
-import type { Inbound, JsonObject, Outbound } from "../../src/index.js";
+import type { Inbound, JsonObject, Outbound, XDriveTransport } from "../../src/index.js";
 import { editAndBuild, editOutboundAndBuild, rebuildWithoutSource } from "../helpers/profile-round-trip.js";
 
 const vlessClient = { id: "11111111-1111-4111-8111-111111111111", email: "alice" };
@@ -64,6 +64,18 @@ describe("XDrive transport model", () => {
     const stream = editAndBuild(raw, (inbound) => ({ ...inbound, transport: { type: "tcp" } }) as Inbound).config.inbounds?.[0]?.streamSettings as JsonObject;
     expect(stream.network).toBe("tcp");
     expect(stream).not.toHaveProperty("xdriveSettings");
+  });
+
+  it("drops stale Google Drive secrets when an imported XDrive inbound switches to local", () => {
+    const raw = { inbounds: [vlessInbound({ network: "xdrive", security: "tls", tlsSettings: { serverName: "www.googleapis.com" }, xdriveSettings: driveSettings })] };
+    const built = editAndBuild(raw, (inbound) => {
+      const { secrets: _secrets, ...transport } = inbound.transport as XDriveTransport;
+      return { ...inbound, transport: { ...transport, service: "local", remoteFolder: "/var/lib/xray/xdrive" } } as Inbound;
+    });
+    const { secrets: _secrets, ...driveWithoutSecrets } = driveSettings;
+    expect(built.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+    expect((built.config.inbounds?.[0]?.streamSettings as JsonObject).xdriveSettings)
+      .toEqual({ ...driveWithoutSecrets, service: "local", remoteFolder: "/var/lib/xray/xdrive" });
   });
 
   it("replaces the XDrive template wholesale on edit", () => {

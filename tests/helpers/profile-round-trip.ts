@@ -13,13 +13,19 @@ export function rebuildWithoutSource(raw: JsonObject) {
   return { imported, built: buildForLatestRelease(profile as Profile) };
 }
 
-/** Imports `raw` (keeping its source JSON), applies `edit` to the first inbound, and builds. */
+/**
+ * Imports `raw` (keeping its source JSON), applies `edit` to the first inbound, and builds with a
+ * one-element inbound list, so every other inbound in `raw` is dropped from the output.
+ */
 export function editAndBuild(raw: JsonObject, edit: (inbound: Inbound) => Inbound): BuildResult {
   const imported = importXrayConfig(raw);
   return buildForLatestRelease({ ...imported.profile, inbounds: [edit(imported.profile.inbounds[0]!)] });
 }
 
-/** Imports `raw` (keeping its source JSON), applies `edit` to the first outbound, and builds. */
+/**
+ * Imports `raw` (keeping its source JSON), applies `edit` to the first outbound, and builds with a
+ * one-element outbound list, so every other outbound in `raw` is dropped from the output.
+ */
 export function editOutboundAndBuild(raw: JsonObject, edit: (outbound: Outbound) => Outbound): BuildResult {
   const imported = importXrayConfig(raw);
   return buildForLatestRelease({ ...imported.profile, outbounds: [edit(imported.profile.outbounds![0]!)] });
