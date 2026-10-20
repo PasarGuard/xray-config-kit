@@ -14,13 +14,22 @@ const masque = (overrides: Partial<MasqueInbound> = {}): MasqueInbound => ({ kin
   clients: [{ protocol: "masque", email: "alice@example.com", pass: "alice-masque-pass-1" }], address: ["10.14.0.1/16", "fd14::1/64"],
   security: { type: "tls", serverName: "masque.example.com", alpn: ["h3", "h2"] }, transport: { type: "masque" }, ...overrides });
 const codes = (inbound: Inbound) => validateInboundDraft(inbound).map((issue) => `${issue.severity} ${issue.code} ${issue.path}`);
+/** Every path variable Xray expands, with its expansion. */
+const pathVariables = [
+  ["{target}", "*"],
+  ["{ipproto}", "*"],
+  ["{?target,ipproto}", "?target=*&ipproto=*"],
+  ["{?ipproto,target}", "?ipproto=*&target=*"],
+  ["{&target,ipproto}", "&target=*&ipproto=*"],
+  ["{&ipproto,target}", "&ipproto=*&target=*"]
+] as const;
 
 describe("MASQUE validation", () => {
   it("exports MASQUE defaults and expands path templates like Xray", () => {
     expect(MASQUE_DEFAULTS.path).toBe("/.well-known/masque/ip/*/*/");
     expect(MASQUE_LIMITS).toEqual({ minMtu: 1280, maxMtu: 65535 });
     expect(expandMasquePathTemplate("/.well-known/masque/ip/{target}/{ipproto}/")).toBe("/.well-known/masque/ip/*/*/");
-    expect(expandMasquePathTemplate("/m{?target,ipproto}")).toBe("/m?target=*&ipproto=*");
+    for (const [variable, expansion] of pathVariables) expect(expandMasquePathTemplate(`/m${variable}`), variable).toBe(`/m${expansion}`);
   });
 
   it("accepts a well-formed MASQUE inbound", () => expect(codes(masque())).toEqual([]));
@@ -80,13 +89,14 @@ describe("MASQUE validation", () => {
     const transport = (extra: Partial<MasqueTransport>) => masque({ transport: { type: "masque", ...extra } });
     expect(codes(transport({ path: "masque" }))).toEqual(["error XCK_SEMANTIC_MASQUE_PATH /transport/path"]);
     expect(codes(transport({ path: "/m/{foo}" }))).toEqual(["error XCK_SEMANTIC_MASQUE_PATH /transport/path"]);
-    expect(codes(transport({ path: "/m{?target,ipproto}" }))).toEqual([]);
+    for (const [variable] of pathVariables) expect(codes(transport({ path: `/m${variable}` })), variable).toEqual([]);
     expect(codes(transport({ host: "https://masque.example.com" }))).toEqual(["error XCK_SEMANTIC_MASQUE_HOST /transport/host"]);
     expect(codes(transport({ headers: { Host: "x", "Capsule-Protocol": "?1", "Bad Header": "x" } }))).toEqual([
       "error XCK_SEMANTIC_MASQUE_HEADER /transport/headers/Host",
       "error XCK_SEMANTIC_MASQUE_HEADER /transport/headers/Capsule-Protocol",
       "error XCK_SEMANTIC_MASQUE_HEADER /transport/headers/Bad Header"
     ]);
+    expect(codes(transport({ headers: { "a/b~c": "x" } }))).toEqual(["error XCK_SEMANTIC_MASQUE_HEADER /transport/headers/a~1b~0c"]);
   });
 
   it("accepts WARP keys wrapped over several lines, as Go's base64 decoder does", () => {

@@ -1,5 +1,5 @@
 import { makeIssue } from "../core/issues.js";
-import { isJsonObject } from "../core/json.js";
+import { escapePointerSegment, isJsonObject } from "../core/json.js";
 import type { Issue, IssueCategory, IssueSeverity, JsonObject, JsonValue, ValidationMode, XrayConfig } from "../core/types.js";
 import { xrayParityManifest } from "./parity-manifest.js";
 
@@ -142,7 +142,7 @@ function approximatedVersionIssue(requestedVersion: string, release: XrayParityR
 }
 
 function pointer(path: string, key: string | number): string {
-  const segment = String(key).replace(/~/g, "~0").replace(/\//g, "~1");
+  const segment = escapePointerSegment(key);
   return path === "/" ? `/${segment}` : `${path}/${segment}`;
 }
 

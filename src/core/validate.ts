@@ -21,6 +21,14 @@ function clientKey(client: Client): string | undefined {
   return client.email ? `masque:${client.email.toLowerCase()}` : undefined;
 }
 
+/** The client's shared secret and the field that holds it, for protocols that authenticate with one. */
+function clientSecret(client: Client): { readonly field: string; readonly value: string } | undefined {
+  if (client.protocol === "hysteria") return { field: "auth", value: client.auth };
+  if (client.protocol === "masque") return { field: "pass", value: client.pass };
+  if (client.protocol === "trojan" || client.protocol === "shadowsocks") return { field: "password", value: client.password };
+  return undefined;
+}
+
 function shadowsocksUsesServerPassword(method: string | undefined): boolean {
   return method === "2022-blake3-aes-128-gcm" || method === "2022-blake3-aes-256-gcm";
 }
@@ -181,13 +189,13 @@ function validateClients(inbound: Inbound, inboundIndex: number): Issue[] {
       }));
     }
 
-    const secret = client.protocol === "hysteria" ? client.auth : client.protocol === "masque" ? client.pass : client.protocol === "trojan" || client.protocol === "shadowsocks" ? client.password : undefined;
-    if (secret !== undefined && secret.length < 12) {
+    const secret = clientSecret(client);
+    if (secret !== undefined && secret.value.length < 12) {
       issues.push(makeIssue({
         code: "XCK_SECURITY_WEAK_CLIENT_SECRET",
         severity: "warning",
         category: "security",
-        path: `/inbounds/${inboundIndex + 1}/clients/${clientIndex}/${client.protocol === "hysteria" ? "auth" : client.protocol === "masque" ? "pass" : "password"}`,
+        path: `/inbounds/${inboundIndex + 1}/clients/${clientIndex}/${secret.field}`,
         message: "Client password is short enough to be risky.",
         suggestion: "Use at least 16 random bytes encoded as base64url or hex."
       }));

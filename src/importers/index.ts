@@ -1,6 +1,6 @@
 import { knownXrayTopLevelKeys } from "../xray-json/index.js";
 import { createProfile, profileSourceFingerprint } from "../core/profile.js";
-import { isJsonObject } from "../core/json.js";
+import { escapePointerSegment, isJsonObject } from "../core/json.js";
 import { coerceVerifyPeerCertByNameList } from "../core/tls-fields.js";
 import { makeIssue } from "../core/issues.js";
 import type {
@@ -23,10 +23,6 @@ import type {
 } from "../core/types.js";
 
 const knownTopLevel = new Set<string>(knownXrayTopLevelKeys);
-
-function pointerSegment(input: string): string {
-  return input.replace(/~/g, "~0").replace(/\//g, "~1");
-}
 
 function asString(value: JsonValue | undefined): string | undefined {
   return typeof value === "string" ? value : undefined;
@@ -922,13 +918,13 @@ export function importXrayConfig(input: unknown, _options: ImportOptions = {}): 
 
   for (const [key, value] of Object.entries(raw)) {
     if (!knownTopLevel.has(key) && value !== undefined) {
-      pointers[`/${pointerSegment(key)}`] = value;
+      pointers[`/${escapePointerSegment(key)}`] = value;
       topLevel[key] = value;
       issues.push(makeIssue({
         code: "XCK_IMPORT_UNKNOWN_TOP_LEVEL",
         severity: "info",
         category: "import",
-        path: `/${pointerSegment(key)}`,
+        path: `/${escapePointerSegment(key)}`,
         message: `Unknown top-level Xray config section "${key}" is preserved.`
       }));
     }

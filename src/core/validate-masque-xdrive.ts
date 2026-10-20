@@ -2,7 +2,7 @@ import { portSchema } from "../schemas/shared.js";
 import { firstHostPrefix, masquePoolProblem, parseIpAddress, parseIpPrefix } from "./ip.js";
 import type { IpFamily } from "./ip.js";
 import { makeIssue } from "./issues.js";
-import { isJsonObject } from "./json.js";
+import { escapePointerSegment, isJsonObject } from "./json.js";
 import { expandMasquePathTemplate, MASQUE_LIMITS, XDRIVE_LIMITS, XDRIVE_SERVICES } from "./masque-xdrive.js";
 import type { Inbound, Issue, JsonObject, MasqueInbound, Outbound, ProxyOutbound } from "./types.js";
 
@@ -19,10 +19,6 @@ function isNonBlankString(value: unknown): value is string {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value !== "";
-}
-
-function pointerSegment(key: string): string {
-  return key.replace(/~/g, "~0").replace(/\//g, "~1");
 }
 
 /** Mirrors decodeWarpKey: a PEM block or standard base64 DER, after trimming. */
@@ -149,7 +145,7 @@ export function masqueSettingsIssues(settings: JsonObject, path: string, side: "
           code: "XCK_SEMANTIC_MASQUE_HEADER",
           severity: "error",
           category: "semantic",
-          path: `${path}/headers/${pointerSegment(name)}`,
+          path: `${path}/headers/${escapePointerSegment(name)}`,
           message
         }));
       }
