@@ -11,6 +11,11 @@ export {
   validateProfile
 } from "./core/validate.js";
 export {
+  XDRIVE_DEFAULTS,
+  XDRIVE_LIMITS,
+  XDRIVE_SERVICES
+} from "./core/masque-xdrive.js";
+export {
   analyzeProfile
 } from "./analyze/index.js";
 export {
@@ -110,6 +115,7 @@ export {
 } from "./exporters/uris.js";
 export type * from "./core/types.js";
 export type { Result } from "./core/result.js";
+export type { XDriveService } from "./core/masque-xdrive.js";
 export type {
   XrayAdapter,
   XrayCapabilities,
