@@ -128,7 +128,16 @@ export type HysteriaClient = {
   readonly meta?: ClientMetadata;
 };
 
-export type Client = VmessClient | VlessClient | TrojanClient | ShadowsocksClient | HysteriaClient;
+export type MasqueClient = {
+  readonly protocol: "masque";
+  readonly pass: string;
+  readonly email?: string;
+  readonly level?: number;
+  readonly enabled?: boolean;
+  readonly meta?: ClientMetadata;
+};
+
+export type Client = VmessClient | VlessClient | TrojanClient | ShadowsocksClient | HysteriaClient | MasqueClient;
 
 export type NoneSecurity = {
   readonly type: "none";
@@ -354,6 +363,22 @@ export type XDriveTransport = {
   readonly template?: JsonObject;
 };
 
+export type MasqueWarp = {
+  readonly privateKey: string;
+  readonly publicKey: string;
+  readonly address: string[];
+};
+
+export type MasqueTransport = {
+  readonly type: "masque";
+  readonly host?: string;
+  readonly path?: string;
+  readonly user?: string;
+  readonly pass?: string;
+  readonly headers?: Record<string, string>;
+  readonly warp?: MasqueWarp;
+};
+
 export type Transport =
   | TcpTransport
   | GrpcTransport
@@ -362,7 +387,8 @@ export type Transport =
   | HttpUpgradeTransport
   | KcpTransport
   | HysteriaTransport
-  | XDriveTransport;
+  | XDriveTransport
+  | MasqueTransport;
 
 export type Sniffing = {
   readonly enabled: boolean;
@@ -501,6 +527,17 @@ export type HysteriaInbound = BaseInbound & {
   readonly transport: HysteriaTransport;
 };
 
+export type MasqueInbound = BaseInbound & {
+  readonly protocol: "masque";
+  readonly clients: MasqueClient[];
+  readonly address: string[];
+  readonly mtu?: number;
+  /** PasarGuard panel convention (client DNS); Xray ignores it. */
+  readonly remoteDNS?: string[];
+  readonly security: TlsSecurity | NoneSecurity;
+  readonly transport: MasqueTransport;
+};
+
 export type DokodemoInbound = BaseInbound & {
   readonly protocol: "dokodemo-door" | "tunnel";
   readonly address?: string;
@@ -546,6 +583,7 @@ export type Inbound =
   | SocksInbound
   | WireGuardInbound
   | HysteriaInbound
+  | MasqueInbound
   | DokodemoInbound
   | TunInbound
   | UnmanagedInbound;
@@ -853,6 +891,7 @@ export type StreamSettings = {
   readonly httpupgradeSettings?: JsonObject;
   readonly hysteriaSettings?: JsonObject;
   readonly xdriveSettings?: JsonObject;
+  readonly masqueSettings?: JsonObject;
   readonly sockopt?: SocketConfig;
 };
 

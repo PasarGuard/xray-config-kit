@@ -16,6 +16,7 @@ import type {
   JsonObject,
   JsonValue,
   KcpTransport,
+  MasqueTransport,
   Outbound,
   Profile,
   QuicParams,
@@ -89,6 +90,7 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
   ["outbounds", new Set(["tag", "protocol", "sendThrough", "settings", "streamSettings", "proxySettings", "mux", "targetStrategy"])],
   ["settings", new Set([
     "clients",
+    "users",
     "default",
     "flow",
     "decryption",
@@ -126,11 +128,12 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
     "servers",
     "vnext",
     "response",
-    "redirect"
+    "redirect",
+    "remoteDNS"
   ])],
   ["vnext", new Set(["address", "port", "users"])],
   ["servers", new Set(["address", "port", "domains", "expectedIPs", "skipFallback", "queryStrategy", "tag", "password", "method", "level", "email", "flow", "uot", "uotVersion", "ivCheck", "users"])],
-  ["users", new Set(["id", "alterId", "security", "encryption", "flow", "password", "method", "level", "email", "experiments"])],
+  ["users", new Set(["id", "alterId", "security", "encryption", "flow", "password", "method", "level", "email", "experiments", "pass"])],
   ["streamSettings", new Set([
     "network",
     "method",
@@ -147,6 +150,7 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
     "kcpSettings",
     "hysteriaSettings",
     "xdriveSettings",
+    "masqueSettings",
     "sockopt",
     "finalmask"
   ])],
@@ -195,6 +199,8 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
   ["kcpSettings", new Set(["mtu", "tti", "uplinkCapacity", "downlinkCapacity", "cwndMultiplier", "maxSendingWindow"])],
   ["hysteriaSettings", new Set(["version", "auth", "udpIdleTimeout", "masquerade", "udpmasks", "ignoreClientBandwidth"])],
   ["xdriveSettings", new Set(["remoteFolder", "service", "secrets", "segmentBytes", "flushIntervalMs", "pollIntervalMs", "maxPollIntervalMs", "sessionTtlSeconds", "concurrency", "eagerWindowMs", "holeTimeoutMs", "template"])],
+  ["masqueSettings", new Set(["host", "path", "user", "pass", "headers", "warp"])],
+  ["warp", new Set(["privateKey", "publicKey", "address"])],
   ["sniffing", new Set(["enabled", "destOverride", "domainsExcluded", "ipsExcluded", "metadataOnly", "routeOnly"])],
   ["proxySettings", new Set(["tag", "transportLayer"])],
   ["mux", new Set(["enabled", "concurrency", "xudpConcurrency", "xudpProxyUDP443"])],
@@ -211,7 +217,8 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
 
 /** Children replaced as a whole on merge, so keys removed in the model do not survive from the source. */
 const wholesaleChildrenByParent: ReadonlyMap<string, ReadonlySet<string>> = new Map([
-  ["xdriveSettings", new Set(["template"])]
+  ["xdriveSettings", new Set(["template"])],
+  ["masqueSettings", new Set(["headers"])]
 ]);
 
 function shouldDropMissingCompiledField(parentKey: string | undefined, key: string): boolean {
@@ -509,6 +516,21 @@ function compileXDrive(transport: XDriveTransport): JsonObject {
   });
 }
 
+function compileMasque(transport: MasqueTransport): JsonObject {
+  return compactObject({
+    host: transport.host,
+    path: transport.path,
+    user: transport.user,
+    pass: transport.pass,
+    headers: transport.headers,
+    warp: transport.warp ? compactObject({
+      privateKey: transport.warp.privateKey,
+      publicKey: transport.warp.publicKey,
+      address: transport.warp.address
+    }) : undefined
+  });
+}
+
 export function compileStreamSettings(
   transport: Transport,
   security: Security,
@@ -530,6 +552,7 @@ export function compileStreamSettings(
   if (transport.type === "kcp") streamSettings.kcpSettings = compileKcp(transport);
   if (transport.type === "hysteria") streamSettings.hysteriaSettings = compileHysteria(transport);
   if (transport.type === "xdrive") streamSettings.xdriveSettings = compileXDrive(transport);
+  if (transport.type === "masque") streamSettings.masqueSettings = compileMasque(transport);
   if (advanced?.sockopt) streamSettings.sockopt = advanced.sockopt;
   if (advanced?.finalmask || advanced?.quicParams) {
     streamSettings.finalmask = compactObject({
@@ -673,6 +696,22 @@ function compileInbound(inbound: Inbound): JsonObject {
           email: client.email,
           level: client.level
         }))
+    });
+    return compileInboundBase(inbound, settings, inbound.security, inbound.transport);
+  }
+
+  if (inbound.protocol === "masque") {
+    const settings = compactObject({
+      users: inbound.clients
+        .filter((client) => client.enabled !== false)
+        .map((client) => compactObject({
+          pass: client.pass,
+          email: client.email,
+          level: client.level
+        })),
+      address: inbound.address,
+      mtu: inbound.mtu,
+      remoteDNS: inbound.remoteDNS
     });
     return compileInboundBase(inbound, settings, inbound.security, inbound.transport);
   }

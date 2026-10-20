@@ -96,12 +96,22 @@ export const hysteriaClientSchema = z.object({
   meta: z.record(jsonValueSchema).optional()
 }).strict();
 
+export const masqueClientSchema = z.object({
+  protocol: z.literal("masque"),
+  pass: z.string().min(1),
+  email: z.string().optional(),
+  level: z.number().int().min(0).optional(),
+  enabled: z.boolean().optional(),
+  meta: z.record(jsonValueSchema).optional()
+}).strict();
+
 export const clientSchema = z.discriminatedUnion("protocol", [
   vmessClientSchema,
   vlessClientSchema,
   trojanClientSchema,
   shadowsocksClientSchema,
-  hysteriaClientSchema
+  hysteriaClientSchema,
+  masqueClientSchema
 ]);
 
 export const noneSecuritySchema = z.object({
@@ -339,6 +349,22 @@ export const xdriveTransportSchema = z.object({
   template: jsonObjectSchema.optional()
 }).strict();
 
+export const masqueWarpSchema = z.object({
+  privateKey: z.string(),
+  publicKey: z.string(),
+  address: z.array(z.string())
+}).strict();
+
+export const masqueTransportSchema = z.object({
+  type: z.literal("masque"),
+  host: z.string().optional(),
+  path: z.string().optional(),
+  user: z.string().optional(),
+  pass: z.string().optional(),
+  headers: z.record(z.string()).optional(),
+  warp: masqueWarpSchema.optional()
+}).strict();
+
 export const transportSchema = z.discriminatedUnion("type", [
   tcpTransportSchema,
   grpcTransportSchema,
@@ -347,7 +373,8 @@ export const transportSchema = z.discriminatedUnion("type", [
   httpUpgradeTransportSchema,
   kcpTransportSchema,
   hysteriaTransportSchema,
-  xdriveTransportSchema
+  xdriveTransportSchema,
+  masqueTransportSchema
 ]);
 
 export const sniffingSchema = z.object({
@@ -503,6 +530,18 @@ export const hysteriaInboundSchema = z.object({
   transport: hysteriaTransportSchema
 }).strict();
 
+export const masqueInboundSchema = z.object({
+  ...baseInboundShape,
+  protocol: z.literal("masque"),
+  clients: z.array(masqueClientSchema),
+  address: z.array(z.string()),
+  mtu: z.number().int().min(0).optional(),
+  /** PasarGuard panel convention (client DNS); Xray ignores it. */
+  remoteDNS: z.array(z.string()).optional(),
+  security: z.discriminatedUnion("type", [tlsSecuritySchema, noneSecuritySchema]),
+  transport: masqueTransportSchema
+}).strict();
+
 const dokodemoInboundShape = {
   ...baseInboundShape,
   address: z.string().optional(),
@@ -558,6 +597,7 @@ export const inboundSchema = z.discriminatedUnion("protocol", [
   socksInboundSchema,
   wireGuardInboundSchema,
   hysteriaInboundSchema,
+  masqueInboundSchema,
   dokodemoDoorInboundSchema,
   tunnelInboundSchema,
   tunInboundSchema,

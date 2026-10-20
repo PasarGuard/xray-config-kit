@@ -341,6 +341,23 @@ function parseTransport(streamSettings: JsonObject | undefined): Transport | und
       template: isJsonObject(settings.template) ? settings.template : undefined
     };
   }
+  if (network === "masque") {
+    const settings = isJsonObject(streamSettings?.masqueSettings) ? streamSettings.masqueSettings : {};
+    const warp = isJsonObject(settings.warp) ? settings.warp : undefined;
+    return {
+      type: "masque",
+      host: asString(settings.host),
+      path: asString(settings.path),
+      user: asString(settings.user),
+      pass: asString(settings.pass),
+      headers: asStringRecord(settings.headers),
+      warp: warp ? {
+        privateKey: asString(warp.privateKey) ?? "",
+        publicKey: asString(warp.publicKey) ?? "",
+        address: asStringArray(warp.address) ?? []
+      } : undefined
+    };
+  }
   return undefined;
 }
 
@@ -643,6 +660,33 @@ function parseInbound(raw: JsonObject, index: number, issues: Issue[]): Inbound 
       transport,
       streamAdvanced,
       version: 2
+    };
+  }
+
+  if (protocol === "masque" && security && security.type !== "reality" && transport?.type === "masque") {
+    // Xray's precedence: a present `clients` list (even an empty one) replaces `users`.
+    const clients = (asObjectArray(settings.clients) ?? asObjectArray(settings.users))?.map((client) => ({
+      protocol: "masque" as const,
+      pass: asString(client.pass) ?? "",
+      email: asString(client.email),
+      level: asNumber(client.level),
+      enabled: asBoolean(client.enabled) ?? asBoolean(client.enable),
+      meta: parseClientMeta(client)
+    })) ?? [];
+    return {
+      kind: "inbound",
+      protocol: "masque",
+      tag,
+      ...(listen !== undefined ? { listen } : {}),
+      ...(port !== undefined ? { port } : {}),
+      sniffing,
+      clients,
+      address: asStringArray(settings.address) ?? [],
+      mtu: asNumber(settings.mtu),
+      remoteDNS: asStringArray(settings.remoteDNS),
+      security,
+      transport,
+      streamAdvanced
     };
   }
 

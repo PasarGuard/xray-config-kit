@@ -10,12 +10,15 @@ const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[
 const shortIdRegex = /^[0-9a-fA-F]*$/;
 const envPortRegex = /^env:[A-Za-z_][A-Za-z0-9_]*$/;
 
-function clientKey(client: Client): string {
+/** Identity Xray uses to tell clients apart, or undefined when the client has none to compare. */
+function clientKey(client: Client): string | undefined {
   if (client.protocol === "vmess") return `vmess:${client.id.toLowerCase()}`;
   if (client.protocol === "vless") return `vless:${client.id.toLowerCase()}`;
   if (client.protocol === "trojan") return `trojan:${client.password}`;
   if (client.protocol === "shadowsocks") return `shadowsocks:${client.password}`;
-  return `hysteria:${client.auth}`;
+  if (client.protocol === "hysteria") return `hysteria:${client.auth}`;
+  // Xray keys MASQUE users by case-insensitive email, not by pass.
+  return client.email ? `masque:${client.email.toLowerCase()}` : undefined;
 }
 
 function shadowsocksUsesServerPassword(method: string | undefined): boolean {
@@ -135,20 +138,23 @@ function validateClients(inbound: Inbound, inboundIndex: number): Issue[] {
 
   clients.forEach((client, clientIndex) => {
     const key = clientKey(client);
-    const previous = seen.get(key);
-    if (previous !== undefined) {
-      issues.push(makeIssue({
-        code: "XCK_SEMANTIC_DUPLICATE_CLIENT",
-        severity: "error",
-        category: "semantic",
-        path: `/inbounds/${inboundIndex + 1}/clients/${clientIndex}`,
-        message: "Client credential is duplicated within the same inbound.",
-        suggestion: `Remove this client or rotate its credential. First occurrence is /inbounds/${inboundIndex + 1}/clients/${previous}.`
-      }));
+    if (key !== undefined) {
+      const previous = seen.get(key);
+      if (previous !== undefined) {
+        issues.push(makeIssue({
+          code: "XCK_SEMANTIC_DUPLICATE_CLIENT",
+          severity: "error",
+          category: "semantic",
+          path: `/inbounds/${inboundIndex + 1}/clients/${clientIndex}`,
+          message: "Client credential is duplicated within the same inbound.",
+          suggestion: `Remove this client or rotate its credential. First occurrence is /inbounds/${inboundIndex + 1}/clients/${previous}.`
+        }));
+      }
+      seen.set(key, clientIndex);
     }
-    seen.set(key, clientIndex);
 
-    if (client.email) {
+    // MASQUE keys clients by email, so a duplicate email is already the error above.
+    if (client.email && client.protocol !== "masque") {
       const previousEmail = emails.get(client.email);
       if (previousEmail !== undefined) {
         issues.push(makeIssue({
