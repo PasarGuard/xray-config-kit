@@ -22,6 +22,12 @@ const inbound = (transport: Partial<XDriveTransport>): Inbound => ({
   transport: { type: "xdrive", service: "local", remoteFolder: "/var/lib/xray/xdrive", ...transport }
 });
 const codes = (issues: Issue[]) => issues.map((issue) => `${issue.severity} ${issue.code} ${issue.path}`).filter((row) => row.includes("XDRIVE"));
+const outbound = (streamSettings: StreamSettings) => createDefaultOutbound({
+  protocol: "vless",
+  tag: "drive-out",
+  settings: { address: "www.googleapis.com", port: 443, id: "11111111-1111-4111-8111-111111111111", encryption: "none" },
+  streamSettings
+});
 
 describe("XDrive validation", () => {
   it("exports XDrive services, Xray defaults and caps", () => {
@@ -62,18 +68,20 @@ describe("XDrive validation", () => {
   });
 
   it("validates outbound xdriveSettings, including a stale block on another network", () => {
-    const out = (streamSettings: StreamSettings) => createDefaultOutbound({
-      protocol: "vless",
-      tag: "drive-out",
-      settings: { address: "www.googleapis.com", port: 443, id: "11111111-1111-4111-8111-111111111111", encryption: "none" },
-      streamSettings
-    });
-    expect(codes(validateOutboundDraft(out({ network: "xdrive", security: "tls", xdriveSettings: { service: "Google Drive", remoteFolder: "1AbC", secrets: [] } }))))
+    expect(codes(validateOutboundDraft(outbound({ network: "xdrive", security: "tls", xdriveSettings: { service: "Google Drive", remoteFolder: "1AbC", secrets: [] } }))))
       .toEqual(["error XCK_SEMANTIC_XDRIVE_GOOGLE_DRIVE_SECRETS /streamSettings/xdriveSettings/secrets"]);
-    expect(codes(validateOutboundDraft(out({ network: "tcp", xdriveSettings: { service: "bogus" } }))))
+    expect(codes(validateOutboundDraft(outbound({ network: "tcp", xdriveSettings: { service: "bogus" } }))))
       .toEqual(["error XCK_SEMANTIC_XDRIVE_SERVICE /streamSettings/xdriveSettings/service"]);
-    expect(codes(validateOutboundDraft(out({ method: "xdrive", security: "tls" } as StreamSettings))))
+    expect(codes(validateOutboundDraft(outbound({ method: "xdrive", security: "tls" } as StreamSettings))))
       .toEqual(["error XCK_SEMANTIC_XDRIVE_SERVICE /streamSettings/xdriveSettings/service"]);
+  });
+
+  it("skips remoteFolder on a stale xdriveSettings block, as Xray checks it only when the transport runs", () => {
+    expect(codes(validateOutboundDraft(outbound({ network: "tcp", xdriveSettings: { service: "local" } })))).toEqual([]);
+    expect(codes(validateOutboundDraft(outbound({ network: "tcp", xdriveSettings: { service: "Google Drive" } }))))
+      .toEqual(["error XCK_SEMANTIC_XDRIVE_GOOGLE_DRIVE_SECRETS /streamSettings/xdriveSettings/secrets"]);
+    expect(codes(validateOutboundDraft(outbound({ network: "xdrive", security: "tls", xdriveSettings: { service: "local" } }))))
+      .toEqual(["error XCK_SEMANTIC_XDRIVE_REMOTE_FOLDER_REQUIRED /streamSettings/xdriveSettings/remoteFolder"]);
   });
 
   it("rejects XDrive when the selected Xray predates it and keeps REALITY off XDrive", () => {

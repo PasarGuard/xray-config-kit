@@ -403,8 +403,12 @@ export function masqueOutboundIssues(outbound: ProxyOutbound, outboundIndex: num
   return issues;
 }
 
-/** Checks one XDrive settings object (an inbound `transport` or an outbound `xdriveSettings` block) found at `path`. */
-export function xdriveSettingsIssues(settings: JsonObject, path: string): Issue[] {
+/**
+ * Checks one XDrive settings object (an inbound `transport` or an outbound `xdriveSettings` block) found at `path`.
+ * `selected` is false for a stale block on a stream that runs another transport: Xray's XDriveConfig.Build checks
+ * only the service, secrets and template, and remoteFolder is checked only when the transport runs.
+ */
+export function xdriveSettingsIssues(settings: JsonObject, path: string, selected: boolean): Issue[] {
   const issues: Issue[] = [];
   const service = typeof settings.service === "string" ? settings.service : "";
 
@@ -418,7 +422,7 @@ export function xdriveSettingsIssues(settings: JsonObject, path: string): Issue[
     }));
   }
 
-  if ((service === "local" || service === "Google Drive") && !isNonBlankString(settings.remoteFolder)) {
+  if (selected && (service === "local" || service === "Google Drive") && !isNonBlankString(settings.remoteFolder)) {
     issues.push(makeIssue({
       code: "XCK_SEMANTIC_XDRIVE_REMOTE_FOLDER_REQUIRED",
       severity: "error",
@@ -484,7 +488,7 @@ export function inboundTransportIssues(inbound: Inbound, inboundIndex: number): 
     })];
   }
   if (transport?.type !== "xdrive") return [];
-  return xdriveSettingsIssues(transport, `/inbounds/${inboundIndex + 1}/transport`);
+  return xdriveSettingsIssues(transport, `/inbounds/${inboundIndex + 1}/transport`, true);
 }
 
 export function outboundTransportIssues(outbound: Outbound, outboundIndex: number): Issue[] {
@@ -513,8 +517,9 @@ export function outboundTransportIssues(outbound: Outbound, outboundIndex: numbe
 
   const xdriveSettings = stream?.xdriveSettings;
   const xdrivePath = `${base}/streamSettings/xdriveSettings`;
-  if (isJsonObject(xdriveSettings)) issues.push(...xdriveSettingsIssues(xdriveSettings, xdrivePath));
-  else if (transportName(stream) === "xdrive") issues.push(...xdriveSettingsIssues({}, xdrivePath));
+  const xdriveSelected = transportName(stream) === "xdrive";
+  if (isJsonObject(xdriveSettings)) issues.push(...xdriveSettingsIssues(xdriveSettings, xdrivePath, xdriveSelected));
+  else if (xdriveSelected) issues.push(...xdriveSettingsIssues({}, xdrivePath, true));
 
   return issues;
 }

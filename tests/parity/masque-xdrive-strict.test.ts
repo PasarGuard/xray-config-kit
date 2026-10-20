@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { validateStrictXrayConfig } from "../../src/index.js";
-import type { Issue } from "../../src/index.js";
+import type { Issue, JsonObject } from "../../src/index.js";
 import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
 describe("strict MASQUE and XDrive JSON", () => {
@@ -94,5 +94,15 @@ describe("strict MASQUE and XDrive JSON", () => {
     const inbound = { ...config.inbounds[0]!, settings: { ...config.inbounds[0]!.settings, pool: [] } };
     const result = validateStrictXrayConfig({ inbounds: [inbound] }, { releaseTag: latestGeneratedRelease.tag });
     expect(summary(result.issues)).toEqual(["XCK_XRAY_STRICT_UNKNOWN_FIELD error /inbounds/1/settings/pool"]);
+  });
+
+  it("accepts the masqueSettings.remoteDNS fallback the panel reads and rejects other unknown masqueSettings keys", () => {
+    const inbound = config.inbounds[0]!;
+    const withMasqueSettings = (masqueSettings: JsonObject) => ({ inbounds: [{ ...inbound, streamSettings: { ...inbound.streamSettings, masqueSettings } }] });
+    const path = "/.well-known/masque/ip/{target}/{ipproto}/";
+    const latest = { releaseTag: latestGeneratedRelease.tag };
+    expect(validateStrictXrayConfig(withMasqueSettings({ path, remoteDNS: ["1.1.1.1", "2606:4700:4700::1111"] }), latest).issues).toEqual([]);
+    expect(summary(validateStrictXrayConfig(withMasqueSettings({ path, dns: ["1.1.1.1"] }), latest).issues))
+      .toEqual(["XCK_XRAY_STRICT_UNKNOWN_FIELD error /inbounds/1/streamSettings/masqueSettings/dns"]);
   });
 });
