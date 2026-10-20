@@ -1,13 +1,50 @@
 import { describe, expect, it } from "bun:test";
-import { buildXrayConfig, createProfile } from "../../src/index.js";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  buildXrayConfig,
+  createDefaultInboundForProtocol,
+  createProfile,
+  generateWireGuardKeyPair,
+  resolveXrayParityRelease,
+  validateStrictXrayConfig
+} from "../../src/index.js";
+import type { Inbound, JsonObject, Outbound, Profile, XrayConfig } from "../../src/index.js";
 import { testXrayConfig } from "../../src/node/index.js";
+import { warpKeys } from "../helpers/masque-keys.js";
+
+const binaryPath = process.env.XRAY_BINARY;
+const xrayVersion = process.env.XRAY_VERSION;
+// Gates read parity data, never a version literal or the binary itself. "masque" in the inbound protocols means Xray
+// v26.9.30 or later (XDrive arrived in the same release), and MasqueWarpConfig exists from the release after that.
+// Without XRAY_VERSION the five MASQUE and XDrive tests skip; the maybeIt tests need only XRAY_BINARY and then validate
+// against the newest generated parity data.
+const binaryRelease = binaryPath && xrayVersion ? resolveXrayParityRelease({ xrayVersion }).release : undefined;
+const hasMasque = binaryRelease?.inboundProtocols.some((entry) => entry.protocol === "masque") === true;
+const hasWarp = binaryRelease?.structs.MasqueWarpConfig !== undefined;
+const maybeIt = binaryPath ? it : it.skip;
+const masqueIt = hasMasque ? it : it.skip;
+const warpIt = hasMasque && hasWarp ? it : it.skip;
 
 const key32 = "OEQIJdY9VnmJ78XX_hyUZueFyqvtdmCWY8e4NJ6B-lk";
 const publicKey32 = "0UsWoTj6Ad7JKR_FsQ9p_r05ZXhtRSnWlw53kpwgT34";
 
-describe("real Xray binary", () => {
-  const maybeIt = process.env.XRAY_BINARY ? it : it.skip;
+function buildOrThrow(profile: Profile): XrayConfig {
+  const built = buildXrayConfig(profile, { xrayVersion });
+  const buildErrors = built.issues.filter((issue) => issue.severity === "error");
+  if (buildErrors.length > 0) {
+    throw new Error(buildErrors.map((issue) => `${issue.code} ${issue.path}: ${issue.message}`).join("\n"));
+  }
+  return built.config;
+}
 
+async function expectXrayAccepts(config: XrayConfig | JsonObject): Promise<void> {
+  const result = await testXrayConfig(config, { binaryPath, timeoutMs: 30_000 });
+  if (!result.ok) throw new Error(result.stdout + result.stderr);
+  expect(result.ok).toBe(true);
+}
+
+describe("real Xray binary", () => {
   maybeIt("accepts generated VLESS REALITY TCP config", async () => {
     const profile = createProfile({
       presets: ["dns-simple"],
@@ -48,20 +85,77 @@ describe("real Xray binary", () => {
       ]
     });
 
-    const built = buildXrayConfig(profile, {
-      xrayVersion: process.env.XRAY_VERSION
-    });
-    const buildErrors = built.issues.filter((issue) => issue.severity === "error");
-    if (buildErrors.length > 0) {
-      throw new Error(buildErrors.map((issue) => `${issue.code}: ${issue.message}`).join("\n"));
-    }
+    await expectXrayAccepts(buildOrThrow(profile));
+  });
 
-    const result = await testXrayConfig(built.config, {
-      binaryPath: process.env.XRAY_BINARY,
-      timeoutMs: 30_000
-    });
+  // Runs for every release: newer releases dropped these keys and Xray ignores them, so the kit may only warn.
+  maybeIt("accepts WireGuard outbound keys that only older releases read", async () => {
+    const keys = generateWireGuardKeyPair();
+    const config = { outbounds: [{ tag: "warp-wg", protocol: "wireguard", settings: {
+      secretKey: keys.privateKey,
+      address: ["172.16.0.2/32"],
+      peers: [{ publicKey: keys.publicKey, endpoint: "engage.cloudflareclient.com:2408" }],
+      workers: 2,
+      domainStrategy: "ForceIPv4"
+    } }] };
 
-    if (!result.ok) throw new Error(result.stdout + result.stderr);
-    expect(result.ok).toBe(true);
+    expect(validateStrictXrayConfig(config, { xrayVersion }).issues.filter((issue) => issue.severity === "error")).toEqual([]);
+    await expectXrayAccepts(config);
+  });
+});
+
+describe("real Xray binary: MASQUE and XDrive", () => {
+  const masqueInbound = (address?: string[]): Inbound => {
+    const inbound = createDefaultInboundForProtocol({ protocol: "masque", tag: "masque-in", port: 8443 });
+    return { ...inbound, ...(address ? { address } : {}), security: { type: "tls", serverName: "masque.example.com", alpn: ["h3", "h2"] } } as Inbound;
+  };
+  const masqueOutbound = (masqueSettings: JsonObject): Outbound => ({
+    protocol: "masque",
+    tag: "masque-out",
+    settings: { address: "masque.example.com", port: 443, remoteDNS: ["1.1.1.1"] },
+    streamSettings: { network: "masque", security: "tls", tlsSettings: { serverName: "masque.example.com", alpn: ["h2"] }, masqueSettings }
+  });
+
+  masqueIt("accepts the default MASQUE inbound", async () => {
+    await expectXrayAccepts(buildOrThrow(createProfile({ inbounds: [masqueInbound()] })));
+  });
+
+  masqueIt("rejects a MASQUE subnet address exactly like the kit does", async () => {
+    const built = buildXrayConfig(createProfile({ inbounds: [masqueInbound(["10.0.0.0/24"])] }), { xrayVersion, mode: "permissive" });
+    expect(built.issues.map((issue) => issue.code)).toContain("XCK_SEMANTIC_MASQUE_ADDRESS_NOT_HOST");
+
+    const result = await testXrayConfig(built.config, { binaryPath, timeoutMs: 30_000 });
+    expect(result.ok).toBe(false);
+    expect(result.stdout + result.stderr).toContain("is not a host address");
+  });
+
+  masqueIt("accepts VLESS inbound and outbound XDrive streams", async () => {
+    const inbound = {
+      ...createDefaultInboundForProtocol({ protocol: "vless", tag: "vless-xdrive", port: 8444, security: "none" }),
+      transport: { type: "xdrive", service: "local", remoteFolder: join(tmpdir(), "xck-xdrive-binary") }
+    } as Inbound;
+    const outbound: Outbound = {
+      protocol: "vless",
+      tag: "vless-xdrive-out",
+      settings: { address: "www.googleapis.com", port: 443, id: "11111111-1111-4111-8111-111111111111", encryption: "none" },
+      streamSettings: {
+        network: "xdrive",
+        security: "tls",
+        tlsSettings: { serverName: "www.googleapis.com" },
+        xdriveSettings: { service: "Google Drive", remoteFolder: "1AbCdEf", secrets: ["id", "secret", "refresh"] }
+      }
+    };
+
+    await expectXrayAccepts(buildOrThrow(createProfile({ inbounds: [inbound], outbounds: [outbound] })));
+  });
+
+  masqueIt("accepts a MASQUE outbound with Basic auth and a templated path", async () => {
+    const outbound = masqueOutbound({ path: "/.well-known/masque/ip/{target}/{ipproto}/", user: "alice@example.com", pass: "alice-masque-pass-1" });
+    await expectXrayAccepts(buildOrThrow(createProfile({ outbounds: [outbound] })));
+  });
+
+  warpIt("accepts a MASQUE WARP outbound with generated P-256 keys", async () => {
+    const outbound = masqueOutbound({ warp: { ...warpKeys(), address: ["172.16.0.2/32", "2606:4700:110:8a36::1/128"] } });
+    await expectXrayAccepts(buildOrThrow(createProfile({ outbounds: [outbound] })));
   });
 });
