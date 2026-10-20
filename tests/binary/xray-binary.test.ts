@@ -16,15 +16,17 @@ import { warpKeys } from "../helpers/masque-keys.js";
 const binaryPath = process.env.XRAY_BINARY;
 const xrayVersion = process.env.XRAY_VERSION;
 // Gates read parity data, never a version literal or the binary itself. "masque" in the inbound protocols means Xray
-// v26.9.30 or later (XDrive arrived in the same release), and MasqueWarpConfig exists from the release after that.
-// Without XRAY_VERSION the five MASQUE and XDrive tests skip; the maybeIt tests need only XRAY_BINARY and then validate
-// against the newest generated parity data.
+// v26.9.30 or later (XDrive arrived in the same release), MasqueWarpConfig exists from the release after that, and an
+// "xmux" field on MasqueConfig marks the release that added MASQUE xmux. Without XRAY_VERSION the MASQUE and XDrive tests
+// skip; the maybeIt tests need only XRAY_BINARY and then validate against the newest generated parity data.
 const binaryRelease = binaryPath && xrayVersion ? resolveXrayParityRelease({ xrayVersion }).release : undefined;
 const hasMasque = binaryRelease?.inboundProtocols.some((entry) => entry.protocol === "masque") === true;
 const hasWarp = binaryRelease?.structs.MasqueWarpConfig !== undefined;
+const hasMasqueXmux = binaryRelease?.structs.MasqueConfig?.some((field) => field.json === "xmux") === true;
 const maybeIt = binaryPath ? it : it.skip;
 const masqueIt = hasMasque ? it : it.skip;
 const warpIt = hasMasque && hasWarp ? it : it.skip;
+const xmuxIt = hasMasque && hasMasqueXmux ? it : it.skip;
 
 const key32 = "OEQIJdY9VnmJ78XX_hyUZueFyqvtdmCWY8e4NJ6B-lk";
 const publicKey32 = "0UsWoTj6Ad7JKR_FsQ9p_r05ZXhtRSnWlw53kpwgT34";
@@ -157,5 +159,19 @@ describe("real Xray binary: MASQUE and XDrive", () => {
   warpIt("accepts a MASQUE WARP outbound with generated P-256 keys", async () => {
     const outbound = masqueOutbound({ warp: { ...warpKeys(), address: ["172.16.0.2/32", "2606:4700:110:8a36::1/128"] } });
     await expectXrayAccepts(buildOrThrow(createProfile({ outbounds: [outbound] })));
+  });
+
+  xmuxIt("accepts a MASQUE outbound with an xmux Int32Range string", async () => {
+    await expectXrayAccepts(buildOrThrow(createProfile({ outbounds: [masqueOutbound({ xmux: { maxConcurrency: "16-32" } })] })));
+  });
+
+  xmuxIt("rejects MASQUE xmux with both maxConnections and maxConcurrency exactly like the kit does", async () => {
+    const outbound = masqueOutbound({ xmux: { maxConnections: 2, maxConcurrency: "16-32" } });
+    const built = buildXrayConfig(createProfile({ outbounds: [outbound] }), { xrayVersion, mode: "permissive" });
+    expect(built.issues.map((issue) => issue.code)).toContain("XCK_SEMANTIC_MASQUE_XMUX_CONFLICT");
+
+    const result = await testXrayConfig(built.config, { binaryPath, timeoutMs: 30_000 });
+    expect(result.ok).toBe(false);
+    expect(result.stdout + result.stderr).toContain("maxConnections cannot be specified together with maxConcurrency");
   });
 });
