@@ -90,7 +90,6 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
   ["outbounds", new Set(["tag", "protocol", "sendThrough", "settings", "streamSettings", "proxySettings", "mux", "targetStrategy"])],
   ["settings", new Set([
     "clients",
-    "users",
     "default",
     "flow",
     "decryption",
@@ -128,12 +127,11 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
     "servers",
     "vnext",
     "response",
-    "redirect",
-    "remoteDNS"
+    "redirect"
   ])],
   ["vnext", new Set(["address", "port", "users"])],
   ["servers", new Set(["address", "port", "domains", "expectedIPs", "skipFallback", "queryStrategy", "tag", "password", "method", "level", "email", "flow", "uot", "uotVersion", "ivCheck", "users"])],
-  ["users", new Set(["id", "alterId", "security", "encryption", "flow", "password", "method", "level", "email", "experiments", "pass"])],
+  ["users", new Set(["id", "alterId", "security", "encryption", "flow", "password", "method", "level", "email", "experiments"])],
   ["streamSettings", new Set([
     "network",
     "method",
@@ -221,7 +219,16 @@ const wholesaleChildrenByParent: ReadonlyMap<string, ReadonlySet<string>> = new 
   ["masqueSettings", new Set(["headers"])]
 ]);
 
-function shouldDropMissingCompiledField(parentKey: string | undefined, key: string): boolean {
+/**
+ * `settings` keys known only for some protocols. Other protocols keep them from the source on
+ * edit (for example WireGuard's own `remoteDNS`).
+ */
+const knownSettingsFieldsByProtocol: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+  ["masque", new Set(["remoteDNS"])]
+]);
+
+function shouldDropMissingCompiledField(parentKey: string | undefined, key: string, ownerProtocol: string | undefined): boolean {
+  if (parentKey === "settings" && ownerProtocol !== undefined && knownSettingsFieldsByProtocol.get(ownerProtocol)?.has(key)) return true;
   return knownSourceFieldsByParent.get(parentKey ?? "__root")?.has(key) === true;
 }
 
@@ -237,13 +244,14 @@ function preferSourceTransportKey(source: JsonObject, compiled: JsonObject): Jso
   return { ...compiledWithoutNetwork, method: network };
 }
 
-function mergeJsonPreservingSource(source: JsonValue, compiled: JsonValue, parentKey?: string): JsonValue {
+/** `ownerProtocol` is the `protocol` of the inbound or outbound whose direct child is being merged. */
+function mergeJsonPreservingSource(source: JsonValue, compiled: JsonValue, parentKey?: string, ownerProtocol?: string): JsonValue {
   if (Array.isArray(source) && Array.isArray(compiled)) {
     const sourceByTag = uniqueTaggedItems(source);
     return compiled.map((item, index) => {
       const tag = getJsonObjectTag(item);
       const sourceItem = tag ? sourceByTag.get(tag) ?? source[index] : source[index];
-      return sourceItem === undefined ? cloneJson(item) : mergeJsonPreservingSource(sourceItem, item, parentKey);
+      return sourceItem === undefined ? cloneJson(item) : mergeJsonPreservingSource(sourceItem, item, parentKey, ownerProtocol);
     });
   }
   if (isJsonObject(source) && isJsonObject(compiled)) {
@@ -262,9 +270,10 @@ function mergeJsonPreservingSource(source: JsonValue, compiled: JsonValue, paren
     ) {
       return cloneJson(compiled);
     }
+    const childOwnerProtocol = typeof compiled.protocol === "string" ? compiled.protocol : undefined;
     const output: Record<string, JsonValue | undefined> = { ...cloneJson(source) };
     for (const key of Object.keys(source)) {
-      if (compiled[key] === undefined && shouldDropMissingCompiledField(parentKey, key)) delete output[key];
+      if (compiled[key] === undefined && shouldDropMissingCompiledField(parentKey, key, ownerProtocol)) delete output[key];
     }
     for (const [key, value] of Object.entries(compiled)) {
       if (value === undefined) continue;
@@ -278,7 +287,7 @@ function mergeJsonPreservingSource(source: JsonValue, compiled: JsonValue, paren
         output[key] = cloneJson(value);
         continue;
       }
-      output[key] = mergeJsonPreservingSource(sourceValue, value, key);
+      output[key] = mergeJsonPreservingSource(sourceValue, value, key, childOwnerProtocol);
     }
     return output as JsonObject;
   }
