@@ -23,6 +23,29 @@ function stripPortMapFromNonTunnelDokodemoInbounds(inbound: Inbound): Inbound {
 }
 
 /**
+ * `remoteDNS` is only part of the strict profile schema for `masque`. A protocol switch
+ * in a form draft can leak it onto other inbound kinds and block `validateProfile`.
+ */
+function stripRemoteDnsFromNonMasqueInbounds(inbound: Inbound): Inbound {
+  if (inbound.protocol === "masque") return inbound;
+  if (!("remoteDNS" in inbound)) return inbound;
+  const { remoteDNS: _removed, ...rest } = inbound as unknown as Record<string, unknown>;
+  return rest as unknown as Inbound;
+}
+
+/**
+ * An empty MASQUE `remoteDNS` list means "not set". Invalid values are left for validation:
+ * an unchanged import is returned from the raw source, so repairs here would make the
+ * validated profile and the emitted config disagree.
+ */
+function dropEmptyMasqueRemoteDns(inbound: Inbound): Inbound {
+  if (inbound.protocol !== "masque") return inbound;
+  if (!Array.isArray(inbound.remoteDNS) || inbound.remoteDNS.length > 0) return inbound;
+  const { remoteDNS: _removed, ...rest } = inbound;
+  return rest;
+}
+
+/**
  * Canonical tunnel/dokodemo shape keeps `portMap` on the inbound (validated by `.strict()`).
  * `raw` `/settings/portMap` patches are redundant once compiled; lifting them survives API round‑trips
  * and avoids losing mappings when drafts only carried `raw`.
@@ -179,7 +202,11 @@ export function normalizeProfile(profile: Profile): Profile {
     schemaVersion: "xck.v1",
     inbounds: inbounds.map((ib) =>
       normalizeInboundTlsVerifyPeerCertByName(
-        normalizeDokodemoTunnelInboundPortMap(stripPortMapFromNonTunnelDokodemoInbounds(ib))
+        dropEmptyMasqueRemoteDns(
+          stripRemoteDnsFromNonMasqueInbounds(
+            normalizeDokodemoTunnelInboundPortMap(stripPortMapFromNonTunnelDokodemoInbounds(ib))
+          )
+        )
       )
     ),
     outbounds: outbounds?.map(normalizeOutboundTlsVerifyPeerCertByName)
