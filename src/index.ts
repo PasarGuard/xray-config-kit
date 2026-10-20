@@ -11,6 +11,9 @@ export {
   validateProfile
 } from "./core/validate.js";
 export {
+  expandMasquePathTemplate,
+  MASQUE_DEFAULTS,
+  MASQUE_LIMITS,
   XDRIVE_DEFAULTS,
   XDRIVE_LIMITS,
   XDRIVE_SERVICES

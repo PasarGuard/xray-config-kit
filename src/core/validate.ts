@@ -3,7 +3,7 @@ import { profileSchema } from "../schemas/profile.js";
 import { base64UrlByteLength } from "./base64.js";
 import { hasErrors, makeIssue, pathForZod } from "./issues.js";
 import { normalizeProfile } from "./profile.js";
-import { inboundTransportIssues, outboundTransportIssues } from "./validate-masque-xdrive.js";
+import { inboundTransportIssues, masqueInboundIssues, outboundTransportIssues } from "./validate-masque-xdrive.js";
 import type { Client, Inbound, InboundPort, Issue, Profile, RawPatch, RoutingRule, ValidateOptions, ValidationResult, XrayPortList } from "./types.js";
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -96,7 +96,7 @@ function validateClients(inbound: Inbound, inboundIndex: number): Issue[] {
   if (!("clients" in inbound)) return [];
   const clients = inbound.clients;
 
-  if ((inbound.protocol === "vmess" || inbound.protocol === "vless" || inbound.protocol === "trojan" || inbound.protocol === "hysteria") && clients.filter((client) => client.enabled !== false).length === 0) {
+  if ((inbound.protocol === "vmess" || inbound.protocol === "vless" || inbound.protocol === "trojan" || inbound.protocol === "hysteria" || inbound.protocol === "masque") && clients.filter((client) => client.enabled !== false).length === 0) {
     issues.push(makeIssue({
       code: "XCK_SEMANTIC_MISSING_CLIENTS",
       severity: "warning",
@@ -141,13 +141,15 @@ function validateClients(inbound: Inbound, inboundIndex: number): Issue[] {
     if (key !== undefined) {
       const previous = seen.get(key);
       if (previous !== undefined) {
+        const first = `First occurrence is /inbounds/${inboundIndex + 1}/clients/${previous}.`;
         issues.push(makeIssue({
           code: "XCK_SEMANTIC_DUPLICATE_CLIENT",
           severity: "error",
           category: "semantic",
           path: `/inbounds/${inboundIndex + 1}/clients/${clientIndex}`,
-          message: "Client credential is duplicated within the same inbound.",
-          suggestion: `Remove this client or rotate its credential. First occurrence is /inbounds/${inboundIndex + 1}/clients/${previous}.`
+          ...(client.protocol === "masque"
+            ? { message: `Client email "${client.email}" is duplicated within the same inbound (MASQUE compares emails case-insensitively).`, suggestion: `Give each MASQUE client a unique email. ${first}` }
+            : { message: "Client credential is duplicated within the same inbound.", suggestion: `Remove this client or rotate its credential. ${first}` })
         }));
       }
       seen.set(key, clientIndex);
@@ -179,13 +181,13 @@ function validateClients(inbound: Inbound, inboundIndex: number): Issue[] {
       }));
     }
 
-    const secret = client.protocol === "hysteria" ? client.auth : client.protocol === "trojan" || client.protocol === "shadowsocks" ? client.password : undefined;
+    const secret = client.protocol === "hysteria" ? client.auth : client.protocol === "masque" ? client.pass : client.protocol === "trojan" || client.protocol === "shadowsocks" ? client.password : undefined;
     if (secret !== undefined && secret.length < 12) {
       issues.push(makeIssue({
         code: "XCK_SECURITY_WEAK_CLIENT_SECRET",
         severity: "warning",
         category: "security",
-        path: `/inbounds/${inboundIndex + 1}/clients/${clientIndex}/${client.protocol === "hysteria" ? "auth" : "password"}`,
+        path: `/inbounds/${inboundIndex + 1}/clients/${clientIndex}/${client.protocol === "hysteria" ? "auth" : client.protocol === "masque" ? "pass" : "password"}`,
         message: "Client password is short enough to be risky.",
         suggestion: "Use at least 16 random bytes encoded as base64url or hex."
       }));
@@ -527,7 +529,8 @@ function semanticIssues(profile: Profile, options: ValidateOptions): Issue[] {
       ...validateClients(inbound, index),
       ...validateReality(inbound, index),
       ...validateFallbacks(inbound, index),
-      ...inboundTransportIssues(inbound, index)
+      ...inboundTransportIssues(inbound, index),
+      ...(inbound.protocol === "masque" ? masqueInboundIssues(inbound, index) : [])
     ]),
     ...(profile.outbounds ?? []).flatMap((outbound, index) => outboundTransportIssues(outbound, index))
   ];
