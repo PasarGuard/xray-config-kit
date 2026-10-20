@@ -253,6 +253,33 @@ function masqueAddressIssues(inbound: MasqueInbound, base: string): Issue[] {
   return issues;
 }
 
+/** Checks a MASQUE `remoteDNS` value found at `path`. Xray loads it as []string, so absent or null is fine. */
+function remoteDnsIssues(entries: unknown, path: string): Issue[] {
+  if (entries === undefined || entries === null) return [];
+  if (!Array.isArray(entries)) {
+    return [makeIssue({
+      code: "XCK_SEMANTIC_MASQUE_REMOTE_DNS_INVALID",
+      severity: "error",
+      category: "semantic",
+      path,
+      message: "MASQUE remoteDNS must be a list of IP addresses."
+    })];
+  }
+  const issues: Issue[] = [];
+  entries.forEach((entry, entryIndex) => {
+    if (typeof entry !== "string" || !parseIpAddress(entry)) {
+      issues.push(makeIssue({
+        code: "XCK_SEMANTIC_MASQUE_REMOTE_DNS_INVALID",
+        severity: "error",
+        category: "semantic",
+        path: `${path}/${entryIndex}`,
+        message: `MASQUE remoteDNS entry ${JSON.stringify(entry)} must be an IP address.`
+      }));
+    }
+  });
+  return issues;
+}
+
 export function masqueInboundIssues(inbound: MasqueInbound, inboundIndex: number): Issue[] {
   const base = `/inbounds/${inboundIndex + 1}`;
   const issues: Issue[] = [];
@@ -279,17 +306,7 @@ export function masqueInboundIssues(inbound: MasqueInbound, inboundIndex: number
     }));
   }
 
-  (inbound.remoteDNS ?? []).forEach((entry, entryIndex) => {
-    if (!parseIpAddress(entry)) {
-      issues.push(makeIssue({
-        code: "XCK_SEMANTIC_MASQUE_REMOTE_DNS_INVALID",
-        severity: "error",
-        category: "semantic",
-        path: `${base}/remoteDNS/${entryIndex}`,
-        message: `MASQUE remoteDNS entry "${entry}" must be an IP address.`
-      }));
-    }
-  });
+  issues.push(...remoteDnsIssues(inbound.remoteDNS, `${base}/remoteDNS`));
 
   inbound.clients.forEach((client, clientIndex) => {
     if (client.enabled === false) return;
@@ -377,20 +394,7 @@ export function masqueOutboundIssues(outbound: ProxyOutbound, outboundIndex: num
     }));
   }
 
-  const remoteDNS = settings.remoteDNS;
-  if (Array.isArray(remoteDNS)) {
-    remoteDNS.forEach((entry, entryIndex) => {
-      if (typeof entry !== "string" || !parseIpAddress(entry)) {
-        issues.push(makeIssue({
-          code: "XCK_SEMANTIC_MASQUE_REMOTE_DNS_INVALID",
-          severity: "error",
-          category: "semantic",
-          path: `${base}/settings/remoteDNS/${entryIndex}`,
-          message: `MASQUE remoteDNS entry ${JSON.stringify(entry)} must be an IP address.`
-        }));
-      }
-    });
-  }
+  issues.push(...remoteDnsIssues(settings.remoteDNS, `${base}/settings/remoteDNS`));
 
   return issues;
 }

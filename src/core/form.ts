@@ -429,12 +429,14 @@ export function createDefaultInboundForProtocol(options: CreateDefaultInboundFor
     port: options.port,
     clientDefaults: options.clientDefaults
   };
+  // Only the masque protocol can carry the masque transport; other protocols fall back to their default.
+  const transport = options.transport === "masque" ? undefined : options.transport;
 
   if (options.protocol === "vmess") {
     return createDefaultInbound({
       protocol: "vmess",
       ...base,
-      transport: options.transport === "masque" ? undefined : options.transport,
+      transport,
       security: options.security === "tls" ? "tls" : "none"
     });
   }
@@ -443,7 +445,7 @@ export function createDefaultInboundForProtocol(options: CreateDefaultInboundFor
     return createDefaultInbound({
       protocol: "vless",
       ...base,
-      transport: options.transport === "masque" ? undefined : options.transport,
+      transport,
       security: options.security
     });
   }
@@ -452,7 +454,7 @@ export function createDefaultInboundForProtocol(options: CreateDefaultInboundFor
     return createDefaultInbound({
       protocol: "trojan",
       ...base,
-      transport: options.transport === "masque" ? undefined : options.transport,
+      transport,
       security: options.security
     });
   }
@@ -461,7 +463,7 @@ export function createDefaultInboundForProtocol(options: CreateDefaultInboundFor
     return createDefaultInbound({
       protocol: "shadowsocks",
       ...base,
-      transport: options.transport === "masque" ? undefined : options.transport,
+      transport,
       security: options.security === "tls" ? "tls" : "none"
     });
   }
@@ -741,8 +743,10 @@ export function getInboundFormCapabilities(options: { readonly xrayVersion?: str
   };
 }
 
+const streamInboundProtocols: ReadonlySet<Inbound["protocol"]> = new Set(["vmess", "vless", "trojan", "shadowsocks", "hysteria", "masque"]);
+
 export function getInboundFieldVisibility(draft: Inbound, _capabilities: InboundFormCapabilities = getInboundFormCapabilities()): InboundFieldVisibility {
-  const stream = draft.protocol === "vmess" || draft.protocol === "vless" || draft.protocol === "trojan" || draft.protocol === "shadowsocks" || draft.protocol === "hysteria" || draft.protocol === "masque";
+  const stream = streamInboundProtocols.has(draft.protocol);
   const security = "security" in draft ? draft.security : undefined;
   return {
     clients: "clients" in draft,

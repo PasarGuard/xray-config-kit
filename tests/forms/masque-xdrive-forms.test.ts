@@ -30,7 +30,9 @@ describe("MASQUE and XDrive form helpers", () => {
     const unsafe = (options: unknown) => createDefaultInbound(options as Parameters<typeof createDefaultInbound>[0]);
     expect(() => unsafe({ protocol: "vless", transport: "masque" })).toThrow("The masque transport can only be used by the masque inbound.");
     expect(() => unsafe({ protocol: "masque", security: "none" })).toThrow("masque default inbound always uses TLS and the masque transport.");
-    expect(createDefaultInboundForProtocol({ protocol: "vless", transport: "masque" })).toMatchObject({ transport: { type: "tcp" } });
+    for (const protocol of ["vless", "vmess", "trojan", "shadowsocks"] as const) {
+      expect(createDefaultInboundForProtocol({ protocol, transport: "masque" })).toMatchObject({ protocol, transport: { type: "tcp" } });
+    }
   });
 
   it("seeds XDrive with the Google Drive shape and flags the fields to fill", () => {
