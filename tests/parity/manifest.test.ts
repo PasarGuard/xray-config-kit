@@ -6,7 +6,7 @@ describe("xray parity manifest", () => {
   it("tracks selected xray-core releases from infra/conf", () => {
     const releases = getXrayParityReleases();
 
-    expect(releases.map((release) => release.tag)).toEqual(["v25.10.15", "v26.4.25", "v26.5.3", "v26.6.22", "v26.6.27", "v26.7.11", "v26.7.28", "v26.9.8", "v26.9.30", "v26.10.10"]);
+    expect(releases.map((release) => release.tag)).toEqual(["v25.10.15", "v26.4.25", "v26.5.3", "v26.6.22", "v26.6.27", "v26.7.11", "v26.7.28", "v26.9.8", "v26.9.30", "v26.10.17"]);
     expect(xrayParityManifest.source.selectedTags).toEqual(["v25.10.15", "v26.4.25", "v26.5.3", "v26.6.22", "v26.6.27", "v26.7.11", "v26.7.28", "v26.9.8", "v26.9.30"]);
   });
 
@@ -19,6 +19,7 @@ describe("xray parity manifest", () => {
       "dokodemo-door",
       "http",
       "hysteria",
+      "masque",
       "mixed",
       "shadowsocks",
       "socks",

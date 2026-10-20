@@ -14,10 +14,10 @@ export const generatedXrayReleaseTags = [
   "v26.7.28",
   "v26.9.8",
   "v26.9.30",
-  "v26.10.10"
+  "v26.10.17"
 ] as const;
-export const latestGeneratedXrayReleaseTag = "v26.10.10" as const;
-export const latestGeneratedXrayVersion = "26.10.10" as const;
+export const latestGeneratedXrayReleaseTag = "v26.10.17" as const;
+export const latestGeneratedXrayVersion = "26.10.17" as const;
 
 export const generatedXrayCapabilitiesByTag = {
   "v25.10.15": {
@@ -3548,10 +3548,10 @@ export const generatedXrayCapabilitiesByTag = {
       }
     }
   },
-  "v26.10.10": {
+  "v26.10.17": {
     "adapterId": "xray@26.10",
     "xrayVersionRange": ">=26.10.0 <26.11.0",
-    "latestTestedVersion": "26.10.10",
+    "latestTestedVersion": "26.10.17",
     "protocols": [
       "blackhole",
       "block",
@@ -3726,6 +3726,10 @@ export const generatedXrayCapabilitiesByTag = {
         "replacement": "independent \"host\""
       },
       {
+        "feature": "\"service\": \"Google Drive\"",
+        "replacement": "\"service\": \"google-drive\""
+      },
+      {
         "feature": "Trojan (with no Flow, etc.)",
         "replacement": "VLESS with Flow & Seed"
       },
@@ -3737,7 +3741,7 @@ export const generatedXrayCapabilitiesByTag = {
     "compatibilityMatrix": {
       "allowInsecure": {
         "supported": false,
-        "removed": "26.10.10",
+        "removed": "26.10.17",
         "replacement": "\"pinnedPeerCertSha256\"(pcs) and \"verifyPeerCertByName\"(vcn)"
       },
       "api": {
@@ -3777,7 +3781,7 @@ export const generatedXrayCapabilitiesByTag = {
       },
       "freedom noise": {
         "supported": false,
-        "removed": "26.10.10",
+        "removed": "26.10.17",
         "replacement": "noises = [ { ... } ]"
       },
       "geodata": {
@@ -3785,7 +3789,7 @@ export const generatedXrayCapabilitiesByTag = {
       },
       "global transport": {
         "supported": false,
-        "removed": "26.10.10",
+        "removed": "26.10.17",
         "replacement": "streamSettings in inbounds and outbounds"
       },
       "grpc": {
@@ -3798,7 +3802,7 @@ export const generatedXrayCapabilitiesByTag = {
       },
       "http-transport": {
         "supported": false,
-        "removed": "26.10.10",
+        "removed": "26.10.17",
         "replacement": "XHTTP stream-one H2 & H3"
       },
       "httpupgrade": {
@@ -3847,12 +3851,12 @@ export const generatedXrayCapabilitiesByTag = {
       },
       "proxySettings": {
         "supported": false,
-        "removed": "26.10.10",
+        "removed": "26.10.17",
         "replacement": "\"streamSettings.sockopt.dialerProxy\""
       },
       "quic": {
         "supported": false,
-        "removed": "26.10.10",
+        "removed": "26.10.17",
         "replacement": "XHTTP stream-one H3"
       },
       "raw": {
@@ -3897,7 +3901,7 @@ export const generatedXrayCapabilitiesByTag = {
       },
       "trojan flow": {
         "supported": false,
-        "removed": "26.10.10"
+        "removed": "26.10.17"
       },
       "tun": {
         "supported": true
@@ -3942,7 +3946,7 @@ export const generatedXrayCapabilitiesByTag = {
       },
       "xtls": {
         "supported": false,
-        "removed": "26.10.10",
+        "removed": "26.10.17",
         "replacement": "xtls-rprx-vision with TLS or REALITY"
       }
     }

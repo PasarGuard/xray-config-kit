@@ -40,7 +40,7 @@ export const xrayParityManifest = {
       "v26.7.28",
       "v26.9.8",
       "v26.9.30",
-      "v26.10.10"
+      "v26.10.17"
     ]
   },
   "releases": [
@@ -35988,9 +35988,9 @@ export const xrayParityManifest = {
       }
     },
     {
-      "tag": "v26.10.10",
-      "version": "26.10.10",
-      "commit": "701af60772cda123492f86e383e1fdba066614a9",
+      "tag": "v26.10.17",
+      "version": "26.10.17",
+      "commit": "92ccc939aaf4f8965f369cf0b142e005aeaa11d5",
       "removedFeatures": [
         {
           "feature": "noise = { ... }",
@@ -36111,6 +36111,12 @@ export const xrayParityManifest = {
           "keys": [
             "xhttp headers host"
           ]
+        },
+        {
+          "feature": "\"service\": \"Google Drive\"",
+          "replacement": "\"service\": \"google-drive\"",
+          "source": "infra/conf/transport_method.go",
+          "keys": []
         },
         {
           "feature": "Trojan (with no Flow, etc.)",
@@ -37806,6 +37812,11 @@ export const xrayParityManifest = {
             "go": "Warp",
             "type": "*MasqueWarpConfig",
             "json": "warp"
+          },
+          {
+            "go": "Xmux",
+            "type": "XmuxConfig",
+            "json": "xmux"
           }
         ],
         "Masquerade": [
@@ -38098,6 +38109,11 @@ export const xrayParityManifest = {
             "go": "Noise",
             "type": "[]NoiseItem",
             "json": "noise"
+          },
+          {
+            "go": "Script",
+            "type": "string",
+            "json": "script"
           }
         ],
         "NoOpConnectionAuthenticator": [],
@@ -40253,6 +40269,21 @@ export const xrayParityManifest = {
             "go": "Addrs",
             "type": "[]string",
             "json": "addrs"
+          },
+          {
+            "go": "Worker",
+            "type": "int32",
+            "json": "worker"
+          },
+          {
+            "go": "TlsConfig",
+            "type": "*TLSConfig",
+            "json": "tlsConfig"
+          },
+          {
+            "go": "QuicConfig",
+            "type": "*QuicParamsConfig",
+            "json": "quicConfig"
           }
         ],
         "XDriveConfig": [
