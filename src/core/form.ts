@@ -300,6 +300,10 @@ function assertCreateDefaultInboundOptions(options: CreateDefaultInboundOptions)
   if (protocol !== "masque" && unsafe.transport === "masque") {
     throw new TypeError("The masque transport can only be used by the masque inbound.");
   }
+
+  if (protocol !== "vless" && unsafe.transport === "xdrive") {
+    throw new TypeError("The xdrive transport can only be used by the VLESS inbound.");
+  }
 }
 
 function normalizeDefaultInboundListen(listen: string | undefined): { listen?: string } {
@@ -397,9 +401,10 @@ const kitTransportByXrayTransport: Readonly<Record<string, Transport["type"]>> =
 };
 
 function inboundTransportsForProtocol(protocol: string): readonly Transport["type"][] {
-  if (protocol === "vmess" || protocol === "vless" || protocol === "trojan" || protocol === "shadowsocks") {
-    return ["tcp", "grpc", "xhttp", "ws", "httpupgrade", "kcp", "xdrive"];
-  }
+  const streamTransports = ["tcp", "grpc", "xhttp", "ws", "httpupgrade", "kcp"] as const;
+  // Xray runs the xdrive transport only under VLESS (XCK_SEMANTIC_XDRIVE_PROTOCOL).
+  if (protocol === "vless") return [...streamTransports, "xdrive"];
+  if (protocol === "vmess" || protocol === "trojan" || protocol === "shadowsocks") return streamTransports;
   if (protocol === "hysteria") return ["hysteria"];
   if (protocol === "masque") return ["masque"];
   return [];
@@ -429,8 +434,11 @@ export function createDefaultInboundForProtocol(options: CreateDefaultInboundFor
     port: options.port,
     clientDefaults: options.clientDefaults
   };
-  // Only the masque protocol can carry the masque transport; other protocols fall back to their default.
-  const transport = options.transport === "masque" ? undefined : options.transport;
+  // Only the masque protocol can carry the masque transport and only VLESS the xdrive transport; other protocols
+  // fall back to their default transport (createDefaultInbound throws for both instead).
+  const transport = options.transport === "masque" || (options.transport === "xdrive" && options.protocol !== "vless")
+    ? undefined
+    : options.transport;
 
   if (options.protocol === "vmess") {
     return createDefaultInbound({

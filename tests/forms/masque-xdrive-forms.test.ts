@@ -38,7 +38,21 @@ describe("MASQUE and XDrive form helpers", () => {
   it("seeds XDrive with the Google Drive shape and flags the fields to fill", () => {
     const inbound = createDefaultInbound({ protocol: "vless", tag: "vless-xdrive", transport: "xdrive", security: "tls", clientDefaults: "empty" });
     expect(inbound.transport).toEqual({ type: "xdrive", service: "Google Drive", remoteFolder: "", secrets: ["", "", ""] });
-    expect(errors(inbound)).toEqual(["XCK_SEMANTIC_XDRIVE_REMOTE_FOLDER_REQUIRED /transport/remoteFolder", "XCK_SEMANTIC_XDRIVE_GOOGLE_DRIVE_SECRETS /transport/secrets"]);
+    // The default decryption "none" is a placeholder too: XDrive needs a VLESS Encryption pair.
+    expect(errors(inbound)).toEqual([
+      "XCK_SEMANTIC_XDRIVE_REMOTE_FOLDER_REQUIRED /transport/remoteFolder",
+      "XCK_SEMANTIC_XDRIVE_GOOGLE_DRIVE_SECRETS /transport/secrets",
+      "XCK_SEMANTIC_XDRIVE_VLESS_ENCRYPTION /decryption"
+    ]);
+  });
+
+  it("keeps the xdrive transport on VLESS", () => {
+    const unsafe = (options: unknown) => createDefaultInbound(options as Parameters<typeof createDefaultInbound>[0]);
+    for (const protocol of ["vmess", "trojan", "shadowsocks"] as const) {
+      expect(() => unsafe({ protocol, transport: "xdrive" })).toThrow("The xdrive transport can only be used by the VLESS inbound.");
+      expect(createDefaultInboundForProtocol({ protocol, transport: "xdrive" })).toMatchObject({ protocol, transport: { type: "tcp" } });
+    }
+    expect(createDefaultInboundForProtocol({ protocol: "vless", transport: "xdrive" })).toMatchObject({ protocol: "vless", transport: { type: "xdrive" } });
   });
 
   it("exposes MASQUE and XDrive capabilities for the latest release", () => {
@@ -51,6 +65,10 @@ describe("MASQUE and XDrive form helpers", () => {
     expect(caps.settingsFieldOrderByProtocol.masque).toEqual(["users", "clients", "address", "mtu"]);
     expect(caps.transportsByProtocol.masque).toEqual(["masque"]);
     expect(caps.transportsByProtocol.vless).toEqual(["tcp", "grpc", "xhttp", "ws", "httpupgrade", "kcp", "xdrive"]);
+    // Xray runs the xdrive transport only under VLESS.
+    for (const protocol of ["vmess", "trojan", "shadowsocks"]) {
+      expect(caps.transportsByProtocol[protocol]).toEqual(["tcp", "grpc", "xhttp", "ws", "httpupgrade", "kcp"]);
+    }
     expect(caps.securitiesByProtocol.masque).toEqual(["tls"]);
     expect(caps.securitiesByProtocol.vless).toEqual(["none", "tls", "reality"]);
     expect(caps.clientLinks.masque).toBe(false);

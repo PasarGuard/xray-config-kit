@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { validateStrictXrayConfig } from "../../src/index.js";
 import type { Issue, JsonObject } from "../../src/index.js";
+import { vlessEncryptionPair } from "../helpers/vless-encryption.js";
 import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
 describe("strict MASQUE and XDrive JSON", () => {
@@ -27,7 +28,7 @@ describe("strict MASQUE and XDrive JSON", () => {
         protocol: "vless",
         tag: "vless-xdrive",
         port: 8443,
-        settings: { clients: [], decryption: "none" },
+        settings: { clients: [], decryption: vlessEncryptionPair.decryption },
         streamSettings: {
           network: "xdrive",
           security: "tls",

@@ -4,7 +4,7 @@ import type { IpFamily } from "./ip.js";
 import { makeIssue } from "./issues.js";
 import { escapePointerSegment, isJsonObject } from "./json.js";
 import { expandMasquePathTemplate, MASQUE_LIMITS, XDRIVE_LIMITS, XDRIVE_SERVICES } from "./masque-xdrive.js";
-import type { Inbound, Issue, JsonObject, MasqueInbound, Outbound, ProxyOutbound } from "./types.js";
+import type { Inbound, InboundPort, Issue, JsonObject, MasqueInbound, Outbound, ProxyOutbound } from "./types.js";
 
 /** httpguts.ValidHeaderFieldName: an RFC 7230 token. */
 const headerNamePattern = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
@@ -510,19 +510,180 @@ export function xdriveSettingsIssues(settings: JsonObject, path: string, selecte
   return issues;
 }
 
+function xdriveProtocolIssue(path: string): Issue {
+  return makeIssue({
+    code: "XCK_SEMANTIC_XDRIVE_PROTOCOL",
+    severity: "error",
+    category: "semantic",
+    path,
+    message: "The xdrive transport can only be used by VLESS.",
+    suggestion: "Use VLESS with VLESS Encryption for XDrive, or pick another transport."
+  });
+}
+
+function xdriveFlowIssue(path: string): Issue {
+  return makeIssue({
+    code: "XCK_SEMANTIC_XDRIVE_VLESS_FLOW",
+    severity: "error",
+    category: "semantic",
+    path,
+    message: "The xdrive transport does not support VLESS \"flow\".",
+    suggestion: "Remove the flow."
+  });
+}
+
+/**
+ * Number of ports in an Xray port list, or undefined when it cannot be counted before Xray runs (an env: port)
+ * or does not parse (XCK_SEMANTIC_INVALID_PORT reports that).
+ */
+function portListSize(port: InboundPort): number | undefined {
+  if (typeof port === "number") return 1;
+  let size = 0;
+  for (const segment of port.split(",")) {
+    const trimmed = segment.trim();
+    if (trimmed === "") continue;
+    const range = /^(\d+)(?:-(\d+))?$/.exec(trimmed);
+    if (!range) return undefined;
+    const from = Number(range[1]);
+    const to = range[2] === undefined ? from : Number(range[2]);
+    if (to < from) return undefined;
+    size += to - from + 1;
+  }
+  return size;
+}
+
+/** Xray listens on a Unix socket (and drops the port list) when listen is an absolute path or starts with "@". */
+function listensOnUnixSocket(listen: string | undefined): boolean {
+  return listen !== undefined && (listen.startsWith("/") || listen.startsWith("@"));
+}
+
+/** Mirrors the inbound half of Xray's validateXDrive (infra/conf/xray.go): VLESS only, with decryption, no flow, one port. */
+function xdriveInboundIssues(inbound: Inbound, base: string): Issue[] {
+  if (inbound.protocol !== "vless") return [xdriveProtocolIssue(`${base}/transport/type`)];
+  const issues: Issue[] = [];
+
+  // The compiler writes "none" when decryption is left out; an empty value fails Xray's VLESS build.
+  if (!isNonEmptyString(inbound.decryption) || inbound.decryption === "none") {
+    issues.push(makeIssue({
+      code: "XCK_SEMANTIC_XDRIVE_VLESS_ENCRYPTION",
+      severity: "error",
+      category: "semantic",
+      path: `${base}/decryption`,
+      message: "The xdrive transport needs VLESS \"decryption\"; run \"xray vlessenc\" to get one.",
+      suggestion: "Set decryption to the server half of a VLESS Encryption pair and give clients the matching encryption."
+    }));
+  }
+
+  // Only enabled clients are compiled; a client without its own flow takes the inbound flow.
+  const enabledClients = inbound.clients.filter((client) => client.enabled !== false);
+  inbound.clients.forEach((client, clientIndex) => {
+    if (client.enabled !== false && isNonEmptyString(client.flow)) issues.push(xdriveFlowIssue(`${base}/clients/${clientIndex}/flow`));
+  });
+  if (isNonBlankString(inbound.flow) && enabledClients.some((client) => !isNonEmptyString(client.flow))) {
+    issues.push(xdriveFlowIssue(`${base}/flow`));
+  }
+
+  const portCount = inbound.port === undefined || listensOnUnixSocket(inbound.listen) ? undefined : portListSize(inbound.port);
+  if (portCount !== undefined && portCount !== 1) {
+    issues.push(makeIssue({
+      code: "XCK_SEMANTIC_XDRIVE_SINGLE_PORT",
+      severity: "error",
+      category: "semantic",
+      path: `${base}/port`,
+      message: "The xdrive transport can only listen on one port.",
+      suggestion: "Use a single port: every port would open its own listener on the same folder."
+    }));
+  }
+
+  return issues;
+}
+
+/**
+ * The VLESS account Xray builds from outbound settings, with its issue path: the flat fields when settings.address
+ * is set (vnext is then ignored), else the single vnext[0].users[0]. Undefined when Xray rejects the shape first.
+ */
+function vlessOutboundAccount(settings: JsonObject, base: string): { readonly account: JsonObject; readonly path: string; readonly flat: boolean } | undefined {
+  if (settings.address !== undefined && settings.address !== null) return { account: settings, path: `${base}/settings`, flat: true };
+  const server = Array.isArray(settings.vnext) && settings.vnext.length === 1 ? settings.vnext[0] : undefined;
+  const users = isJsonObject(server) ? server.users : undefined;
+  const user = Array.isArray(users) && users.length === 1 ? users[0] : undefined;
+  return isJsonObject(user) ? { account: user, path: `${base}/settings/vnext/0/users/0`, flat: false } : undefined;
+}
+
+function xdriveMuxIssues(mux: unknown, path: string): Issue[] {
+  const muxIssue = (field?: string) => makeIssue({
+    code: "XCK_SEMANTIC_XDRIVE_MUX_REQUIRED",
+    severity: "error",
+    category: "semantic",
+    path: field ? `${path}/${field}` : path,
+    message: "The xdrive transport needs \"mux\" enabled, with no negative \"concurrency\" or \"xudpConcurrency\" and no \"xudpProxyUDP443\": \"skip\".",
+    suggestion: "Set mux to { \"enabled\": true }; XDrive carries every connection over Mux.Cool."
+  });
+  if (!isJsonObject(mux)) return [muxIssue()];
+  const issues: Issue[] = [];
+  if (mux.enabled !== true) issues.push(muxIssue("enabled"));
+  for (const field of ["concurrency", "xudpConcurrency"] as const) {
+    const value = mux[field];
+    if (typeof value === "number" && value < 0) issues.push(muxIssue(field));
+  }
+  if (mux.xudpProxyUDP443 === "skip") issues.push(muxIssue("xudpProxyUDP443"));
+  return issues;
+}
+
+/** Mirrors the outbound half of Xray's validateXDrive: VLESS only, with encryption, no flow or testpre, and mux unless reverse. */
+function xdriveOutboundIssues(outbound: Exclude<Outbound, { protocol: "unmanaged" }>, base: string, stream: JsonObject | undefined): Issue[] {
+  if (outbound.protocol !== "vless") return [xdriveProtocolIssue(`${base}/streamSettings/${transportKey(stream)}`)];
+  const settings = (outbound.settings ?? {}) as JsonObject;
+  const found = vlessOutboundAccount(settings, base);
+  const issues: Issue[] = [];
+
+  if (found && isNonEmptyString(found.account.flow)) issues.push(xdriveFlowIssue(`${found.path}/flow`));
+
+  // An empty or missing encryption fails Xray's VLESS build before this check, so it needs a value here too.
+  if (found && (!isNonEmptyString(found.account.encryption) || found.account.encryption === "none")) {
+    issues.push(makeIssue({
+      code: "XCK_SEMANTIC_XDRIVE_VLESS_ENCRYPTION",
+      severity: "error",
+      category: "semantic",
+      path: `${found.path}/encryption`,
+      message: "The xdrive transport needs VLESS \"encryption\"; run \"xray vlessenc\" to get one.",
+      suggestion: "Set encryption to the client half of the server's VLESS Encryption pair."
+    }));
+  }
+
+  // VLESS reverse (read only from the flat shape) opens its own mux.
+  const hasReverse = found?.flat === true && settings.reverse !== undefined && settings.reverse !== null;
+  if (!hasReverse) issues.push(...xdriveMuxIssues(outbound.mux, `${base}/mux`));
+
+  const testpre = found?.account.testpre;
+  if (found && testpre !== undefined && testpre !== null && testpre !== 0) {
+    issues.push(makeIssue({
+      code: "XCK_SEMANTIC_XDRIVE_VLESS_TESTPRE",
+      severity: "error",
+      category: "semantic",
+      path: `${found.path}/testpre`,
+      message: "The xdrive transport does not support VLESS \"testpre\".",
+      suggestion: "Remove testpre or set it to 0."
+    }));
+  }
+
+  return issues;
+}
+
 export function inboundTransportIssues(inbound: Inbound, inboundIndex: number): Issue[] {
   const transport = inbound.protocol !== "unmanaged" && "transport" in inbound ? inbound.transport : undefined;
+  const base = `/inbounds/${inboundIndex + 1}`;
   if (inbound.protocol !== "masque" && transport?.type === "masque") {
     return [makeIssue({
       code: "XCK_SEMANTIC_MASQUE_TRANSPORT_PROTOCOL",
       severity: "error",
       category: "semantic",
-      path: `/inbounds/${inboundIndex + 1}/transport/type`,
+      path: `${base}/transport/type`,
       message: "The masque transport can only be used by the masque protocol."
     })];
   }
   if (transport?.type !== "xdrive") return [];
-  return xdriveSettingsIssues(transport, `/inbounds/${inboundIndex + 1}/transport`, true);
+  return [...xdriveSettingsIssues(transport, `${base}/transport`, true), ...xdriveInboundIssues(inbound, base)];
 }
 
 export function outboundTransportIssues(outbound: Outbound, outboundIndex: number): Issue[] {
@@ -554,6 +715,7 @@ export function outboundTransportIssues(outbound: Outbound, outboundIndex: numbe
   const xdriveSelected = transportName(stream) === "xdrive";
   if (isJsonObject(xdriveSettings)) issues.push(...xdriveSettingsIssues(xdriveSettings, xdrivePath, xdriveSelected));
   else if (xdriveSelected) issues.push(...xdriveSettingsIssues({}, xdrivePath, true));
+  if (xdriveSelected) issues.push(...xdriveOutboundIssues(outbound, base, stream));
 
   return issues;
 }

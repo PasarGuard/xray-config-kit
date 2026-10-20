@@ -10,6 +10,7 @@ import {
   XDRIVE_SERVICES
 } from "../../src/index.js";
 import type { Inbound, Issue, StreamSettings, XDriveTransport } from "../../src/index.js";
+import { vlessEncryptionPair } from "../helpers/vless-encryption.js";
 
 const inbound = (transport: Partial<XDriveTransport>): Inbound => ({
   kind: "inbound",
@@ -18,15 +19,16 @@ const inbound = (transport: Partial<XDriveTransport>): Inbound => ({
   port: 443,
   clients: [],
   security: { type: "tls", serverName: "drive.example.com" },
-  decryption: "none",
+  decryption: vlessEncryptionPair.decryption,
   transport: { type: "xdrive", service: "local", remoteFolder: "/var/lib/xray/xdrive", ...transport }
 });
 const codes = (issues: Issue[]) => issues.map((issue) => `${issue.severity} ${issue.code} ${issue.path}`).filter((row) => row.includes("XDRIVE"));
 const outbound = (streamSettings: StreamSettings) => createDefaultOutbound({
   protocol: "vless",
   tag: "drive-out",
-  settings: { address: "www.googleapis.com", port: 443, id: "11111111-1111-4111-8111-111111111111", encryption: "none" },
-  streamSettings
+  settings: { address: "www.googleapis.com", port: 443, id: "11111111-1111-4111-8111-111111111111", encryption: vlessEncryptionPair.encryption },
+  streamSettings,
+  mux: { enabled: true }
 });
 
 describe("XDrive validation", () => {

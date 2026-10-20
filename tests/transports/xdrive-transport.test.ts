@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import { importXrayConfig } from "../../src/index.js";
 import type { Inbound, JsonObject, Outbound, XDriveTransport } from "../../src/index.js";
 import { editAndBuild, editOutboundAndBuild, rebuildWithoutSource } from "../helpers/profile-round-trip.js";
+import { vlessEncryptionPair } from "../helpers/vless-encryption.js";
 
 const vlessClient = { id: "11111111-1111-4111-8111-111111111111", email: "alice" };
 const driveSettings = {
@@ -21,7 +22,7 @@ const vlessInbound = (streamSettings: JsonObject) => ({
   tag: "vless-xdrive",
   port: 443,
   protocol: "vless",
-  settings: { clients: [vlessClient], decryption: "none" },
+  settings: { clients: [vlessClient], decryption: vlessEncryptionPair.decryption },
   streamSettings
 });
 
@@ -87,13 +88,14 @@ describe("XDrive transport model", () => {
   });
 
   it("keeps a VLESS outbound with an XDrive stream editable and unchanged", () => {
-    const outboundSettings = { address: "www.googleapis.com", port: 443, id: vlessClient.id, encryption: "none" };
+    const outboundSettings = { address: "www.googleapis.com", port: 443, id: vlessClient.id, encryption: vlessEncryptionPair.encryption };
     const streamSettings = { network: "xdrive", security: "tls", tlsSettings: { serverName: "www.googleapis.com" }, xdriveSettings: driveSettings };
-    const raw = { outbounds: [{ tag: "drive-out", protocol: "vless", settings: outboundSettings, streamSettings }] };
+    const mux = { enabled: true };
+    const raw = { outbounds: [{ tag: "drive-out", protocol: "vless", settings: outboundSettings, streamSettings, mux }] };
     expect(importXrayConfig(raw).unmanaged).toBe(0);
     // The tag stays the same so the edited outbound is merged with its kept source (a tag change skips the merge).
     const built = editOutboundAndBuild(raw, (outbound) => ({ ...outbound, settings: { ...outboundSettings, port: 8443 } }) as Outbound);
     expect(built.issues.filter((issue) => issue.severity === "error")).toEqual([]);
-    expect(built.config.outbounds).toEqual([{ tag: "drive-out", protocol: "vless", settings: { ...outboundSettings, port: 8443 }, streamSettings }]);
+    expect(built.config.outbounds).toEqual([{ tag: "drive-out", protocol: "vless", settings: { ...outboundSettings, port: 8443 }, streamSettings, mux }]);
   });
 });
