@@ -323,6 +323,22 @@ export const hysteriaTransportSchema = z.object({
   udpmasks: z.array(hysteriaUdpMaskSchema).optional()
 }).strict();
 
+export const xdriveTransportSchema = z.object({
+  type: z.literal("xdrive"),
+  service: z.string(),
+  remoteFolder: z.string().optional(),
+  secrets: z.array(z.string()).optional(),
+  segmentBytes: z.number().int().min(0).max(4294967295).optional(),
+  flushIntervalMs: z.number().int().min(0).max(4294967295).optional(),
+  pollIntervalMs: z.number().int().min(0).max(4294967295).optional(),
+  maxPollIntervalMs: z.number().int().min(0).max(4294967295).optional(),
+  sessionTtlSeconds: z.number().int().min(0).max(4294967295).optional(),
+  concurrency: z.number().int().min(0).max(4294967295).optional(),
+  eagerWindowMs: z.number().int().min(0).max(4294967295).optional(),
+  holeTimeoutMs: z.number().int().min(0).max(4294967295).optional(),
+  template: jsonObjectSchema.optional()
+}).strict();
+
 export const transportSchema = z.discriminatedUnion("type", [
   tcpTransportSchema,
   grpcTransportSchema,
@@ -330,7 +346,8 @@ export const transportSchema = z.discriminatedUnion("type", [
   websocketTransportSchema,
   httpUpgradeTransportSchema,
   kcpTransportSchema,
-  hysteriaTransportSchema
+  hysteriaTransportSchema,
+  xdriveTransportSchema
 ]);
 
 export const sniffingSchema = z.object({

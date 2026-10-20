@@ -323,6 +323,24 @@ function parseTransport(streamSettings: JsonObject | undefined): Transport | und
       })).filter((mask) => mask.type !== "")
     };
   }
+  if (network === "xdrive") {
+    const settings = isJsonObject(streamSettings?.xdriveSettings) ? streamSettings.xdriveSettings : {};
+    return {
+      type: "xdrive",
+      service: asString(settings.service) ?? "",
+      remoteFolder: asString(settings.remoteFolder),
+      secrets: asStringArray(settings.secrets),
+      segmentBytes: asNumber(settings.segmentBytes),
+      flushIntervalMs: asNumber(settings.flushIntervalMs),
+      pollIntervalMs: asNumber(settings.pollIntervalMs),
+      maxPollIntervalMs: asNumber(settings.maxPollIntervalMs),
+      sessionTtlSeconds: asNumber(settings.sessionTtlSeconds),
+      concurrency: asNumber(settings.concurrency),
+      eagerWindowMs: asNumber(settings.eagerWindowMs),
+      holeTimeoutMs: asNumber(settings.holeTimeoutMs),
+      template: isJsonObject(settings.template) ? settings.template : undefined
+    };
+  }
   return undefined;
 }
 

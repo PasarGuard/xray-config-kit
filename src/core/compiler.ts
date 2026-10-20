@@ -27,6 +27,7 @@ import type {
   TlsSecurity,
   Transport,
   WebSocketTransport,
+  XDriveTransport,
   XHttpTransport,
   XrayConfig
 } from "./types.js";
@@ -144,6 +145,7 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
     "httpupgradeSettings",
     "kcpSettings",
     "hysteriaSettings",
+    "xdriveSettings",
     "sockopt",
     "finalmask"
   ])],
@@ -191,6 +193,7 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
   ["httpupgradeSettings", new Set(["path", "host", "headers", "acceptProxyProtocol"])],
   ["kcpSettings", new Set(["mtu", "tti", "uplinkCapacity", "downlinkCapacity", "cwndMultiplier", "maxSendingWindow"])],
   ["hysteriaSettings", new Set(["version", "auth", "udpIdleTimeout", "masquerade", "udpmasks", "ignoreClientBandwidth"])],
+  ["xdriveSettings", new Set(["remoteFolder", "service", "secrets", "segmentBytes", "flushIntervalMs", "pollIntervalMs", "maxPollIntervalMs", "sessionTtlSeconds", "concurrency", "eagerWindowMs", "holeTimeoutMs", "template"])],
   ["sniffing", new Set(["enabled", "destOverride", "domainsExcluded", "ipsExcluded", "metadataOnly", "routeOnly"])],
   ["proxySettings", new Set(["tag", "transportLayer"])],
   ["mux", new Set(["enabled", "concurrency", "xudpConcurrency", "xudpProxyUDP443"])],
@@ -205,8 +208,25 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
   ["pingConfig", new Set(["destination", "connectivity", "interval", "timeout", "sampling", "httpMethod"])]
 ]);
 
+/** Children replaced as a whole on merge, so keys removed in the model do not survive from the source. */
+const wholesaleChildrenByParent: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+  ["xdriveSettings", new Set(["template"])]
+]);
+
 function shouldDropMissingCompiledField(parentKey: string | undefined, key: string): boolean {
   return knownSourceFieldsByParent.get(parentKey ?? "__root")?.has(key) === true;
+}
+
+/**
+ * The compiler always emits the legacy `network` key. When the source stream declared its
+ * transport with `method` instead, emit the compiled transport under `method` so the merge
+ * keeps the source's key rather than dropping `method` and skipping `network`.
+ */
+function preferSourceTransportKey(source: JsonObject, compiled: JsonObject): JsonObject {
+  if (typeof source.method !== "string" || source.method === "") return compiled;
+  if (typeof compiled.network !== "string" || compiled.method !== undefined) return compiled;
+  const { network, ...compiledWithoutNetwork } = compiled;
+  return { ...compiledWithoutNetwork, method: network };
 }
 
 function mergeJsonPreservingSource(source: JsonValue, compiled: JsonValue, parentKey?: string): JsonValue {
@@ -219,6 +239,7 @@ function mergeJsonPreservingSource(source: JsonValue, compiled: JsonValue, paren
     });
   }
   if (isJsonObject(source) && isJsonObject(compiled)) {
+    if (parentKey === "streamSettings") compiled = preferSourceTransportKey(source, compiled);
     if (
       typeof source.tag === "string" &&
       typeof compiled.tag === "string" &&
@@ -239,6 +260,10 @@ function mergeJsonPreservingSource(source: JsonValue, compiled: JsonValue, paren
     }
     for (const [key, value] of Object.entries(compiled)) {
       if (value === undefined) continue;
+      if (wholesaleChildrenByParent.get(parentKey ?? "")?.has(key)) {
+        output[key] = cloneJson(value);
+        continue;
+      }
       const sourceValue = source[key];
       if (sourceValue === undefined) {
         if (shouldSkipMissingSourceField(parentKey, key, value, source)) continue;
@@ -466,6 +491,23 @@ function compileHysteria(transport: Extract<Transport, { type: "hysteria" }>): J
   });
 }
 
+function compileXDrive(transport: XDriveTransport): JsonObject {
+  return compactObject({
+    service: transport.service,
+    remoteFolder: transport.remoteFolder,
+    secrets: transport.secrets,
+    segmentBytes: transport.segmentBytes,
+    flushIntervalMs: transport.flushIntervalMs,
+    pollIntervalMs: transport.pollIntervalMs,
+    maxPollIntervalMs: transport.maxPollIntervalMs,
+    sessionTtlSeconds: transport.sessionTtlSeconds,
+    concurrency: transport.concurrency,
+    eagerWindowMs: transport.eagerWindowMs,
+    holeTimeoutMs: transport.holeTimeoutMs,
+    template: transport.template
+  });
+}
+
 export function compileStreamSettings(
   transport: Transport,
   security: Security,
@@ -486,6 +528,7 @@ export function compileStreamSettings(
   if (transport.type === "httpupgrade") streamSettings.httpupgradeSettings = compileHttpUpgrade(transport);
   if (transport.type === "kcp") streamSettings.kcpSettings = compileKcp(transport);
   if (transport.type === "hysteria") streamSettings.hysteriaSettings = compileHysteria(transport);
+  if (transport.type === "xdrive") streamSettings.xdriveSettings = compileXDrive(transport);
   if (advanced?.sockopt) streamSettings.sockopt = advanced.sockopt;
   if (advanced?.finalmask || advanced?.quicParams) {
     streamSettings.finalmask = compactObject({

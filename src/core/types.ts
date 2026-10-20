@@ -337,6 +337,23 @@ export type HysteriaTransport = {
   readonly udpmasks?: HysteriaUdpMask[];
 };
 
+export type XDriveTransport = {
+  readonly type: "xdrive";
+  /** One of XDRIVE_SERVICES: "local", "Google Drive", "template" (checked semantically). */
+  readonly service: string;
+  readonly remoteFolder?: string;
+  readonly secrets?: string[];
+  readonly segmentBytes?: number;
+  readonly flushIntervalMs?: number;
+  readonly pollIntervalMs?: number;
+  readonly maxPollIntervalMs?: number;
+  readonly sessionTtlSeconds?: number;
+  readonly concurrency?: number;
+  readonly eagerWindowMs?: number;
+  readonly holeTimeoutMs?: number;
+  readonly template?: JsonObject;
+};
+
 export type Transport =
   | TcpTransport
   | GrpcTransport
@@ -344,7 +361,8 @@ export type Transport =
   | WebSocketTransport
   | HttpUpgradeTransport
   | KcpTransport
-  | HysteriaTransport;
+  | HysteriaTransport
+  | XDriveTransport;
 
 export type Sniffing = {
   readonly enabled: boolean;
@@ -834,6 +852,7 @@ export type StreamSettings = {
   readonly wsSettings?: WebSocketConfig;
   readonly httpupgradeSettings?: JsonObject;
   readonly hysteriaSettings?: JsonObject;
+  readonly xdriveSettings?: JsonObject;
   readonly sockopt?: SocketConfig;
 };
 

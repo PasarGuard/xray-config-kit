@@ -63,6 +63,7 @@ export {
   websocketTransportSchema,
   wireGuardInboundSchema,
   wireGuardPeerSchema,
+  xdriveTransportSchema,
   xhttpExtraSchema,
   xhttpTransportSchema
 } from "./profile.js";
