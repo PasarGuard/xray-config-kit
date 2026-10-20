@@ -33,7 +33,7 @@ const outbound = (streamSettings: StreamSettings) => createDefaultOutbound({
 
 describe("XDrive validation", () => {
   it("exports XDrive services, Xray defaults and caps", () => {
-    expect(XDRIVE_SERVICES).toEqual(["local", "Google Drive", "template"]);
+    expect(XDRIVE_SERVICES).toEqual(["local", "Google Drive", "google-drive", "template"]);
     expect(XDRIVE_DEFAULTS).toEqual({ segmentBytes: 524288, flushIntervalMs: 20, pollIntervalMs: 50, maxPollIntervalMs: 500, sessionTtlSeconds: 300, concurrency: 8, eagerWindowMs: 2000, holeTimeoutMs: 30000 });
     expect(XDRIVE_LIMITS).toEqual({ segmentBytes: 16777216, concurrency: 64 });
   });
@@ -44,19 +44,28 @@ describe("XDrive validation", () => {
     expect(codes(validateInboundDraft(inbound({ service: "Dropbox" })))).toEqual(["error XCK_SEMANTIC_XDRIVE_SERVICE /transport/service"]);
     expect(codes(validateInboundDraft(inbound({ service: "" })))).toEqual(["error XCK_SEMANTIC_XDRIVE_SERVICE /transport/service"]);
     expect(validateInboundDraft(inbound({ service: "Dropbox" })).find((issue) => issue.code === "XCK_SEMANTIC_XDRIVE_SERVICE")?.message)
-      .toBe('XDrive service must be "local", "Google Drive", or "template".');
+      .toBe('XDrive service must be "local", "Google Drive", "google-drive", or "template".');
   });
 
-  it("requires remoteFolder for local and Google Drive", () => {
+  it("requires remoteFolder for local and both Google Drive spellings", () => {
     expect(codes(validateInboundDraft(inbound({ remoteFolder: "" })))).toEqual(["error XCK_SEMANTIC_XDRIVE_REMOTE_FOLDER_REQUIRED /transport/remoteFolder"]);
+    for (const service of ["Google Drive", "google-drive"]) {
+      expect(codes(validateInboundDraft(inbound({ service, remoteFolder: "", secrets: ["id", "secret", "refresh"] }))))
+        .toEqual(["error XCK_SEMANTIC_XDRIVE_REMOTE_FOLDER_REQUIRED /transport/remoteFolder"]);
+    }
   });
 
-  it("requires exactly three Google Drive secrets", () => {
-    const drive = { service: "Google Drive", remoteFolder: "1AbC" };
-    expect(codes(validateInboundDraft(inbound({ ...drive, secrets: ["id", "secret"] })))).toEqual(["error XCK_SEMANTIC_XDRIVE_GOOGLE_DRIVE_SECRETS /transport/secrets"]);
-    expect(codes(validateInboundDraft(inbound({ ...drive, secrets: ["id", "", "refresh"] })))).toEqual(["error XCK_SEMANTIC_XDRIVE_GOOGLE_DRIVE_SECRETS /transport/secrets"]);
-    expect(codes(validateInboundDraft(inbound({ ...drive, secrets: ["id", "secret", "refresh"] })))).toEqual([]);
-  });
+  // Newer Xray renames "Google Drive" to "google-drive" and still reads the old spelling, which older clients need.
+  for (const service of ["Google Drive", "google-drive"]) {
+    it(`requires exactly three secrets for "${service}"`, () => {
+      const drive = { service, remoteFolder: "1AbC" };
+      expect(codes(validateInboundDraft(inbound({ ...drive, secrets: ["id", "secret"] })))).toEqual(["error XCK_SEMANTIC_XDRIVE_GOOGLE_DRIVE_SECRETS /transport/secrets"]);
+      expect(codes(validateInboundDraft(inbound({ ...drive, secrets: ["id", "", "refresh"] })))).toEqual(["error XCK_SEMANTIC_XDRIVE_GOOGLE_DRIVE_SECRETS /transport/secrets"]);
+      // No deprecation warning for either spelling: the kit cannot know which Xray release the other side runs.
+      expect(codes(validateInboundDraft(inbound({ ...drive, secrets: ["id", "secret", "refresh"] })))).toEqual([]);
+      expect(validateInboundDraft(inbound({ ...drive, secrets: ["id", "secret", "refresh"] })).filter((issue) => issue.severity === "error")).toEqual([]);
+    });
+  }
 
   it("requires a template object for the template service", () => {
     expect(codes(validateInboundDraft(inbound({ service: "template", remoteFolder: undefined })))).toEqual(["error XCK_SEMANTIC_XDRIVE_TEMPLATE_REQUIRED /transport/template"]);
@@ -85,6 +94,8 @@ describe("XDrive validation", () => {
   it("skips remoteFolder on a stale xdriveSettings block, as Xray checks it only when the transport runs", () => {
     expect(codes(validateOutboundDraft(outbound({ network: "tcp", xdriveSettings: { service: "local" } })))).toEqual([]);
     expect(codes(validateOutboundDraft(outbound({ network: "tcp", xdriveSettings: { service: "Google Drive" } }))))
+      .toEqual(["error XCK_SEMANTIC_XDRIVE_GOOGLE_DRIVE_SECRETS /streamSettings/xdriveSettings/secrets"]);
+    expect(codes(validateOutboundDraft(outbound({ network: "tcp", xdriveSettings: { service: "google-drive" } }))))
       .toEqual(["error XCK_SEMANTIC_XDRIVE_GOOGLE_DRIVE_SECRETS /streamSettings/xdriveSettings/secrets"]);
     expect(codes(validateOutboundDraft(outbound({ network: "xdrive", security: "tls", xdriveSettings: { service: "local" } }))))
       .toEqual(["error XCK_SEMANTIC_XDRIVE_REMOTE_FOLDER_REQUIRED /streamSettings/xdriveSettings/remoteFolder"]);

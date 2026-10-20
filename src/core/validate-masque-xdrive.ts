@@ -3,7 +3,7 @@ import { firstHostPrefix, masquePoolProblem, parseIpAddress, parseIpPrefix } fro
 import type { IpFamily } from "./ip.js";
 import { makeIssue } from "./issues.js";
 import { escapePointerSegment, isJsonObject } from "./json.js";
-import { expandMasquePathTemplate, MASQUE_LIMITS, XDRIVE_LIMITS, XDRIVE_SERVICES } from "./masque-xdrive.js";
+import { expandMasquePathTemplate, MASQUE_LIMITS, XDRIVE_GOOGLE_DRIVE_SERVICES, XDRIVE_LIMITS, XDRIVE_SERVICES } from "./masque-xdrive.js";
 import type { Inbound, InboundPort, Issue, JsonObject, MasqueInbound, Outbound, ProxyOutbound } from "./types.js";
 
 /** httpguts.ValidHeaderFieldName: an RFC 7230 token. */
@@ -13,7 +13,7 @@ const headerValueControlPattern = /[\u0000-\u0008\u000A-\u001F\u007F]/;
 const pemKeyPattern = /^-----BEGIN [A-Z0-9 ]+-----[\s\S]+-----END [A-Z0-9 ]+-----$/;
 const base64KeyPattern = /^[A-Za-z0-9+/]+={0,2}$/;
 const quotedXdriveServices = XDRIVE_SERVICES.map((service) => `"${service}"`);
-/** The XDrive services as message text: `"local", "Google Drive", or "template"`. */
+/** The XDrive services as message text: `"local", "Google Drive", "google-drive", or "template"`. */
 const xdriveServiceChoices = `${quotedXdriveServices.slice(0, -1).join(", ")}, or ${quotedXdriveServices.at(-1)}`;
 
 function isNonBlankString(value: unknown): value is string {
@@ -445,6 +445,8 @@ export function masqueOutboundIssues(outbound: ProxyOutbound, outboundIndex: num
 export function xdriveSettingsIssues(settings: JsonObject, path: string, selected: boolean): Issue[] {
   const issues: Issue[] = [];
   const service = typeof settings.service === "string" ? settings.service : "";
+  // No warning for either Google Drive spelling: the kit cannot know which Xray release the other side runs.
+  const googleDrive = XDRIVE_GOOGLE_DRIVE_SERVICES.has(service);
 
   if (!(XDRIVE_SERVICES as readonly string[]).includes(service)) {
     issues.push(makeIssue({
@@ -456,7 +458,7 @@ export function xdriveSettingsIssues(settings: JsonObject, path: string, selecte
     }));
   }
 
-  if (selected && (service === "local" || service === "Google Drive") && !isNonBlankString(settings.remoteFolder)) {
+  if (selected && (service === "local" || googleDrive) && !isNonBlankString(settings.remoteFolder)) {
     issues.push(makeIssue({
       code: "XCK_SEMANTIC_XDRIVE_REMOTE_FOLDER_REQUIRED",
       severity: "error",
@@ -467,7 +469,7 @@ export function xdriveSettingsIssues(settings: JsonObject, path: string, selecte
   }
 
   const secrets = settings.secrets;
-  if (service === "Google Drive" && !(Array.isArray(secrets) && secrets.length === 3 && secrets.every(isNonBlankString))) {
+  if (googleDrive && !(Array.isArray(secrets) && secrets.length === 3 && secrets.every(isNonBlankString))) {
     issues.push(makeIssue({
       code: "XCK_SEMANTIC_XDRIVE_GOOGLE_DRIVE_SECRETS",
       severity: "error",

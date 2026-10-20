@@ -1,7 +1,13 @@
-/** Storage services Xray accepts in xdriveSettings.service. */
-export const XDRIVE_SERVICES = ["local", "Google Drive", "template"] as const;
+/**
+ * Storage services Xray accepts in xdriveSettings.service. "Google Drive" and "google-drive" are the same service:
+ * newer Xray renames it to "google-drive" and still reads "Google Drive", which is the only spelling older releases know.
+ */
+export const XDRIVE_SERVICES = ["local", "Google Drive", "google-drive", "template"] as const;
 
 export type XDriveService = (typeof XDRIVE_SERVICES)[number];
+
+/** The two spellings of the Google Drive service in XDRIVE_SERVICES. */
+export const XDRIVE_GOOGLE_DRIVE_SERVICES: ReadonlySet<string> = new Set<XDriveService>(["Google Drive", "google-drive"]);
 
 /** Values Xray uses when an xdriveSettings number is left out (or set to 0). */
 export const XDRIVE_DEFAULTS = {

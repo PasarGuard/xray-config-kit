@@ -348,7 +348,7 @@ export type HysteriaTransport = {
 
 export type XDriveTransport = {
   readonly type: "xdrive";
-  /** One of XDRIVE_SERVICES: "local", "Google Drive", "template" (checked semantically). */
+  /** One of XDRIVE_SERVICES: "local", "Google Drive" (or its newer spelling "google-drive"), "template" (checked semantically). */
   readonly service: string;
   readonly remoteFolder?: string;
   readonly secrets?: string[];

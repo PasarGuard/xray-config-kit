@@ -236,6 +236,7 @@ function defaultTransport(type: Transport["type"] = "tcp"): Transport {
   if (type === "kcp") return { type: "kcp" };
   if (type === "hysteria") return { type: "hysteria", version: 2, udpIdleTimeout: 60 };
   if (type === "masque") return { type: "masque" };
+  // "Google Drive" rather than "google-drive": older Xray clients know only that spelling, and newer Xray reads both.
   if (type === "xdrive") return { type: "xdrive", service: "Google Drive", remoteFolder: "", secrets: ["", "", ""] };
   return { type: "tcp", header: { type: "none" } };
 }

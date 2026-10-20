@@ -10,9 +10,10 @@ import {
   resolveXrayParityRelease,
   validateStrictXrayConfig
 } from "../../src/index.js";
-import type { Inbound, JsonObject, Outbound, Profile, XrayConfig } from "../../src/index.js";
+import type { Inbound, JsonObject, Outbound, Profile, XDriveTransport, XrayConfig } from "../../src/index.js";
 import { testXrayConfig } from "../../src/node/index.js";
 import { warpKeys } from "../helpers/masque-keys.js";
+import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
 const binaryPath = process.env.XRAY_BINARY;
 const xrayVersion = process.env.XRAY_VERSION;
@@ -20,8 +21,10 @@ const xrayVersion = process.env.XRAY_VERSION;
 // v26.9.30 or later, XDriveConfig exists from the same release, MasqueWarpConfig exists from the release after that, and
 // an "xmux" field on MasqueConfig marks the release that added MASQUE xmux. Xray's XDrive VLESS rules (validateXDrive:
 // VLESS Encryption, no flow, one port, mux) are code that parity data cannot show; they arrived in that same xmux release,
-// so their negative control needs both XDriveConfig and the xmux marker. Without XRAY_VERSION the MASQUE and XDrive tests
-// skip; the maybeIt tests need only XRAY_BINARY and then validate against the newest generated parity data.
+// so their negative control needs both XDriveConfig and the xmux marker. The "google-drive" service spelling is also code
+// that parity data cannot show; older releases reject it, so that test runs only on the newest generated release. Without
+// XRAY_VERSION the MASQUE and XDrive tests skip; the maybeIt tests need only XRAY_BINARY and then validate against the
+// newest generated parity data.
 const binaryRelease = binaryPath && xrayVersion ? resolveXrayParityRelease({ xrayVersion }).release : undefined;
 const hasMasque = binaryRelease?.inboundProtocols.some((entry) => entry.protocol === "masque") === true;
 const hasXDrive = binaryRelease?.structs.XDriveConfig !== undefined;
@@ -31,6 +34,7 @@ const maybeIt = binaryPath ? it : it.skip;
 const masqueIt = hasMasque ? it : it.skip;
 const xdriveIt = hasXDrive ? it : it.skip;
 const xdriveRulesIt = hasXDrive && hasMasqueXmux ? it : it.skip;
+const xdriveNewestIt = hasXDrive && binaryRelease?.tag === latestGeneratedRelease.tag ? it : it.skip;
 const warpIt = hasMasque && hasWarp ? it : it.skip;
 const xmuxIt = hasMasque && hasMasqueXmux ? it : it.skip;
 
@@ -117,10 +121,10 @@ describe("real Xray binary: MASQUE and XDrive", () => {
     const inbound = createDefaultInboundForProtocol({ protocol: "masque", tag: "masque-in", port: 8443 });
     return { ...inbound, ...(address ? { address } : {}), security: { type: "tls", serverName: "masque.example.com", alpn: ["h3", "h2"] } } as Inbound;
   };
-  const xdriveInbound = (decryption: string): Inbound => ({
+  const xdriveInbound = (decryption: string, transport: XDriveTransport = { type: "xdrive", service: "local", remoteFolder: join(tmpdir(), "xck-xdrive-binary") }): Inbound => ({
     ...createDefaultInboundForProtocol({ protocol: "vless", tag: "vless-xdrive", port: 8444, security: "none" }),
     decryption,
-    transport: { type: "xdrive", service: "local", remoteFolder: join(tmpdir(), "xck-xdrive-binary") }
+    transport
   }) as Inbound;
   const masqueOutbound = (masqueSettings: JsonObject): Outbound => ({
     protocol: "masque",
@@ -159,6 +163,12 @@ describe("real Xray binary: MASQUE and XDrive", () => {
     };
 
     await expectXrayAccepts(buildOrThrow(createProfile({ inbounds: [xdriveInbound(decryption)], outbounds: [outbound] })));
+  });
+
+  xdriveNewestIt("accepts a VLESS XDrive inbound with the google-drive service spelling", async () => {
+    const { decryption } = (await generateVlessEncryption()).x25519;
+    const inbound = xdriveInbound(decryption, { type: "xdrive", service: "google-drive", remoteFolder: "1AbCdEf", secrets: ["id", "secret", "refresh"] });
+    await expectXrayAccepts(buildOrThrow(createProfile({ inbounds: [inbound] })));
   });
 
   xdriveRulesIt("rejects an XDrive VLESS inbound without VLESS Encryption exactly like the kit does", async () => {
