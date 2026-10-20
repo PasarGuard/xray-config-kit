@@ -31,6 +31,9 @@ describe("xray parity manifest", () => {
       "wireguard"
     ]);
     expect(release.outboundProtocols.map((entry) => entry.protocol)).toContain("hysteria");
+    expect(release.outboundProtocols.map((entry) => entry.protocol)).toContain("masque");
+    expect(release.transportAliases.masque).toBe("masque");
+    expect(release.transportAliases.xdrive).toBe("xdrive");
     expect(release.transportAliases.xhttp).toBe("splithttp");
     expect(release.transportAliases.quic).toBeUndefined();
   });

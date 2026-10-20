@@ -159,6 +159,10 @@ function structFieldNames(release: XrayParityRelease, structName: string | undef
     allowed.add("DNS");
     allowed.add("kernelMode");
   }
+  if (structName === "MasqueServerConfig") {
+    // PasarGuard stores client DNS for MASQUE users here; Xray ignores the key.
+    allowed.add("remoteDNS");
+  }
   return allowed;
 }
 
