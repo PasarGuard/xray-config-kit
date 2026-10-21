@@ -547,11 +547,13 @@ function generatedCapabilitiesContent(releases: readonly ReleaseManifest[], conf
     + `export const generatedXrayCapabilitiesByTag = ${JSON.stringify(capabilities, null, 2)} as const satisfies Record<string, XrayCapabilities>;\n`;
 }
 
-function ciMatrixContent(config: NormalizedConfig): string {
+// Concrete generated tags, oldest first, so CI and the release workflow test downloadable binaries the parity data
+// covers ("latest" is already resolved here). Withdrawn releases have no binary to download.
+function ciMatrixContent(tags: readonly string[], config: NormalizedConfig): string {
   return `${JSON.stringify({
-    include: config.releases
-      .filter((release) => !config.withdrawnReleases.includes(release))
-      .map((release) => ({ "xray-release": release }))
+    include: tags
+      .filter((tag) => !config.withdrawnReleases.includes(tag))
+      .map((tag) => ({ "xray-release": tag }))
   }, null, 2)}\n`;
 }
 
@@ -599,5 +601,5 @@ const manifest = {
 writeGeneratedFile(config.manifestOutput, generatedManifestContent(manifest, config));
 if (config.typesOutput) writeGeneratedFile(config.typesOutput, generatedTypesContent(config));
 if (config.capabilitiesOutput) writeGeneratedFile(config.capabilitiesOutput, generatedCapabilitiesContent(releases, config));
-if (config.ciMatrixOutput) writeGeneratedFile(config.ciMatrixOutput, ciMatrixContent(config));
+if (config.ciMatrixOutput) writeGeneratedFile(config.ciMatrixOutput, ciMatrixContent(tags, config));
 if (config.testHelpersOutput) writeGeneratedFile(config.testHelpersOutput, generatedTestHelpersContent(releases, config));

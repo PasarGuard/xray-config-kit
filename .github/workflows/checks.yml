@@ -52,9 +52,6 @@ jobs:
         run: |
           set -euo pipefail
           release="${{ matrix.xray-release }}"
-          if [ "$release" = "latest" ]; then
-            release="$(curl -fsSL https://api.github.com/repos/XTLS/Xray-core/releases/latest | jq -r '.tag_name')"
-          fi
           curl -fsSLo /tmp/xray.zip "https://github.com/XTLS/Xray-core/releases/download/${release}/Xray-linux-64.zip"
           unzip -q /tmp/xray.zip -d /tmp/xray
           chmod +x /tmp/xray/xray
@@ -68,4 +65,60 @@ jobs:
         run: bun run build
 
       - name: Test
+        run: bun run test
+
+  upstream-xray:
+    name: Upstream Xray canary (non-blocking)
+    runs-on: ubuntu-latest
+    # Shows when upstream ships an Xray release the generated parity data does not cover yet, without failing the run:
+    # the kit refuses such a version (XCK_XRAY_PARITY_VERSION_UNGENERATED) until bun run generate:parity adds it.
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve newest upstream Xray release
+        id: upstream
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # The newest published release by date, pre-release or not: Xray ships most releases as pre-releases.
+          release="$(gh api "repos/XTLS/Xray-core/releases?per_page=20" --jq 'map(select(.draft | not)) | sort_by(.published_at) | last | .tag_name')"
+          [[ "$release" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          newest="$(jq -r '.include[-1]["xray-release"]' .github/xray-ci-matrix.json)"
+          if jq -e --arg release "$release" 'any(.include[]; .["xray-release"] == $release)' .github/xray-ci-matrix.json > /dev/null; then
+            echo "Upstream Xray ${release} is already a matrix row (newest generated: ${newest}); nothing to check."
+            exit 0
+          fi
+          echo "::warning title=Xray parity data is behind upstream::Xray ${release} is not in the generated parity data (newest: ${newest}). Run bun run generate:parity."
+          echo "xray-release=${release}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Bun
+        if: steps.upstream.outputs.xray-release != ''
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        if: steps.upstream.outputs.xray-release != ''
+        run: bun install --frozen-lockfile
+
+      - name: Install Xray
+        if: steps.upstream.outputs.xray-release != ''
+        shell: bash
+        env:
+          XRAY_RELEASE: ${{ steps.upstream.outputs.xray-release }}
+        run: |
+          set -euo pipefail
+          curl -fsSLo /tmp/xray.zip "https://github.com/XTLS/Xray-core/releases/download/${XRAY_RELEASE}/Xray-linux-64.zip"
+          unzip -q /tmp/xray.zip -d /tmp/xray
+          chmod +x /tmp/xray/xray
+          echo "XRAY_BINARY=/tmp/xray/xray" >> "$GITHUB_ENV"
+          echo "XRAY_VERSION=${XRAY_RELEASE#v}" >> "$GITHUB_ENV"
+
+      - name: Test
+        if: steps.upstream.outputs.xray-release != ''
         run: bun run test
