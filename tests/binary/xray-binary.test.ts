@@ -12,6 +12,7 @@ import {
 } from "../../src/index.js";
 import type { Inbound, JsonObject, Outbound, Profile, XDriveTransport, XrayConfig } from "../../src/index.js";
 import { testXrayConfig } from "../../src/node/index.js";
+import { acceptedIpRules, rejectedIpRules } from "../helpers/ip-rules.js";
 import { warpKeys } from "../helpers/masque-keys.js";
 import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
@@ -23,9 +24,9 @@ const xrayVersion = process.env.XRAY_VERSION;
 // VLESS Encryption, no flow, one port, mux) are code that parity data cannot show; they arrived in that same xmux release,
 // so their negative control needs both XDriveConfig and the xmux marker. The "google-drive" service spelling is also code
 // that parity data cannot show; older releases reject it, so that test runs only on the newest generated release. Without
-// XRAY_VERSION the MASQUE and XDrive tests skip; the maybeIt tests need only XRAY_BINARY and then validate against the
+// XRAY_VERSION the MASQUE, XDrive and finalmask filter tests skip; the maybeIt tests need only XRAY_BINARY and then validate against the
 // newest generated parity data. An "xmux" field on XDriveConfig marks the release that added XDrive xmux and XDrive over
-// h3 (one Xray change), so the h3 rules share that gate.
+// h3 (one Xray change), so the h3 rules share that gate. A "filter" entry in the finalmask loaders marks the filter mask.
 const binaryRelease = binaryPath && xrayVersion ? resolveXrayParityRelease({ xrayVersion }).release : undefined;
 const hasMasque = binaryRelease?.inboundProtocols.some((entry) => entry.protocol === "masque") === true;
 const hasXDrive = binaryRelease?.structs.XDriveConfig !== undefined;
@@ -40,6 +41,10 @@ const xdriveNewestIt = hasXDrive && binaryRelease?.tag === latestGeneratedReleas
 const warpIt = hasMasque && hasWarp ? it : it.skip;
 const xmuxIt = hasMasque && hasMasqueXmux ? it : it.skip;
 const xdriveXmuxIt = hasXDriveXmux ? it : it.skip;
+const maskLoaders = binaryRelease ? Object.entries(binaryRelease.jsonLoaders).filter(([name]) => name.endsWith("maskLoader")) : [];
+const hasFinalmaskFilter = maskLoaders.some(([, entries]) => entries.some((entry) => entry.protocol === "filter"));
+const filterIt = hasFinalmaskFilter ? it : it.skip;
+const beforeFilterIt = maskLoaders.length > 0 && !hasFinalmaskFilter ? it : it.skip;
 const xdriveH3It = hasXDriveXmux ? it : it.skip;
 // The release with MASQUE xmux but without XDrive xmux knows "google-drive" but not the h3 rules.
 const xdriveBeforeH3It = hasMasqueXmux && hasXDrive && !hasXDriveXmux ? it : it.skip;
@@ -306,5 +311,37 @@ describe("real Xray binary: MASQUE and XDrive", () => {
           "XCK_SEMANTIC_XDRIVE_H3_CONGESTION", "brutal is for Hysteria servers");
       }
     });
+  });
+});
+
+describe("real Xray binary: finalmask filter", () => {
+  const filterInbound = (finalmask: JsonObject): Inbound => ({
+    ...createDefaultInboundForProtocol({ protocol: "vless", tag: "vless-filter", port: 8445, security: "none" }),
+    streamAdvanced: { finalmask }
+  }) as Inbound;
+  const filter = (settings: JsonObject) => ({ type: "filter", settings });
+
+  filterIt("accepts tcp and udp filter masks with every IP rule the kit accepts", async () => {
+    const finalmask = { tcp: [filter({ blockedSourceIPs: acceptedIpRules })], udp: [filter({ allowedSourceIPs: acceptedIpRules })] };
+    await expectXrayAccepts(buildOrThrow(createProfile({ inbounds: [filterInbound(finalmask)] })));
+  });
+
+  filterIt("rejects each IP rule exactly like the kit does", async () => {
+    for (const rule of rejectedIpRules) {
+      const built = buildXrayConfig(createProfile({ inbounds: [filterInbound({ tcp: [filter({ blockedSourceIPs: [rule] })] })] }), { xrayVersion, mode: "permissive" });
+      expect(built.issues.map((issue) => issue.code), JSON.stringify(rule)).toContain("XCK_SEMANTIC_FINALMASK_FILTER_IP_RULE");
+      const verdict = await xrayVerdict(built.config);
+      expect(verdict.ok, JSON.stringify(rule)).toBe(false);
+      expect(verdict.output).toContain('invalid "blockedSourceIPs"');
+    }
+  });
+
+  beforeFilterIt("rejects the filter mask before Xray added it, and so does the kit", async () => {
+    const built = buildXrayConfig(createProfile({ inbounds: [filterInbound({ tcp: [filter({ blockedSourceIPs: ["192.0.2.0/24"] })] })] }), { xrayVersion, mode: "permissive" });
+    expect(built.issues.map((issue) => issue.code)).toContain("XCK_SEMANTIC_FINALMASK_FILTER_UNSUPPORTED");
+    expect(validateStrictXrayConfig(built.config, { xrayVersion }).issues.map((issue) => issue.code)).toContain("XCK_XRAY_STRICT_UNKNOWN_FINALMASK");
+    const verdict = await xrayVerdict(built.config);
+    expect(verdict.ok).toBe(false);
+    expect(verdict.output).toContain("unknown config id: filter");
   });
 });

@@ -70,9 +70,33 @@ const manifest = xrayParityManifest as unknown as {
   readonly source: {
     readonly selectedTags: readonly string[];
     readonly tags: readonly string[];
+    readonly withdrawnTags?: readonly string[];
   };
   readonly releases: readonly XrayParityRelease[];
 };
+
+const withdrawnTags: ReadonlySet<string> = new Set(manifest.source.withdrawnTags ?? []);
+
+/**
+ * The oldest generated release that matches `predicate` and can still be downloaded (not withdrawn upstream),
+ * for messages that tell users which Xray release to install. Internal to the kit.
+ */
+export function firstAvailableRelease(predicate: (release: XrayParityRelease) => boolean): XrayParityRelease | undefined {
+  return manifest.releases.find((release) => !withdrawnTags.has(release.tag) && predicate(release));
+}
+
+/** The finalmask loader entry for a mask `type` on the `side` ("tcp" or "udp") in a release. Internal to the kit. */
+export function finalmaskLoaderEntry(release: XrayParityRelease, side: "tcp" | "udp", type: string): XrayParityLoaderEntry | undefined {
+  const suffix = `:${side}maskLoader`;
+  const key = Object.keys(release.jsonLoaders).find((name) => name.endsWith(suffix));
+  return key ? release.jsonLoaders[key]?.find((entry) => entry.protocol === type) : undefined;
+}
+
+/** The release text for "needs Xray ... or newer" when a finalmask type first appears in generated data. */
+function firstFinalmaskRelease(type: string): string {
+  const first = firstAvailableRelease((release) => finalmaskLoaderEntry(release, "tcp", type) !== undefined || finalmaskLoaderEntry(release, "udp", type) !== undefined);
+  return first ? `Xray ${first.tag} or newer` : "a newer Xray release";
+}
 
 function parseVersion(version: string): readonly [number, number, number] {
   const match = version.match(/(\d+)\.(\d+)(?:\.(\d+))?/);
@@ -242,6 +266,41 @@ function validateStructObject(
   validateKnownFields(value, structFieldNames(release, structName), path, label, issues, mode, { release, structName });
 }
 
+/**
+ * Finalmask mask types the strict check knows about. Other types are not checked here, so a type this table does not
+ * list never becomes a new error.
+ */
+const strictFinalmaskTypes = ["filter"] as const;
+
+function validateFinalmask(value: JsonValue | undefined, release: XrayParityRelease, path: string, issues: Issue[], mode: ValidationMode): void {
+  // A release without finalmask loaders reports the finalmask key itself as unknown.
+  if (!isJsonObject(value) || !Object.keys(release.jsonLoaders).some((name) => name.endsWith("maskLoader"))) return;
+  for (const side of ["tcp", "udp"] as const) {
+    const masks = value[side];
+    if (!Array.isArray(masks)) continue;
+    masks.forEach((mask, maskIndex) => {
+      if (!isJsonObject(mask) || typeof mask.type !== "string") return;
+      // Xray's JSONConfigLoader lowercases the type.
+      const type = mask.type.toLowerCase();
+      if (!(strictFinalmaskTypes as readonly string[]).includes(type)) return;
+      const maskPath = pointer(pointer(path, side), maskIndex);
+      const entry = finalmaskLoaderEntry(release, side, type);
+      if (!entry) {
+        issues.push(issue(
+          "XCK_XRAY_STRICT_UNKNOWN_FINALMASK",
+          pointer(maskPath, "type"),
+          `Finalmask ${side} mask "${type}" is not accepted by ${release.tag}; it needs ${firstFinalmaskRelease(type)}.`,
+          `Remove the "${type}" mask unless every node runs ${firstFinalmaskRelease(type)}.`
+        ));
+        return;
+      }
+      if (mask.settings !== undefined && mask.settings !== null) {
+        validateStructObject(mask.settings, release, entry.config, pointer(maskPath, "settings"), `finalmask ${type} settings`, issues, mode);
+      }
+    });
+  }
+}
+
 function protocolConfig(release: XrayParityRelease, direction: "inbound" | "outbound", protocol: string): string | undefined {
   const entries = direction === "inbound" ? release.inboundProtocols : release.outboundProtocols;
   return entries.find((entry) => entry.protocol === protocol)?.config;
@@ -293,6 +352,8 @@ function validateStreamSettings(
     const nested = normalizeGoType(field.type);
     if (nested) validateStructObject(value[field.json], release, nested, pointer(path, field.json), field.json, issues, mode);
   }
+
+  validateFinalmask(value.finalmask, release, pointer(path, "finalmask"), issues, mode);
 }
 
 function validateDetour(
