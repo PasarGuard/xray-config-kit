@@ -15,7 +15,11 @@ export default {
     "v26.7.28",
     "v26.9.8",
     "v26.9.30",
+    "v26.10.17",
     "latest"
+  ],
+  withdrawnReleases: [
+    "v26.10.17"
   ],
   outputs: {
     manifest: "src/xray-json/parity-manifest.ts",
