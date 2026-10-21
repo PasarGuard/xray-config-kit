@@ -61,7 +61,7 @@ describe("MASQUE outbound", () => {
     const first = getXrayParityReleases().find((release) => !withdrawn.includes(release.tag) && release.structs.MasqueConfig?.some((field) => field.json === "xmux"))!;
     expect(withdrawn).not.toContain(first.tag);
     const message = validateOutboundDraft(out({ mux: { enabled: true } })).find((issue) => issue.code === "XCK_SEMANTIC_MASQUE_MUX_UNSUPPORTED")?.message;
-    expect(message).toBe(`"mux" on MASQUE outbounds needs Xray ${first.tag} or newer on every node; older releases refuse it.`);
+    expect(message).toBe(`"mux" on MASQUE outbounds needs Xray ${first.tag} or newer on every node; earlier downloadable releases refuse it.`);
   });
 
   it("requires IP remoteDNS", () => {

@@ -421,7 +421,7 @@ export function masqueOutboundIssues(outbound: ProxyOutbound, outboundIndex: num
       severity: "warning",
       category: "semantic",
       path: `${base}/mux/enabled`,
-      message: `"mux" on MASQUE outbounds needs ${masqueMuxReleaseText} on every node; older releases refuse it.`
+      message: `"mux" on MASQUE outbounds needs ${masqueMuxReleaseText} on every node; earlier downloadable releases refuse it.`
     }));
   }
 
