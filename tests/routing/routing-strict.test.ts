@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { validateStrictXrayConfig } from "../../src/index.js";
+import { presetCatalog } from "../../src/presets/index.js";
 import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
 describe("xray routing strict parity", () => {
@@ -47,5 +48,13 @@ describe("xray routing strict parity", () => {
 
     expect(result.ok).toBe(false);
     expect(result.issues.map((issue) => issue.path)).toEqual(["/routing/kitOnlyRoutingWrapper"]);
+  });
+});
+
+describe("routing presets", () => {
+  it("routes Iran domains with a geosite code the stock Xray geo files have", () => {
+    // geosite:ir exists only in third-party geosite files; Xray release zips ship category-ir.
+    const rules = presetCatalog["regional-ir-direct"].profile.routing?.rules ?? [];
+    expect(rules.map((rule) => [rule.domain, rule.ip])).toEqual([[["geosite:category-ir"], undefined], [undefined, ["geoip:ir"]]]);
   });
 });

@@ -117,6 +117,13 @@ describe("real Xray binary", () => {
     await expectXrayAccepts(buildOrThrow(profile));
   });
 
+  // Runs for every release with the geo files from its release zip, which have category-ir but not geosite:ir.
+  maybeIt("accepts the regional-ir-direct preset with the stock geo files", async () => {
+    const profile = createProfile({ presets: ["regional-ir-direct"], outbounds: [{ protocol: "freedom", tag: "direct", settings: {} }] });
+    expect(profile.routing?.rules?.flatMap((rule) => rule.domain ?? [])).toEqual(["geosite:category-ir"]);
+    await expectXrayAccepts(buildOrThrow(profile));
+  });
+
   // Runs for every release: newer releases dropped these keys and Xray ignores them, so the kit may only warn.
   maybeIt("accepts WireGuard outbound keys that only older releases read", async () => {
     const keys = generateWireGuardKeyPair();
