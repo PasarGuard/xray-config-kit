@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     # Shows when upstream ships an Xray release the generated parity data does not cover yet, without failing the run:
     # the kit refuses such a version (XCK_XRAY_PARITY_VERSION_UNGENERATED) until bun run generate:parity adds it.
-    continue-on-error: true
+    # The steps that depend on upstream continue on error, so the job stays green and the warnings carry the signal.
 
     steps:
       - name: Checkout
@@ -80,6 +80,7 @@ jobs:
 
       - name: Resolve newest upstream Xray release
         id: upstream
+        continue-on-error: true
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -107,7 +108,9 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Install Xray
+        id: xray
         if: steps.upstream.outputs.xray-release != ''
+        continue-on-error: true
         shell: bash
         env:
           XRAY_RELEASE: ${{ steps.upstream.outputs.xray-release }}
@@ -120,5 +123,11 @@ jobs:
           echo "XRAY_VERSION=${XRAY_RELEASE#v}" >> "$GITHUB_ENV"
 
       - name: Test
-        if: steps.upstream.outputs.xray-release != ''
+        id: test
+        if: steps.upstream.outputs.xray-release != '' && steps.xray.outcome == 'success'
+        continue-on-error: true
         run: bun run test
+
+      - name: Report
+        if: steps.upstream.outcome == 'failure' || steps.xray.outcome == 'failure' || steps.test.outcome == 'failure'
+        run: echo "::warning title=Upstream Xray canary::The canary could not resolve, install or pass the tests on the newest upstream Xray release; see the steps above."
