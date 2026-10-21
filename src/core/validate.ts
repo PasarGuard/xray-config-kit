@@ -305,7 +305,7 @@ function isValidPortSegment(segment: string): boolean {
 
 function validatePortList(port: XrayPortList, path: string, label: string): Issue[] {
   if (typeof port === "number" && isValidPortNumber(port)) return [];
-  if (typeof port === "string" && port.split(",").every(isValidPortSegment)) return [];
+  if (typeof port === "string" && port.split(",").every((segment) => segment.trim() === "" || isValidPortSegment(segment))) return [];
   return [
     makeIssue({
       code: "XCK_SEMANTIC_INVALID_PORT",

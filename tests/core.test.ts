@@ -1142,10 +1142,10 @@ describe("@pasarguard/xray-config-kit core", () => {
   it("accepts exactly the Xray port list grammar", () => {
     const invalidPort = (port: string | number) => validateRoutingRuleDraft({ type: "field", outboundTag: "direct", port })
       .some((issue) => issue.code === "XCK_SEMANTIC_INVALID_PORT");
-    for (const port of [443, "443", " 443 , 8443 ", "10000-10010", "8443-8443", "1-65535", "env:XRAY_PORT", "443,env:_PORT2"]) {
+    for (const port of [443, "443", " 443 , 8443 ", "10000-10010", "8443-8443", "1-65535", "env:XRAY_PORT", "443,env:_PORT2", "443,", ",443", "443,,8443", "443,  ,8443", " , "]) {
       expect([port, invalidPort(port)]).toEqual([port, false]);
     }
-    for (const port of ["443,", ",443", " , ", "0", "65536", "1-65536", "0-443", "10-1", "1 - 2", "+443", "env:", "env:1PORT", "nope"]) {
+    for (const port of ["0", "65536", "1-65536", "0-443", "10-1", "1 - 2", "+443", "env:", "env:1PORT", "nope"]) {
       expect([port, invalidPort(port)]).toEqual([port, true]);
     }
   });
