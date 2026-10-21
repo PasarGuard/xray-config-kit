@@ -120,7 +120,8 @@ jobs:
           unzip -q /tmp/xray.zip -d /tmp/xray
           chmod +x /tmp/xray/xray
           echo "XRAY_BINARY=/tmp/xray/xray" >> "$GITHUB_ENV"
-          echo "XRAY_VERSION=${XRAY_RELEASE#v}" >> "$GITHUB_ENV"
+          # No XRAY_VERSION: the kit rejects an ungenerated version, so the binary tests validate against the newest
+          # generated parity data instead.
 
       - name: Test
         id: test
