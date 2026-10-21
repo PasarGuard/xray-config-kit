@@ -31,6 +31,10 @@ export {
   httpUpgradeTransportSchema,
   inboundSchema,
   kcpTransportSchema,
+  masqueClientSchema,
+  masqueInboundSchema,
+  masqueTransportSchema,
+  masqueWarpSchema,
   mixedAccountSchema,
   mixedInboundSchema,
   nameServerSchema,
@@ -63,6 +67,7 @@ export {
   websocketTransportSchema,
   wireGuardInboundSchema,
   wireGuardPeerSchema,
+  xdriveTransportSchema,
   xhttpExtraSchema,
   xhttpTransportSchema
 } from "./profile.js";

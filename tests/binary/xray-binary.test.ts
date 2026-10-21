@@ -1,13 +1,62 @@
 import { describe, expect, it } from "bun:test";
-import { buildXrayConfig, createProfile } from "../../src/index.js";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  buildXrayConfig,
+  createDefaultInboundForProtocol,
+  createProfile,
+  generateVlessEncryption,
+  generateWireGuardKeyPair,
+  resolveXrayParityRelease,
+  validateStrictXrayConfig
+} from "../../src/index.js";
+import type { Inbound, JsonObject, Outbound, Profile, XDriveTransport, XrayConfig } from "../../src/index.js";
 import { testXrayConfig } from "../../src/node/index.js";
+import { warpKeys } from "../helpers/masque-keys.js";
+import { latestGeneratedRelease } from "../helpers/xray-releases.js";
+
+const binaryPath = process.env.XRAY_BINARY;
+const xrayVersion = process.env.XRAY_VERSION;
+// Gates read parity data, never a version literal or the binary itself. "masque" in the inbound protocols means Xray
+// v26.9.30 or later, XDriveConfig exists from the same release, MasqueWarpConfig exists from the release after that, and
+// an "xmux" field on MasqueConfig marks the release that added MASQUE xmux. Xray's XDrive VLESS rules (validateXDrive:
+// VLESS Encryption, no flow, one port, mux) are code that parity data cannot show; they arrived in that same xmux release,
+// so their negative control needs both XDriveConfig and the xmux marker. The "google-drive" service spelling is also code
+// that parity data cannot show; older releases reject it, so that test runs only on the newest generated release. Without
+// XRAY_VERSION the MASQUE and XDrive tests skip; the maybeIt tests need only XRAY_BINARY and then validate against the
+// newest generated parity data.
+const binaryRelease = binaryPath && xrayVersion ? resolveXrayParityRelease({ xrayVersion }).release : undefined;
+const hasMasque = binaryRelease?.inboundProtocols.some((entry) => entry.protocol === "masque") === true;
+const hasXDrive = binaryRelease?.structs.XDriveConfig !== undefined;
+const hasWarp = binaryRelease?.structs.MasqueWarpConfig !== undefined;
+const hasMasqueXmux = binaryRelease?.structs.MasqueConfig?.some((field) => field.json === "xmux") === true;
+const maybeIt = binaryPath ? it : it.skip;
+const masqueIt = hasMasque ? it : it.skip;
+const xdriveIt = hasXDrive ? it : it.skip;
+const xdriveRulesIt = hasXDrive && hasMasqueXmux ? it : it.skip;
+const xdriveNewestIt = hasXDrive && binaryRelease?.tag === latestGeneratedRelease.tag ? it : it.skip;
+const warpIt = hasMasque && hasWarp ? it : it.skip;
+const xmuxIt = hasMasque && hasMasqueXmux ? it : it.skip;
 
 const key32 = "OEQIJdY9VnmJ78XX_hyUZueFyqvtdmCWY8e4NJ6B-lk";
 const publicKey32 = "0UsWoTj6Ad7JKR_FsQ9p_r05ZXhtRSnWlw53kpwgT34";
 
-describe("real Xray binary", () => {
-  const maybeIt = process.env.XRAY_BINARY ? it : it.skip;
+function buildOrThrow(profile: Profile): XrayConfig {
+  const built = buildXrayConfig(profile, { xrayVersion });
+  const buildErrors = built.issues.filter((issue) => issue.severity === "error");
+  if (buildErrors.length > 0) {
+    throw new Error(buildErrors.map((issue) => `${issue.code} ${issue.path}: ${issue.message}`).join("\n"));
+  }
+  return built.config;
+}
 
+async function expectXrayAccepts(config: XrayConfig | JsonObject): Promise<void> {
+  const result = await testXrayConfig(config, { binaryPath, timeoutMs: 30_000 });
+  if (!result.ok) throw new Error(result.stdout + result.stderr);
+  expect(result.ok).toBe(true);
+}
+
+describe("real Xray binary", () => {
   maybeIt("accepts generated VLESS REALITY TCP config", async () => {
     const profile = createProfile({
       presets: ["dns-simple"],
@@ -48,20 +97,118 @@ describe("real Xray binary", () => {
       ]
     });
 
-    const built = buildXrayConfig(profile, {
-      xrayVersion: process.env.XRAY_VERSION
-    });
-    const buildErrors = built.issues.filter((issue) => issue.severity === "error");
-    if (buildErrors.length > 0) {
-      throw new Error(buildErrors.map((issue) => `${issue.code}: ${issue.message}`).join("\n"));
-    }
+    await expectXrayAccepts(buildOrThrow(profile));
+  });
 
-    const result = await testXrayConfig(built.config, {
-      binaryPath: process.env.XRAY_BINARY,
-      timeoutMs: 30_000
-    });
+  // Runs for every release: newer releases dropped these keys and Xray ignores them, so the kit may only warn.
+  maybeIt("accepts WireGuard outbound keys that only older releases read", async () => {
+    const keys = generateWireGuardKeyPair();
+    const config = { outbounds: [{ tag: "warp-wg", protocol: "wireguard", settings: {
+      secretKey: keys.privateKey,
+      address: ["172.16.0.2/32"],
+      peers: [{ publicKey: keys.publicKey, endpoint: "engage.cloudflareclient.com:2408" }],
+      workers: 2,
+      domainStrategy: "ForceIPv4"
+    } }] };
 
-    if (!result.ok) throw new Error(result.stdout + result.stderr);
-    expect(result.ok).toBe(true);
+    expect(validateStrictXrayConfig(config, { xrayVersion }).issues.filter((issue) => issue.severity === "error")).toEqual([]);
+    await expectXrayAccepts(config);
+  });
+});
+
+describe("real Xray binary: MASQUE and XDrive", () => {
+  const masqueInbound = (address?: string[]): Inbound => {
+    const inbound = createDefaultInboundForProtocol({ protocol: "masque", tag: "masque-in", port: 8443 });
+    return { ...inbound, ...(address ? { address } : {}), security: { type: "tls", serverName: "masque.example.com", alpn: ["h3", "h2"] } } as Inbound;
+  };
+  const xdriveInbound = (decryption: string, transport: XDriveTransport = { type: "xdrive", service: "local", remoteFolder: join(tmpdir(), "xck-xdrive-binary") }): Inbound => ({
+    ...createDefaultInboundForProtocol({ protocol: "vless", tag: "vless-xdrive", port: 8444, security: "none" }),
+    decryption,
+    transport
+  }) as Inbound;
+  const masqueOutbound = (masqueSettings: JsonObject): Outbound => ({
+    protocol: "masque",
+    tag: "masque-out",
+    settings: { address: "masque.example.com", port: 443, remoteDNS: ["1.1.1.1"] },
+    streamSettings: { network: "masque", security: "tls", tlsSettings: { serverName: "masque.example.com", alpn: ["h2"] }, masqueSettings }
+  });
+
+  masqueIt("accepts the default MASQUE inbound", async () => {
+    await expectXrayAccepts(buildOrThrow(createProfile({ inbounds: [masqueInbound()] })));
+  });
+
+  masqueIt("rejects a MASQUE subnet address exactly like the kit does", async () => {
+    const built = buildXrayConfig(createProfile({ inbounds: [masqueInbound(["10.0.0.0/24"])] }), { xrayVersion, mode: "permissive" });
+    expect(built.issues.map((issue) => issue.code)).toContain("XCK_SEMANTIC_MASQUE_ADDRESS_NOT_HOST");
+
+    const result = await testXrayConfig(built.config, { binaryPath, timeoutMs: 30_000 });
+    expect(result.ok).toBe(false);
+    expect(result.stdout + result.stderr).toContain("is not a host address");
+  });
+
+  xdriveIt("accepts VLESS inbound and outbound XDrive streams", async () => {
+    // XDrive needs VLESS Encryption on both sides and mux on the outbound; the kit generates the pair like "xray vlessenc".
+    const { decryption, encryption } = (await generateVlessEncryption()).x25519;
+    const outbound: Outbound = {
+      protocol: "vless",
+      tag: "vless-xdrive-out",
+      settings: { address: "www.googleapis.com", port: 443, id: "11111111-1111-4111-8111-111111111111", encryption },
+      streamSettings: {
+        network: "xdrive",
+        security: "tls",
+        tlsSettings: { serverName: "www.googleapis.com" },
+        xdriveSettings: { service: "Google Drive", remoteFolder: "1AbCdEf", secrets: ["id", "secret", "refresh"] }
+      },
+      mux: { enabled: true }
+    };
+
+    await expectXrayAccepts(buildOrThrow(createProfile({ inbounds: [xdriveInbound(decryption)], outbounds: [outbound] })));
+  });
+
+  xdriveNewestIt("accepts a VLESS XDrive inbound with the google-drive service spelling", async () => {
+    const { decryption } = (await generateVlessEncryption()).x25519;
+    const inbound = xdriveInbound(decryption, { type: "xdrive", service: "google-drive", remoteFolder: "1AbCdEf", secrets: ["id", "secret", "refresh"] });
+    await expectXrayAccepts(buildOrThrow(createProfile({ inbounds: [inbound] })));
+  });
+
+  xdriveRulesIt("rejects an XDrive VLESS inbound without VLESS Encryption exactly like the kit does", async () => {
+    const built = buildXrayConfig(createProfile({ inbounds: [xdriveInbound("none")] }), { xrayVersion, mode: "permissive" });
+    expect(built.issues.map((issue) => issue.code)).toContain("XCK_SEMANTIC_XDRIVE_VLESS_ENCRYPTION");
+
+    const result = await testXrayConfig(built.config, { binaryPath, timeoutMs: 30_000 });
+    expect(result.ok).toBe(false);
+    expect(result.stdout + result.stderr).toContain('the xdrive transport needs VLESS "decryption"');
+  });
+
+  masqueIt("accepts a MASQUE outbound with Basic auth and a templated path", async () => {
+    const outbound = masqueOutbound({ path: "/.well-known/masque/ip/{target}/{ipproto}/", user: "alice@example.com", pass: "alice-masque-pass-1" });
+    await expectXrayAccepts(buildOrThrow(createProfile({ outbounds: [outbound] })));
+  });
+
+  warpIt("accepts a MASQUE WARP outbound with generated P-256 keys", async () => {
+    const outbound = masqueOutbound({ warp: { ...warpKeys(), address: ["172.16.0.2/32", "2606:4700:110:8a36::1/128"] } });
+    await expectXrayAccepts(buildOrThrow(createProfile({ outbounds: [outbound] })));
+  });
+
+  xmuxIt("accepts a MASQUE outbound with an xmux Int32Range string", async () => {
+    await expectXrayAccepts(buildOrThrow(createProfile({ outbounds: [masqueOutbound({ xmux: { maxConcurrency: "16-32" } })] })));
+  });
+
+  xmuxIt("accepts a MASQUE outbound with mux enabled and the kit only warns", async () => {
+    const outbound: Outbound = { ...masqueOutbound({}), mux: { enabled: true } };
+    const built = buildXrayConfig(createProfile({ outbounds: [outbound] }), { xrayVersion, mode: "permissive" });
+    expect(built.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+    expect(built.issues.map((issue) => issue.code)).toContain("XCK_SEMANTIC_MASQUE_MUX_UNSUPPORTED");
+    await expectXrayAccepts(buildOrThrow(createProfile({ outbounds: [outbound] })));
+  });
+
+  xmuxIt("rejects MASQUE xmux with both maxConnections and maxConcurrency exactly like the kit does", async () => {
+    const outbound = masqueOutbound({ xmux: { maxConnections: 2, maxConcurrency: "16-32" } });
+    const built = buildXrayConfig(createProfile({ outbounds: [outbound] }), { xrayVersion, mode: "permissive" });
+    expect(built.issues.map((issue) => issue.code)).toContain("XCK_SEMANTIC_MASQUE_XMUX_CONFLICT");
+
+    const result = await testXrayConfig(built.config, { binaryPath, timeoutMs: 30_000 });
+    expect(result.ok).toBe(false);
+    expect(result.stdout + result.stderr).toContain("maxConnections cannot be specified together with maxConcurrency");
   });
 });

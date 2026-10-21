@@ -96,12 +96,22 @@ export const hysteriaClientSchema = z.object({
   meta: z.record(jsonValueSchema).optional()
 }).strict();
 
+export const masqueClientSchema = z.object({
+  protocol: z.literal("masque"),
+  pass: z.string().min(1),
+  email: z.string().optional(),
+  level: z.number().int().min(0).optional(),
+  enabled: z.boolean().optional(),
+  meta: z.record(jsonValueSchema).optional()
+}).strict();
+
 export const clientSchema = z.discriminatedUnion("protocol", [
   vmessClientSchema,
   vlessClientSchema,
   trojanClientSchema,
   shadowsocksClientSchema,
-  hysteriaClientSchema
+  hysteriaClientSchema,
+  masqueClientSchema
 ]);
 
 export const noneSecuritySchema = z.object({
@@ -207,6 +217,9 @@ const intRangeSchema = z.union([
   z.string().regex(/^-?\d+(?:--?\d+)?$/)
 ]);
 
+/** Xray XmuxConfig as raw JSON, shared by XHTTP `extra.xmux` and the masque transport. */
+const xmuxSchema = z.record(jsonValueSchema);
+
 export const xhttpExtraSchema = z.object({
   headers: z.record(z.string()).optional(),
   scMaxBufferedPosts: intRangeSchema.optional(),
@@ -233,7 +246,7 @@ export const xhttpExtraSchema = z.object({
   uplinkDataKey: z.string().optional(),
   uplinkChunkSize: intRangeSchema.optional(),
   noGRPCHeader: z.boolean().optional(),
-  xmux: z.record(jsonValueSchema).optional(),
+  xmux: xmuxSchema.optional(),
   unknown: z.record(jsonValueSchema).optional()
 }).strict();
 
@@ -323,6 +336,39 @@ export const hysteriaTransportSchema = z.object({
   udpmasks: z.array(hysteriaUdpMaskSchema).optional()
 }).strict();
 
+export const xdriveTransportSchema = z.object({
+  type: z.literal("xdrive"),
+  service: z.string(),
+  remoteFolder: z.string().optional(),
+  secrets: z.array(z.string()).optional(),
+  segmentBytes: z.number().int().min(0).max(4294967295).optional(),
+  flushIntervalMs: z.number().int().min(0).max(4294967295).optional(),
+  pollIntervalMs: z.number().int().min(0).max(4294967295).optional(),
+  maxPollIntervalMs: z.number().int().min(0).max(4294967295).optional(),
+  sessionTtlSeconds: z.number().int().min(0).max(4294967295).optional(),
+  concurrency: z.number().int().min(0).max(4294967295).optional(),
+  eagerWindowMs: z.number().int().min(0).max(4294967295).optional(),
+  holeTimeoutMs: z.number().int().min(0).max(4294967295).optional(),
+  template: jsonObjectSchema.optional()
+}).strict();
+
+export const masqueWarpSchema = z.object({
+  privateKey: z.string(),
+  publicKey: z.string(),
+  address: z.array(z.string())
+}).strict();
+
+export const masqueTransportSchema = z.object({
+  type: z.literal("masque"),
+  host: z.string().optional(),
+  path: z.string().optional(),
+  user: z.string().optional(),
+  pass: z.string().optional(),
+  headers: z.record(z.string()).optional(),
+  warp: masqueWarpSchema.optional(),
+  xmux: xmuxSchema.optional()
+}).strict();
+
 export const transportSchema = z.discriminatedUnion("type", [
   tcpTransportSchema,
   grpcTransportSchema,
@@ -330,7 +376,9 @@ export const transportSchema = z.discriminatedUnion("type", [
   websocketTransportSchema,
   httpUpgradeTransportSchema,
   kcpTransportSchema,
-  hysteriaTransportSchema
+  hysteriaTransportSchema,
+  xdriveTransportSchema,
+  masqueTransportSchema
 ]);
 
 export const sniffingSchema = z.object({
@@ -486,6 +534,18 @@ export const hysteriaInboundSchema = z.object({
   transport: hysteriaTransportSchema
 }).strict();
 
+export const masqueInboundSchema = z.object({
+  ...baseInboundShape,
+  protocol: z.literal("masque"),
+  clients: z.array(masqueClientSchema),
+  address: z.array(z.string()),
+  mtu: z.number().int().min(0).optional(),
+  /** PasarGuard panel convention (client DNS); Xray ignores it. */
+  remoteDNS: z.array(z.string()).optional(),
+  security: z.discriminatedUnion("type", [tlsSecuritySchema, noneSecuritySchema]),
+  transport: masqueTransportSchema
+}).strict();
+
 const dokodemoInboundShape = {
   ...baseInboundShape,
   address: z.string().optional(),
@@ -541,6 +601,7 @@ export const inboundSchema = z.discriminatedUnion("protocol", [
   socksInboundSchema,
   wireGuardInboundSchema,
   hysteriaInboundSchema,
+  masqueInboundSchema,
   dokodemoDoorInboundSchema,
   tunnelInboundSchema,
   tunInboundSchema,
@@ -643,7 +704,7 @@ export const dnsOutboundSchema = z.object({
 }).strict();
 
 export const proxyOutboundSchema = z.object({
-  protocol: z.enum(["http", "socks", "shadowsocks", "vless", "vmess", "trojan", "hysteria", "wireguard", "loopback"]),
+  protocol: z.enum(["http", "socks", "shadowsocks", "vless", "vmess", "trojan", "hysteria", "wireguard", "loopback", "masque"]),
   tag: z.string(),
   sendThrough: z.string().optional(),
   settings: jsonObjectSchema.optional(),

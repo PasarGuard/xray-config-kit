@@ -3,18 +3,32 @@ import { profileSchema } from "../schemas/profile.js";
 import { base64UrlByteLength } from "./base64.js";
 import { hasErrors, makeIssue, pathForZod } from "./issues.js";
 import { normalizeProfile } from "./profile.js";
+import { parsePortSegment } from "./ports.js";
+import { inboundTransportIssues, masqueInboundIssues, outboundTransportIssues } from "./validate-masque-xdrive.js";
 import type { Client, Inbound, InboundPort, Issue, Profile, RawPatch, RoutingRule, ValidateOptions, ValidationResult, XrayPortList } from "./types.js";
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const shortIdRegex = /^[0-9a-fA-F]*$/;
-const envPortRegex = /^env:[A-Za-z_][A-Za-z0-9_]*$/;
+/** Inbound protocols that warn when no client is enabled. */
+const clientRequiredProtocols: ReadonlySet<Inbound["protocol"]> = new Set(["vmess", "vless", "trojan", "hysteria", "masque"]);
 
-function clientKey(client: Client): string {
+/** Identity Xray uses to tell clients apart, or undefined when the client has none to compare. */
+function clientKey(client: Client): string | undefined {
   if (client.protocol === "vmess") return `vmess:${client.id.toLowerCase()}`;
   if (client.protocol === "vless") return `vless:${client.id.toLowerCase()}`;
   if (client.protocol === "trojan") return `trojan:${client.password}`;
   if (client.protocol === "shadowsocks") return `shadowsocks:${client.password}`;
-  return `hysteria:${client.auth}`;
+  if (client.protocol === "hysteria") return `hysteria:${client.auth}`;
+  // Xray keys MASQUE users by case-insensitive email, not by pass.
+  return client.email ? `masque:${client.email.toLowerCase()}` : undefined;
+}
+
+/** The client's shared secret and the field that holds it, for protocols that authenticate with one. */
+function clientSecret(client: Client): { readonly field: string; readonly value: string } | undefined {
+  if (client.protocol === "hysteria") return { field: "auth", value: client.auth };
+  if (client.protocol === "masque") return { field: "pass", value: client.pass };
+  if (client.protocol === "trojan" || client.protocol === "shadowsocks") return { field: "password", value: client.password };
+  return undefined;
 }
 
 function shadowsocksUsesServerPassword(method: string | undefined): boolean {
@@ -92,7 +106,7 @@ function validateClients(inbound: Inbound, inboundIndex: number): Issue[] {
   if (!("clients" in inbound)) return [];
   const clients = inbound.clients;
 
-  if ((inbound.protocol === "vmess" || inbound.protocol === "vless" || inbound.protocol === "trojan" || inbound.protocol === "hysteria") && clients.filter((client) => client.enabled !== false).length === 0) {
+  if (clientRequiredProtocols.has(inbound.protocol) && clients.filter((client) => client.enabled !== false).length === 0) {
     issues.push(makeIssue({
       code: "XCK_SEMANTIC_MISSING_CLIENTS",
       severity: "warning",
@@ -134,20 +148,25 @@ function validateClients(inbound: Inbound, inboundIndex: number): Issue[] {
 
   clients.forEach((client, clientIndex) => {
     const key = clientKey(client);
-    const previous = seen.get(key);
-    if (previous !== undefined) {
-      issues.push(makeIssue({
-        code: "XCK_SEMANTIC_DUPLICATE_CLIENT",
-        severity: "error",
-        category: "semantic",
-        path: `/inbounds/${inboundIndex + 1}/clients/${clientIndex}`,
-        message: "Client credential is duplicated within the same inbound.",
-        suggestion: `Remove this client or rotate its credential. First occurrence is /inbounds/${inboundIndex + 1}/clients/${previous}.`
-      }));
+    if (key !== undefined) {
+      const previous = seen.get(key);
+      if (previous !== undefined) {
+        const first = `First occurrence is /inbounds/${inboundIndex + 1}/clients/${previous}.`;
+        issues.push(makeIssue({
+          code: "XCK_SEMANTIC_DUPLICATE_CLIENT",
+          severity: "error",
+          category: "semantic",
+          path: `/inbounds/${inboundIndex + 1}/clients/${clientIndex}`,
+          ...(client.protocol === "masque"
+            ? { message: `Client email "${client.email}" is duplicated within the same inbound (MASQUE compares emails case-insensitively).`, suggestion: `Give each MASQUE client a unique email. ${first}` }
+            : { message: "Client credential is duplicated within the same inbound.", suggestion: `Remove this client or rotate its credential. ${first}` })
+        }));
+      }
+      seen.set(key, clientIndex);
     }
-    seen.set(key, clientIndex);
 
-    if (client.email) {
+    // MASQUE keys clients by email, so a duplicate email is already the error above.
+    if (client.email && client.protocol !== "masque") {
       const previousEmail = emails.get(client.email);
       if (previousEmail !== undefined) {
         issues.push(makeIssue({
@@ -172,13 +191,13 @@ function validateClients(inbound: Inbound, inboundIndex: number): Issue[] {
       }));
     }
 
-    const secret = client.protocol === "hysteria" ? client.auth : client.protocol === "trojan" || client.protocol === "shadowsocks" ? client.password : undefined;
-    if (secret !== undefined && secret.length < 12) {
+    const secret = clientSecret(client);
+    if (secret !== undefined && secret.value.length < 12) {
       issues.push(makeIssue({
         code: "XCK_SECURITY_WEAK_CLIENT_SECRET",
         severity: "warning",
         category: "security",
-        path: `/inbounds/${inboundIndex + 1}/clients/${clientIndex}/${client.protocol === "hysteria" ? "auth" : "password"}`,
+        path: `/inbounds/${inboundIndex + 1}/clients/${clientIndex}/${secret.field}`,
         message: "Client password is short enough to be risky.",
         suggestion: "Use at least 16 random bytes encoded as base64url or hex."
       }));
@@ -280,21 +299,13 @@ function isValidPortNumber(value: number): boolean {
 }
 
 function isValidPortSegment(segment: string): boolean {
-  const trimmed = segment.trim();
-  if (trimmed === "") return false;
-  if (envPortRegex.test(trimmed)) return true;
-  if (/^\d+$/.test(trimmed)) return isValidPortNumber(Number(trimmed));
-
-  const range = trimmed.match(/^(\d+)-(\d+)$/);
-  if (!range) return false;
-  const from = Number(range[1]);
-  const to = Number(range[2]);
-  return isValidPortNumber(from) && isValidPortNumber(to) && from <= to;
+  const parsed = parsePortSegment(segment);
+  return parsed !== undefined && ("env" in parsed || (isValidPortNumber(parsed.from) && isValidPortNumber(parsed.to)));
 }
 
 function validatePortList(port: XrayPortList, path: string, label: string): Issue[] {
   if (typeof port === "number" && isValidPortNumber(port)) return [];
-  if (typeof port === "string" && port.split(",").every(isValidPortSegment)) return [];
+  if (typeof port === "string" && port.split(",").every((segment) => segment.trim() === "" || isValidPortSegment(segment))) return [];
   return [
     makeIssue({
       code: "XCK_SEMANTIC_INVALID_PORT",
@@ -519,8 +530,11 @@ function semanticIssues(profile: Profile, options: ValidateOptions): Issue[] {
       ...validateLocalInbound(inbound, index),
       ...validateClients(inbound, index),
       ...validateReality(inbound, index),
-      ...validateFallbacks(inbound, index)
-    ])
+      ...validateFallbacks(inbound, index),
+      ...inboundTransportIssues(inbound, index),
+      ...(inbound.protocol === "masque" ? masqueInboundIssues(inbound, index) : [])
+    ]),
+    ...(profile.outbounds ?? []).flatMap((outbound, index) => outboundTransportIssues(outbound, index))
   ];
 }
 

@@ -16,6 +16,7 @@ import type {
   JsonObject,
   JsonValue,
   KcpTransport,
+  MasqueTransport,
   Outbound,
   Profile,
   QuicParams,
@@ -27,6 +28,7 @@ import type {
   TlsSecurity,
   Transport,
   WebSocketTransport,
+  XDriveTransport,
   XHttpTransport,
   XrayConfig
 } from "./types.js";
@@ -72,6 +74,7 @@ function shouldSkipMissingSourceField(parentKey: string | undefined, key: string
   if (parentKey === "streamSettings" && key === "network") {
     // Method (new field) takes priority over network; don't reintroduce the
     // legacy key when the source already declares the transport via method.
+    // preferSourceTransportKey renames network to method first, so this only matters when the compiled stream has both keys.
     if (typeof source.method === "string" && source.method !== "") return true;
     return value === "tcp";
   }
@@ -144,6 +147,8 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
     "httpupgradeSettings",
     "kcpSettings",
     "hysteriaSettings",
+    "xdriveSettings",
+    "masqueSettings",
     "sockopt",
     "finalmask"
   ])],
@@ -191,6 +196,9 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
   ["httpupgradeSettings", new Set(["path", "host", "headers", "acceptProxyProtocol"])],
   ["kcpSettings", new Set(["mtu", "tti", "uplinkCapacity", "downlinkCapacity", "cwndMultiplier", "maxSendingWindow"])],
   ["hysteriaSettings", new Set(["version", "auth", "udpIdleTimeout", "masquerade", "udpmasks", "ignoreClientBandwidth"])],
+  ["xdriveSettings", new Set(["remoteFolder", "service", "secrets", "segmentBytes", "flushIntervalMs", "pollIntervalMs", "maxPollIntervalMs", "sessionTtlSeconds", "concurrency", "eagerWindowMs", "holeTimeoutMs", "template"])],
+  ["masqueSettings", new Set(["host", "path", "user", "pass", "headers", "warp", "xmux"])],
+  ["warp", new Set(["privateKey", "publicKey", "address"])],
   ["sniffing", new Set(["enabled", "destOverride", "domainsExcluded", "ipsExcluded", "metadataOnly", "routeOnly"])],
   ["proxySettings", new Set(["tag", "transportLayer"])],
   ["mux", new Set(["enabled", "concurrency", "xudpConcurrency", "xudpProxyUDP443"])],
@@ -205,20 +213,49 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
   ["pingConfig", new Set(["destination", "connectivity", "interval", "timeout", "sampling", "httpMethod"])]
 ]);
 
-function shouldDropMissingCompiledField(parentKey: string | undefined, key: string): boolean {
+/** Children replaced as a whole on merge, so keys removed in the model do not survive from the source. */
+const wholesaleChildrenByParent: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+  ["xdriveSettings", new Set(["template"])],
+  ["masqueSettings", new Set(["headers", "xmux"])]
+]);
+
+/**
+ * `settings` keys known only for some protocols. Other protocols keep them from the source on
+ * edit (for example WireGuard's own `remoteDNS`).
+ */
+const knownSettingsFieldsByProtocol: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+  ["masque", new Set(["remoteDNS"])]
+]);
+
+function shouldDropMissingCompiledField(parentKey: string | undefined, key: string, ownerProtocol: string | undefined): boolean {
+  if (parentKey === "settings" && ownerProtocol !== undefined && knownSettingsFieldsByProtocol.get(ownerProtocol)?.has(key)) return true;
   return knownSourceFieldsByParent.get(parentKey ?? "__root")?.has(key) === true;
 }
 
-function mergeJsonPreservingSource(source: JsonValue, compiled: JsonValue, parentKey?: string): JsonValue {
+/**
+ * The compiler always emits the legacy `network` key. When the source stream declared its
+ * transport with `method` instead, emit the compiled transport under `method` so the merge
+ * keeps the source's key rather than dropping `method` and skipping `network`.
+ */
+function preferSourceTransportKey(source: JsonObject, compiled: JsonObject): JsonObject {
+  if (typeof source.method !== "string" || source.method === "") return compiled;
+  if (typeof compiled.network !== "string" || compiled.method !== undefined) return compiled;
+  const { network, ...compiledWithoutNetwork } = compiled;
+  return { ...compiledWithoutNetwork, method: network };
+}
+
+/** `ownerProtocol` is the `protocol` of the inbound or outbound whose direct child is being merged. */
+function mergeJsonPreservingSource(source: JsonValue, compiled: JsonValue, parentKey?: string, ownerProtocol?: string): JsonValue {
   if (Array.isArray(source) && Array.isArray(compiled)) {
     const sourceByTag = uniqueTaggedItems(source);
     return compiled.map((item, index) => {
       const tag = getJsonObjectTag(item);
       const sourceItem = tag ? sourceByTag.get(tag) ?? source[index] : source[index];
-      return sourceItem === undefined ? cloneJson(item) : mergeJsonPreservingSource(sourceItem, item, parentKey);
+      return sourceItem === undefined ? cloneJson(item) : mergeJsonPreservingSource(sourceItem, item, parentKey, ownerProtocol);
     });
   }
   if (isJsonObject(source) && isJsonObject(compiled)) {
+    if (parentKey === "streamSettings") compiled = preferSourceTransportKey(source, compiled);
     if (
       typeof source.tag === "string" &&
       typeof compiled.tag === "string" &&
@@ -233,19 +270,24 @@ function mergeJsonPreservingSource(source: JsonValue, compiled: JsonValue, paren
     ) {
       return cloneJson(compiled);
     }
+    const childOwnerProtocol = typeof compiled.protocol === "string" ? compiled.protocol : undefined;
     const output: Record<string, JsonValue | undefined> = { ...cloneJson(source) };
     for (const key of Object.keys(source)) {
-      if (compiled[key] === undefined && shouldDropMissingCompiledField(parentKey, key)) delete output[key];
+      if (compiled[key] === undefined && shouldDropMissingCompiledField(parentKey, key, ownerProtocol)) delete output[key];
     }
     for (const [key, value] of Object.entries(compiled)) {
       if (value === undefined) continue;
+      if (wholesaleChildrenByParent.get(parentKey ?? "")?.has(key)) {
+        output[key] = cloneJson(value);
+        continue;
+      }
       const sourceValue = source[key];
       if (sourceValue === undefined) {
         if (shouldSkipMissingSourceField(parentKey, key, value, source)) continue;
         output[key] = cloneJson(value);
         continue;
       }
-      output[key] = mergeJsonPreservingSource(sourceValue, value, key);
+      output[key] = mergeJsonPreservingSource(sourceValue, value, key, childOwnerProtocol);
     }
     return output as JsonObject;
   }
@@ -466,6 +508,39 @@ function compileHysteria(transport: Extract<Transport, { type: "hysteria" }>): J
   });
 }
 
+function compileXDrive(transport: XDriveTransport): JsonObject {
+  return compactObject({
+    service: transport.service,
+    remoteFolder: transport.remoteFolder,
+    secrets: transport.secrets,
+    segmentBytes: transport.segmentBytes,
+    flushIntervalMs: transport.flushIntervalMs,
+    pollIntervalMs: transport.pollIntervalMs,
+    maxPollIntervalMs: transport.maxPollIntervalMs,
+    sessionTtlSeconds: transport.sessionTtlSeconds,
+    concurrency: transport.concurrency,
+    eagerWindowMs: transport.eagerWindowMs,
+    holeTimeoutMs: transport.holeTimeoutMs,
+    template: transport.template
+  });
+}
+
+function compileMasque(transport: MasqueTransport): JsonObject {
+  return compactObject({
+    host: transport.host,
+    path: transport.path,
+    user: transport.user,
+    pass: transport.pass,
+    headers: transport.headers,
+    warp: transport.warp ? compactObject({
+      privateKey: transport.warp.privateKey,
+      publicKey: transport.warp.publicKey,
+      address: transport.warp.address
+    }) : undefined,
+    xmux: transport.xmux
+  });
+}
+
 export function compileStreamSettings(
   transport: Transport,
   security: Security,
@@ -486,6 +561,8 @@ export function compileStreamSettings(
   if (transport.type === "httpupgrade") streamSettings.httpupgradeSettings = compileHttpUpgrade(transport);
   if (transport.type === "kcp") streamSettings.kcpSettings = compileKcp(transport);
   if (transport.type === "hysteria") streamSettings.hysteriaSettings = compileHysteria(transport);
+  if (transport.type === "xdrive") streamSettings.xdriveSettings = compileXDrive(transport);
+  if (transport.type === "masque") streamSettings.masqueSettings = compileMasque(transport);
   if (advanced?.sockopt) streamSettings.sockopt = advanced.sockopt;
   if (advanced?.finalmask || advanced?.quicParams) {
     streamSettings.finalmask = compactObject({
@@ -629,6 +706,22 @@ function compileInbound(inbound: Inbound): JsonObject {
           email: client.email,
           level: client.level
         }))
+    });
+    return compileInboundBase(inbound, settings, inbound.security, inbound.transport);
+  }
+
+  if (inbound.protocol === "masque") {
+    const settings = compactObject({
+      users: inbound.clients
+        .filter((client) => client.enabled !== false)
+        .map((client) => compactObject({
+          pass: client.pass,
+          email: client.email,
+          level: client.level
+        })),
+      address: inbound.address,
+      mtu: inbound.mtu,
+      remoteDNS: inbound.remoteDNS
     });
     return compileInboundBase(inbound, settings, inbound.security, inbound.transport);
   }

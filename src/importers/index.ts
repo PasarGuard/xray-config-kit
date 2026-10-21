@@ -1,6 +1,6 @@
 import { knownXrayTopLevelKeys } from "../xray-json/index.js";
 import { createProfile, profileSourceFingerprint } from "../core/profile.js";
-import { isJsonObject } from "../core/json.js";
+import { escapePointerSegment, isJsonObject } from "../core/json.js";
 import { coerceVerifyPeerCertByNameList } from "../core/tls-fields.js";
 import { makeIssue } from "../core/issues.js";
 import type {
@@ -23,10 +23,6 @@ import type {
 } from "../core/types.js";
 
 const knownTopLevel = new Set<string>(knownXrayTopLevelKeys);
-
-function pointerSegment(input: string): string {
-  return input.replace(/~/g, "~0").replace(/\//g, "~1");
-}
 
 function asString(value: JsonValue | undefined): string | undefined {
   return typeof value === "string" ? value : undefined;
@@ -321,6 +317,42 @@ function parseTransport(streamSettings: JsonObject | undefined): Transport | und
         type: asString(mask.type) ?? "",
         settings: isJsonObject(mask.settings) ? mask.settings : undefined
       })).filter((mask) => mask.type !== "")
+    };
+  }
+  if (network === "xdrive") {
+    const settings = isJsonObject(streamSettings?.xdriveSettings) ? streamSettings.xdriveSettings : {};
+    return {
+      type: "xdrive",
+      service: asString(settings.service) ?? "",
+      remoteFolder: asString(settings.remoteFolder),
+      secrets: asStringArray(settings.secrets),
+      segmentBytes: asNumber(settings.segmentBytes),
+      flushIntervalMs: asNumber(settings.flushIntervalMs),
+      pollIntervalMs: asNumber(settings.pollIntervalMs),
+      maxPollIntervalMs: asNumber(settings.maxPollIntervalMs),
+      sessionTtlSeconds: asNumber(settings.sessionTtlSeconds),
+      concurrency: asNumber(settings.concurrency),
+      eagerWindowMs: asNumber(settings.eagerWindowMs),
+      holeTimeoutMs: asNumber(settings.holeTimeoutMs),
+      template: isJsonObject(settings.template) ? settings.template : undefined
+    };
+  }
+  if (network === "masque") {
+    const settings = isJsonObject(streamSettings?.masqueSettings) ? streamSettings.masqueSettings : {};
+    const warp = isJsonObject(settings.warp) ? settings.warp : undefined;
+    return {
+      type: "masque",
+      host: asString(settings.host),
+      path: asString(settings.path),
+      user: asString(settings.user),
+      pass: asString(settings.pass),
+      headers: asStringRecord(settings.headers),
+      warp: warp ? {
+        privateKey: asString(warp.privateKey) ?? "",
+        publicKey: asString(warp.publicKey) ?? "",
+        address: asStringArray(warp.address) ?? []
+      } : undefined,
+      xmux: isJsonObject(settings.xmux) ? settings.xmux as Record<string, JsonValue> : undefined
     };
   }
   return undefined;
@@ -628,6 +660,33 @@ function parseInbound(raw: JsonObject, index: number, issues: Issue[]): Inbound 
     };
   }
 
+  if (protocol === "masque" && security && security.type !== "reality" && transport?.type === "masque") {
+    // Xray's precedence: a present `clients` list (even an empty one) replaces `users`.
+    const clients = (asObjectArray(settings.clients) ?? asObjectArray(settings.users))?.map((client) => ({
+      protocol: "masque" as const,
+      pass: asString(client.pass) ?? "",
+      email: asString(client.email),
+      level: asNumber(client.level),
+      enabled: asBoolean(client.enabled) ?? asBoolean(client.enable),
+      meta: parseClientMeta(client)
+    })) ?? [];
+    return {
+      kind: "inbound",
+      protocol: "masque",
+      tag,
+      ...(listen !== undefined ? { listen } : {}),
+      ...(port !== undefined ? { port } : {}),
+      sniffing,
+      clients,
+      address: asStringArray(settings.address) ?? [],
+      mtu: asNumber(settings.mtu),
+      remoteDNS: asStringArray(settings.remoteDNS),
+      security,
+      transport,
+      streamAdvanced
+    };
+  }
+
   if (protocol === "dokodemo-door" || protocol === "tunnel") {
     const portMap = asPortMapRecord(settings.portMap);
     const st = settings as JsonObject;
@@ -708,6 +767,7 @@ function parseOutbound(raw: JsonObject, index: number, issues: Issue[]): Outboun
     || protocol === "hysteria"
     || protocol === "wireguard"
     || protocol === "loopback"
+    || protocol === "masque"
   ) {
     return {
       protocol,
@@ -859,13 +919,13 @@ export function importXrayConfig(input: unknown, _options: ImportOptions = {}): 
 
   for (const [key, value] of Object.entries(raw)) {
     if (!knownTopLevel.has(key) && value !== undefined) {
-      pointers[`/${pointerSegment(key)}`] = value;
+      pointers[`/${escapePointerSegment(key)}`] = value;
       topLevel[key] = value;
       issues.push(makeIssue({
         code: "XCK_IMPORT_UNKNOWN_TOP_LEVEL",
         severity: "info",
         category: "import",
-        path: `/${pointerSegment(key)}`,
+        path: `/${escapePointerSegment(key)}`,
         message: `Unknown top-level Xray config section "${key}" is preserved.`
       }));
     }

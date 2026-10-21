@@ -1,5 +1,5 @@
 import { makeIssue } from "../core/issues.js";
-import { isJsonObject } from "../core/json.js";
+import { escapePointerSegment, isJsonObject } from "../core/json.js";
 import type { Issue, IssueCategory, IssueSeverity, JsonObject, JsonValue, ValidationMode, XrayConfig } from "../core/types.js";
 import { xrayParityManifest } from "./parity-manifest.js";
 
@@ -142,7 +142,7 @@ function approximatedVersionIssue(requestedVersion: string, release: XrayParityR
 }
 
 function pointer(path: string, key: string | number): string {
-  const segment = String(key).replace(/~/g, "~0").replace(/\//g, "~1");
+  const segment = escapePointerSegment(key);
   return path === "/" ? `/${segment}` : `${path}/${segment}`;
 }
 
@@ -159,6 +159,14 @@ function structFieldNames(release: XrayParityRelease, structName: string | undef
     allowed.add("DNS");
     allowed.add("kernelMode");
   }
+  if (structName === "MasqueServerConfig") {
+    // PasarGuard stores client DNS for MASQUE users here; Xray ignores the key.
+    allowed.add("remoteDNS");
+  }
+  if (structName === "MasqueConfig") {
+    // The PasarGuard panel reads masqueSettings.remoteDNS as a client DNS fallback; Xray ignores the key.
+    allowed.add("remoteDNS");
+  }
   return allowed;
 }
 
@@ -173,16 +181,39 @@ function normalizeGoType(type: string): string | undefined {
   return next;
 }
 
+function lastReleaseAcceptingField(release: XrayParityRelease, structName: string, key: string): XrayParityRelease | undefined {
+  let accepted: XrayParityRelease | undefined;
+  for (const candidate of manifest.releases) {
+    if (compareVersion(candidate.version, release.version) >= 0) continue;
+    if (!candidate.structs[structName]?.some((field) => field.json === key)) continue;
+    if (!accepted || compareVersion(candidate.version, accepted.version) > 0) accepted = candidate;
+  }
+  return accepted;
+}
+
 function validateKnownFields(
   value: JsonObject,
   allowed: Set<string>,
   path: string,
   label: string,
   issues: Issue[],
-  mode: ValidationMode
+  mode: ValidationMode,
+  history?: { readonly release: XrayParityRelease; readonly structName: string }
 ): void {
   for (const key of Object.keys(value)) {
     if (allowed.has(key)) continue;
+    const accepted = history ? lastReleaseAcceptingField(history.release, history.structName, key) : undefined;
+    if (history && accepted) {
+      issues.push(issue(
+        "XCK_XRAY_STRICT_REMOVED_FIELD",
+        pointer(path, key),
+        `${label} field "${key}" is not read by ${history.release.tag}; ${accepted.tag} is the last generated release that accepts it.`,
+        `Xray ${history.release.tag} ignores this key. Remove it unless the config must also run on ${accepted.tag} or older.`,
+        "warning",
+        "compatibility"
+      ));
+      continue;
+    }
     const nextIssue = issue(
       "XCK_XRAY_STRICT_UNKNOWN_FIELD",
       pointer(path, key),
@@ -208,7 +239,7 @@ function validateStructObject(
     issues.push(issue("XCK_XRAY_STRICT_EXPECTED_OBJECT", path, `${label} must be a JSON object.`));
     return;
   }
-  validateKnownFields(value, structFieldNames(release, structName), path, label, issues, mode);
+  validateKnownFields(value, structFieldNames(release, structName), path, label, issues, mode, { release, structName });
 }
 
 function protocolConfig(release: XrayParityRelease, direction: "inbound" | "outbound", protocol: string): string | undefined {
@@ -230,7 +261,7 @@ function validateStreamSettings(
   }
 
   const streamFields = release.structs.StreamConfig ?? release.streamFields;
-  validateKnownFields(value, fieldNames(streamFields), path, "streamSettings", issues, mode);
+  validateKnownFields(value, fieldNames(streamFields), path, "streamSettings", issues, mode, { release, structName: "StreamConfig" });
 
   const network = typeof value.network === "string" ? value.network.toLowerCase() : undefined;
   if (network && !release.transportAliases[network]) {
@@ -280,7 +311,7 @@ function validateDetour(
 
   const envelope = direction === "inbound" ? "InboundDetourConfig" : "OutboundDetourConfig";
   const envelopeFields = release.structs[envelope];
-  validateKnownFields(value, fieldNames(envelopeFields), path, envelope, issues, mode);
+  validateKnownFields(value, fieldNames(envelopeFields), path, envelope, issues, mode, { release, structName: envelope });
 
   const protocol = typeof value.protocol === "string" ? value.protocol.toLowerCase() : undefined;
   if (!protocol) {

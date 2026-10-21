@@ -23,6 +23,11 @@ export function sortJson(value: JsonValue): JsonValue {
   return sorted;
 }
 
+/** Escapes one JSON-pointer segment (RFC 6901): `~` becomes `~0` and `/` becomes `~1`. */
+export function escapePointerSegment(key: string | number): string {
+  return String(key).replace(/~/g, "~0").replace(/\//g, "~1");
+}
+
 function decodePointer(pointer: string): string[] {
   if (!pointer.startsWith("/")) {
     throw new Error(`Invalid JSON pointer "${pointer}"`);

@@ -128,7 +128,16 @@ export type HysteriaClient = {
   readonly meta?: ClientMetadata;
 };
 
-export type Client = VmessClient | VlessClient | TrojanClient | ShadowsocksClient | HysteriaClient;
+export type MasqueClient = {
+  readonly protocol: "masque";
+  readonly pass: string;
+  readonly email?: string;
+  readonly level?: number;
+  readonly enabled?: boolean;
+  readonly meta?: ClientMetadata;
+};
+
+export type Client = VmessClient | VlessClient | TrojanClient | ShadowsocksClient | HysteriaClient | MasqueClient;
 
 export type NoneSecurity = {
   readonly type: "none";
@@ -337,6 +346,41 @@ export type HysteriaTransport = {
   readonly udpmasks?: HysteriaUdpMask[];
 };
 
+export type XDriveTransport = {
+  readonly type: "xdrive";
+  /** One of XDRIVE_SERVICES: "local", "Google Drive" (or its newer spelling "google-drive"), "template" (checked semantically). */
+  readonly service: string;
+  readonly remoteFolder?: string;
+  readonly secrets?: string[];
+  readonly segmentBytes?: number;
+  readonly flushIntervalMs?: number;
+  readonly pollIntervalMs?: number;
+  readonly maxPollIntervalMs?: number;
+  readonly sessionTtlSeconds?: number;
+  readonly concurrency?: number;
+  readonly eagerWindowMs?: number;
+  readonly holeTimeoutMs?: number;
+  readonly template?: JsonObject;
+};
+
+export type MasqueWarp = {
+  readonly privateKey: string;
+  readonly publicKey: string;
+  readonly address: string[];
+};
+
+export type MasqueTransport = {
+  readonly type: "masque";
+  readonly host?: string;
+  readonly path?: string;
+  readonly user?: string;
+  readonly pass?: string;
+  readonly headers?: Record<string, string>;
+  readonly warp?: MasqueWarp;
+  /** Xray XmuxConfig, kept as raw JSON like XHTTP's `extra.xmux`. Only clients use it. */
+  readonly xmux?: Record<string, JsonValue>;
+};
+
 export type Transport =
   | TcpTransport
   | GrpcTransport
@@ -344,7 +388,9 @@ export type Transport =
   | WebSocketTransport
   | HttpUpgradeTransport
   | KcpTransport
-  | HysteriaTransport;
+  | HysteriaTransport
+  | XDriveTransport
+  | MasqueTransport;
 
 export type Sniffing = {
   readonly enabled: boolean;
@@ -483,6 +529,17 @@ export type HysteriaInbound = BaseInbound & {
   readonly transport: HysteriaTransport;
 };
 
+export type MasqueInbound = BaseInbound & {
+  readonly protocol: "masque";
+  readonly clients: MasqueClient[];
+  readonly address: string[];
+  readonly mtu?: number;
+  /** PasarGuard panel convention (client DNS); Xray ignores it. */
+  readonly remoteDNS?: string[];
+  readonly security: TlsSecurity | NoneSecurity;
+  readonly transport: MasqueTransport;
+};
+
 export type DokodemoInbound = BaseInbound & {
   readonly protocol: "dokodemo-door" | "tunnel";
   readonly address?: string;
@@ -528,6 +585,7 @@ export type Inbound =
   | SocksInbound
   | WireGuardInbound
   | HysteriaInbound
+  | MasqueInbound
   | DokodemoInbound
   | TunInbound
   | UnmanagedInbound;
@@ -726,6 +784,13 @@ export type LoopbackOutboundSettings = {
   readonly inboundTag?: string;
 };
 
+// MASQUE outbound settings based on Xray parity MasqueClientConfig
+export type MasqueOutboundSettings = {
+  readonly address?: string;
+  readonly port?: number;
+  readonly remoteDNS?: readonly string[];
+};
+
 // TLS certificate config based on Xray parity TLSCertConfig
 export type TlsCertificateConfig = {
   readonly certificateFile?: string;
@@ -834,6 +899,8 @@ export type StreamSettings = {
   readonly wsSettings?: WebSocketConfig;
   readonly httpupgradeSettings?: JsonObject;
   readonly hysteriaSettings?: JsonObject;
+  readonly xdriveSettings?: JsonObject;
+  readonly masqueSettings?: JsonObject;
   readonly sockopt?: SocketConfig;
 };
 
@@ -849,7 +916,8 @@ export type OutboundSettings =
   | VlessOutboundSettings
   | TrojanOutboundSettings
   | WireGuardOutboundSettings
-  | LoopbackOutboundSettings;
+  | LoopbackOutboundSettings
+  | MasqueOutboundSettings;
 
 export type FreedomOutbound = {
   readonly protocol: "freedom";
@@ -893,7 +961,8 @@ export type ProxyOutboundProtocol =
   | "trojan"
   | "hysteria"
   | "wireguard"
-  | "loopback";
+  | "loopback"
+  | "masque";
 
 export type ProxyOutbound = {
   readonly protocol: ProxyOutboundProtocol;

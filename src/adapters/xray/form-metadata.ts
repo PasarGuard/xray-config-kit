@@ -30,7 +30,9 @@ export const TRANSPORT_TYPE_TO_PARITY_STRUCT: Readonly<Record<string, string>> =
   ws: "WebSocketConfig",
   httpupgrade: "HttpUpgradeConfig",
   kcp: "KCPConfig",
-  hysteria: "HysteriaConfig"
+  hysteria: "HysteriaConfig",
+  masque: "MasqueConfig",
+  xdrive: "XDriveConfig"
 } as const;
 
 type VersionOptions = {

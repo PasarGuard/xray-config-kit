@@ -25,6 +25,7 @@ import {
   validateOutboundDraft,
   validateRoutingRuleDraft
 } from "../src/index.js";
+import { parsePortSegment } from "../src/core/ports.js";
 import { getProfileJsonSchema } from "../src/schemas/index.js";
 import { latestGeneratedRelease } from "./helpers/xray-releases.js";
 import type { Profile } from "../src/index.js";
@@ -1136,5 +1137,27 @@ describe("@pasarguard/xray-config-kit core", () => {
 
     expect(issues.some((issue) => issue.code === "XCK_SEMANTIC_ROUTING_TARGET_REQUIRED")).toBe(true);
     expect(issues.some((issue) => issue.code === "XCK_SEMANTIC_INVALID_PORT")).toBe(true);
+  });
+
+  it("accepts exactly the Xray port list grammar", () => {
+    const invalidPort = (port: string | number) => validateRoutingRuleDraft({ type: "field", outboundTag: "direct", port })
+      .some((issue) => issue.code === "XCK_SEMANTIC_INVALID_PORT");
+    for (const port of [443, "443", " 443 , 8443 ", "10000-10010", "8443-8443", "1-65535", "env:XRAY_PORT", "443,env:_PORT2", "443,", ",443", "443,,8443", "443,  ,8443", " , "]) {
+      expect([port, invalidPort(port)]).toEqual([port, false]);
+    }
+    for (const port of ["0", "65536", "1-65536", "0-443", "10-1", "1 - 2", "+443", "env:", "env:1PORT", "nope"]) {
+      expect([port, invalidPort(port)]).toEqual([port, true]);
+    }
+  });
+
+  it("parses one port list segment into a range or an env reference", () => {
+    expect(parsePortSegment("443")).toEqual({ from: 443, to: 443 });
+    expect(parsePortSegment(" 10000-10010 ")).toEqual({ from: 10000, to: 10010 });
+    expect(parsePortSegment("env:XRAY_PORT")).toEqual({ env: "XRAY_PORT" });
+    // Bounds are the caller's check; the parser only reads the grammar.
+    expect(parsePortSegment("70000")).toEqual({ from: 70000, to: 70000 });
+    for (const segment of ["", " ", "10-1", "1 - 2", "+443", "-1", "env:1PORT", "nope"]) {
+      expect([segment, parsePortSegment(segment)]).toEqual([segment, undefined]);
+    }
   });
 });

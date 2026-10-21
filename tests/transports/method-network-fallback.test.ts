@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { buildXrayConfig, generateUriFromXrayOutbound, importXrayConfig } from "../../src/index.js";
-import type { JsonObject } from "../../src/index.js";
+import type { Inbound, JsonObject } from "../../src/index.js";
+import { editAndBuild } from "../helpers/profile-round-trip.js";
 import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
 describe("streamSettings.method / streamSettings.network fallback", () => {
@@ -68,6 +69,32 @@ describe("streamSettings.method / streamSettings.network fallback", () => {
 
     expect(streamSettings?.method).toBe("tcp");
     expect(streamSettings?.network).toBeUndefined();
+  });
+
+  it("keeps method and adds no network key when a method-keyed xhttp inbound is edited", () => {
+    const raw = {
+      inbounds: [
+        {
+          protocol: "vless",
+          tag: "vless-method",
+          port: 443,
+          settings: { clients: [{ id: "11111111-1111-4111-8111-111111111111" }], decryption: "none" },
+          streamSettings: {
+            method: "xhttp",
+            security: "none",
+            xhttpSettings: { path: "/x", mode: "auto" }
+          }
+        }
+      ]
+    };
+
+    const built = editAndBuild(raw, (inbound) => ({ ...inbound, port: 8443 }) as Inbound);
+    const streamSettings = built.config.inbounds?.[0]?.streamSettings as JsonObject;
+
+    expect(built.config.inbounds?.[0]?.port).toBe(8443);
+    expect(streamSettings.method).toBe("xhttp");
+    expect(streamSettings).not.toHaveProperty("network");
+    expect(streamSettings.xhttpSettings).toMatchObject({ path: "/x", mode: "auto" });
   });
 
   it("generates VMess URIs from outbound JSON using method instead of network", () => {

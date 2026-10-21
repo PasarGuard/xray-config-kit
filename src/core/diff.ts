@@ -1,4 +1,4 @@
-import { isJsonObject } from "./json.js";
+import { escapePointerSegment, isJsonObject } from "./json.js";
 import type { DiffEntry, JsonValue } from "./types.js";
 
 function sameJson(a: JsonValue | undefined, b: JsonValue | undefined): boolean {
@@ -6,7 +6,7 @@ function sameJson(a: JsonValue | undefined, b: JsonValue | undefined): boolean {
 }
 
 function joinPath(base: string, key: string | number): string {
-  const encoded = String(key).replace(/~/g, "~0").replace(/\//g, "~1");
+  const encoded = escapePointerSegment(key);
   return base === "/" ? `/${encoded}` : `${base}/${encoded}`;
 }
 
