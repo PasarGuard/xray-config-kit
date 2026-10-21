@@ -406,10 +406,10 @@ export function masqueOutboundIssues(outbound: ProxyOutbound, outboundIndex: num
   if (outbound.mux?.enabled === true) {
     issues.push(makeIssue({
       code: "XCK_SEMANTIC_MASQUE_MUX_UNSUPPORTED",
-      severity: "error",
+      severity: "warning",
       category: "semantic",
       path: `${base}/mux/enabled`,
-      message: "MASQUE outbounds do not support mux."
+      message: "Xray v26.10.10 and older refuse \"mux\" on MASQUE outbounds; keep it off for nodes on those releases."
     }));
   }
 

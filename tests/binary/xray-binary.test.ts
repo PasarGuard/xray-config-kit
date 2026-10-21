@@ -194,6 +194,14 @@ describe("real Xray binary: MASQUE and XDrive", () => {
     await expectXrayAccepts(buildOrThrow(createProfile({ outbounds: [masqueOutbound({ xmux: { maxConcurrency: "16-32" } })] })));
   });
 
+  xmuxIt("accepts a MASQUE outbound with mux enabled and the kit only warns", async () => {
+    const outbound: Outbound = { ...masqueOutbound({}), mux: { enabled: true } };
+    const built = buildXrayConfig(createProfile({ outbounds: [outbound] }), { xrayVersion, mode: "permissive" });
+    expect(built.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+    expect(built.issues.map((issue) => issue.code)).toContain("XCK_SEMANTIC_MASQUE_MUX_UNSUPPORTED");
+    await expectXrayAccepts(buildOrThrow(createProfile({ outbounds: [outbound] })));
+  });
+
   xmuxIt("rejects MASQUE xmux with both maxConnections and maxConcurrency exactly like the kit does", async () => {
     const outbound = masqueOutbound({ xmux: { maxConnections: 2, maxConcurrency: "16-32" } });
     const built = buildXrayConfig(createProfile({ outbounds: [outbound] }), { xrayVersion, mode: "permissive" });

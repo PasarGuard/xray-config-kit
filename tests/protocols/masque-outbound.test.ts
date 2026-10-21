@@ -51,8 +51,8 @@ describe("MASQUE outbound", () => {
     }
   });
 
-  it("rejects mux", () => {
-    expect(codes(out({ mux: { enabled: true } }))).toEqual(["error XCK_SEMANTIC_MASQUE_MUX_UNSUPPORTED /mux/enabled"]);
+  it("warns about mux for nodes on older releases but does not block it", () => {
+    expect(codes(out({ mux: { enabled: true } }))).toEqual(["warning XCK_SEMANTIC_MASQUE_MUX_UNSUPPORTED /mux/enabled"]);
     expect(codes(out({ mux: { enabled: false } }))).toEqual([]);
   });
 
