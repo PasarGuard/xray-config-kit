@@ -361,6 +361,8 @@ export type XDriveTransport = {
   readonly eagerWindowMs?: number;
   readonly holeTimeoutMs?: number;
   readonly template?: JsonObject;
+  /** Xray XmuxConfig, kept as raw JSON like XHTTP's `extra.xmux`. Servers and clients both read it. */
+  readonly xmux?: Record<string, JsonValue>;
 };
 
 export type MasqueWarp = {

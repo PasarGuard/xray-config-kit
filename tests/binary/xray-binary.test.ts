@@ -24,12 +24,14 @@ const xrayVersion = process.env.XRAY_VERSION;
 // so their negative control needs both XDriveConfig and the xmux marker. The "google-drive" service spelling is also code
 // that parity data cannot show; older releases reject it, so that test runs only on the newest generated release. Without
 // XRAY_VERSION the MASQUE and XDrive tests skip; the maybeIt tests need only XRAY_BINARY and then validate against the
-// newest generated parity data.
+// newest generated parity data. An "xmux" field on XDriveConfig marks the release that added XDrive xmux and XDrive over
+// h3 (one Xray change), so the h3 rules share that gate.
 const binaryRelease = binaryPath && xrayVersion ? resolveXrayParityRelease({ xrayVersion }).release : undefined;
 const hasMasque = binaryRelease?.inboundProtocols.some((entry) => entry.protocol === "masque") === true;
 const hasXDrive = binaryRelease?.structs.XDriveConfig !== undefined;
 const hasWarp = binaryRelease?.structs.MasqueWarpConfig !== undefined;
 const hasMasqueXmux = binaryRelease?.structs.MasqueConfig?.some((field) => field.json === "xmux") === true;
+const hasXDriveXmux = binaryRelease?.structs.XDriveConfig?.some((field) => field.json === "xmux") === true;
 const maybeIt = binaryPath ? it : it.skip;
 const masqueIt = hasMasque ? it : it.skip;
 const xdriveIt = hasXDrive ? it : it.skip;
@@ -37,6 +39,7 @@ const xdriveRulesIt = hasXDrive && hasMasqueXmux ? it : it.skip;
 const xdriveNewestIt = hasXDrive && binaryRelease?.tag === latestGeneratedRelease.tag ? it : it.skip;
 const warpIt = hasMasque && hasWarp ? it : it.skip;
 const xmuxIt = hasMasque && hasMasqueXmux ? it : it.skip;
+const xdriveXmuxIt = hasXDriveXmux ? it : it.skip;
 
 const key32 = "OEQIJdY9VnmJ78XX_hyUZueFyqvtdmCWY8e4NJ6B-lk";
 const publicKey32 = "0UsWoTj6Ad7JKR_FsQ9p_r05ZXhtRSnWlw53kpwgT34";
@@ -48,6 +51,12 @@ function buildOrThrow(profile: Profile): XrayConfig {
     throw new Error(buildErrors.map((issue) => `${issue.code} ${issue.path}: ${issue.message}`).join("\n"));
   }
   return built.config;
+}
+
+/** Runs `xray run -test` and returns whether it accepted the config, with its output. */
+async function xrayVerdict(config: XrayConfig | JsonObject): Promise<{ readonly ok: boolean; readonly output: string }> {
+  const result = await testXrayConfig(config, { binaryPath, timeoutMs: 30_000 });
+  return { ok: result.ok, output: result.stdout + result.stderr };
 }
 
 async function expectXrayAccepts(config: XrayConfig | JsonObject): Promise<void> {
@@ -210,5 +219,39 @@ describe("real Xray binary: MASQUE and XDrive", () => {
     const result = await testXrayConfig(built.config, { binaryPath, timeoutMs: 30_000 });
     expect(result.ok).toBe(false);
     expect(result.stdout + result.stderr).toContain("maxConnections cannot be specified together with maxConcurrency");
+  });
+
+  describe("XDrive xmux", () => {
+    const localTransport = (xmux: JsonObject): XDriveTransport => ({ type: "xdrive", service: "local", remoteFolder: join(tmpdir(), "xck-xdrive-binary"), xmux: xmux as XDriveTransport["xmux"] });
+    const accepted = [{}, { maxConcurrency: "16-32" }, { maxConnections: 4, hMaxReusableSecs: "1800-3000", hKeepAlivePeriod: 30 }, { maxConnections: 0, maxConcurrency: "16-32" },
+      { maxConnections: "-3--1", maxConcurrency: 8 }, { cMaxReuseTimes: 64, hMaxRequestTimes: "600-900" }];
+    const conflicts = [{ maxConnections: 2, maxConcurrency: "16-32" }, { maxConnections: "1-3", maxConcurrency: 16 }, { maxConnections: "-1-2", maxConcurrency: "4" }];
+
+    xdriveXmuxIt("accepts every XDrive xmux the kit accepts, on the inbound and the outbound", async () => {
+      const { decryption, encryption } = (await generateVlessEncryption()).x25519;
+      for (const xmux of accepted) {
+        const outbound: Outbound = {
+          protocol: "vless",
+          tag: "vless-xdrive-out",
+          settings: { address: "www.googleapis.com", port: 443, id: "11111111-1111-4111-8111-111111111111", encryption },
+          streamSettings: { network: "xdrive", security: "tls", tlsSettings: { serverName: "www.googleapis.com" },
+            xdriveSettings: { service: "google-drive", remoteFolder: "1AbCdEf", secrets: ["id", "secret", "refresh"], xmux } },
+          mux: { enabled: true }
+        };
+        const verdict = await xrayVerdict(buildOrThrow(createProfile({ inbounds: [xdriveInbound(decryption, localTransport(xmux))], outbounds: [outbound] })));
+        expect(verdict.ok, `${JSON.stringify(xmux)}: ${verdict.output}`).toBe(true);
+      }
+    });
+
+    xdriveXmuxIt("rejects XDrive xmux with both maxConnections and maxConcurrency exactly like the kit does", async () => {
+      const { decryption } = (await generateVlessEncryption()).x25519;
+      for (const xmux of conflicts) {
+        const built = buildXrayConfig(createProfile({ inbounds: [xdriveInbound(decryption, localTransport(xmux))] }), { xrayVersion, mode: "permissive" });
+        expect(built.issues.map((issue) => issue.code), JSON.stringify(xmux)).toContain("XCK_SEMANTIC_XDRIVE_XMUX_CONFLICT");
+        const verdict = await xrayVerdict(built.config);
+        expect(verdict.ok, JSON.stringify(xmux)).toBe(false);
+        expect(verdict.output).toContain("maxConnections cannot be specified together with maxConcurrency");
+      }
+    });
   });
 });

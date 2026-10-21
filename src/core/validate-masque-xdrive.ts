@@ -6,6 +6,7 @@ import { escapePointerSegment, isJsonObject } from "./json.js";
 import { expandMasquePathTemplate, MASQUE_LIMITS, XDRIVE_GOOGLE_DRIVE_SERVICES, XDRIVE_LIMITS, XDRIVE_SERVICES } from "./masque-xdrive.js";
 import { parsePortSegment } from "./ports.js";
 import type { Inbound, InboundPort, Issue, JsonObject, MasqueInbound, Outbound, ProxyOutbound } from "./types.js";
+import type { XrayRuleFeatures } from "./xray-features.js";
 
 /** httpguts.ValidHeaderFieldName: an RFC 7230 token. */
 const headerNamePattern = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
@@ -37,6 +38,14 @@ function int32RangeUpperBound(value: unknown): number | undefined {
   if (!match) return undefined;
   const left = Number(match[1]);
   return match[2] === undefined ? left : Math.max(left, Number(match[2]));
+}
+
+/** Mirrors Xray's XmuxConfig check (XHTTP, MASQUE, XDrive): maxConnections and maxConcurrency cannot both be set. */
+function hasXmuxConflict(xmux: unknown): boolean {
+  if (!isJsonObject(xmux)) return false;
+  const maxConnections = int32RangeUpperBound(xmux.maxConnections) ?? 0;
+  const maxConcurrency = int32RangeUpperBound(xmux.maxConcurrency) ?? 0;
+  return maxConnections > 0 && maxConcurrency > 0;
 }
 
 /** Mirrors decodeWarpKey: a PEM block or standard base64 DER, after trimming. */
@@ -183,19 +192,15 @@ export function masqueSettingsIssues(settings: JsonObject, path: string, side: "
     issues.push(...masqueWarpIssues(settings.warp, `${path}/warp`));
   }
 
-  if (isJsonObject(settings.xmux)) {
-    const maxConnections = int32RangeUpperBound(settings.xmux.maxConnections) ?? 0;
-    const maxConcurrency = int32RangeUpperBound(settings.xmux.maxConcurrency) ?? 0;
-    if (maxConnections > 0 && maxConcurrency > 0) {
-      issues.push(makeIssue({
-        code: "XCK_SEMANTIC_MASQUE_XMUX_CONFLICT",
-        severity: "error",
-        category: "semantic",
-        path: `${path}/xmux`,
-        message: "MASQUE xmux cannot set both maxConnections and maxConcurrency.",
-        suggestion: "Keep one of maxConnections or maxConcurrency, or set the other to 0."
-      }));
-    }
+  if (hasXmuxConflict(settings.xmux)) {
+    issues.push(makeIssue({
+      code: "XCK_SEMANTIC_MASQUE_XMUX_CONFLICT",
+      severity: "error",
+      category: "semantic",
+      path: `${path}/xmux`,
+      message: "MASQUE xmux cannot set both maxConnections and maxConcurrency.",
+      suggestion: "Keep one of maxConnections or maxConcurrency, or set the other to 0."
+    }));
   }
 
   if (side === "server") {
@@ -441,9 +446,9 @@ export function masqueOutboundIssues(outbound: ProxyOutbound, outboundIndex: num
 /**
  * Checks one XDrive settings object (an inbound `transport` or an outbound `xdriveSettings` block) found at `path`.
  * `selected` is false for a stale block on a stream that runs another transport: Xray's XDriveConfig.Build checks
- * only the service, secrets and template, and remoteFolder is checked only when the transport runs.
+ * only the service, secrets, template and xmux, and remoteFolder is checked only when the transport runs.
  */
-export function xdriveSettingsIssues(settings: JsonObject, path: string, selected: boolean): Issue[] {
+export function xdriveSettingsIssues(settings: JsonObject, path: string, selected: boolean, features: XrayRuleFeatures): Issue[] {
   const issues: Issue[] = [];
   const service = typeof settings.service === "string" ? settings.service : "";
   // No warning for either Google Drive spelling: the kit cannot know which Xray release the other side runs.
@@ -487,6 +492,18 @@ export function xdriveSettingsIssues(settings: JsonObject, path: string, selecte
       category: "semantic",
       path: `${path}/template`,
       message: "The template service needs a template object."
+    }));
+  }
+
+  // Releases without XDrive xmux ignore the key, so the conflict only matters where Xray reads it.
+  if (features.xdriveXmux && hasXmuxConflict(settings.xmux)) {
+    issues.push(makeIssue({
+      code: "XCK_SEMANTIC_XDRIVE_XMUX_CONFLICT",
+      severity: "error",
+      category: "semantic",
+      path: `${path}/xmux`,
+      message: "XDrive xmux cannot set both maxConnections and maxConcurrency.",
+      suggestion: "Keep one of maxConnections or maxConcurrency, or set the other to 0."
     }));
   }
 
@@ -673,7 +690,7 @@ function xdriveOutboundIssues(outbound: Exclude<Outbound, { protocol: "unmanaged
   return issues;
 }
 
-export function inboundTransportIssues(inbound: Inbound, inboundIndex: number): Issue[] {
+export function inboundTransportIssues(inbound: Inbound, inboundIndex: number, features: XrayRuleFeatures): Issue[] {
   const transport = inbound.protocol !== "unmanaged" && "transport" in inbound ? inbound.transport : undefined;
   const base = `/inbounds/${inboundIndex + 1}`;
   if (inbound.protocol !== "masque" && transport?.type === "masque") {
@@ -686,10 +703,10 @@ export function inboundTransportIssues(inbound: Inbound, inboundIndex: number): 
     })];
   }
   if (transport?.type !== "xdrive") return [];
-  return [...xdriveSettingsIssues(transport, `${base}/transport`, true), ...xdriveInboundIssues(inbound, base)];
+  return [...xdriveSettingsIssues(transport, `${base}/transport`, true, features), ...xdriveInboundIssues(inbound, base)];
 }
 
-export function outboundTransportIssues(outbound: Outbound, outboundIndex: number): Issue[] {
+export function outboundTransportIssues(outbound: Outbound, outboundIndex: number, features: XrayRuleFeatures): Issue[] {
   if (outbound.protocol === "unmanaged") return [];
   const base = `/outbounds/${outboundIndex + 1}`;
   const stream = outbound.streamSettings as JsonObject | undefined;
@@ -716,8 +733,8 @@ export function outboundTransportIssues(outbound: Outbound, outboundIndex: numbe
   const xdriveSettings = stream?.xdriveSettings;
   const xdrivePath = `${base}/streamSettings/xdriveSettings`;
   const xdriveSelected = transportName(stream) === "xdrive";
-  if (isJsonObject(xdriveSettings)) issues.push(...xdriveSettingsIssues(xdriveSettings, xdrivePath, xdriveSelected));
-  else if (xdriveSelected) issues.push(...xdriveSettingsIssues({}, xdrivePath, true));
+  if (isJsonObject(xdriveSettings)) issues.push(...xdriveSettingsIssues(xdriveSettings, xdrivePath, xdriveSelected, features));
+  else if (xdriveSelected) issues.push(...xdriveSettingsIssues({}, xdrivePath, true, features));
   if (xdriveSelected) issues.push(...xdriveOutboundIssues(outbound, base, stream));
 
   return issues;

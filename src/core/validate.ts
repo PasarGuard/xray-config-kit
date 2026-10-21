@@ -5,6 +5,7 @@ import { hasErrors, makeIssue, pathForZod } from "./issues.js";
 import { normalizeProfile } from "./profile.js";
 import { parsePortSegment } from "./ports.js";
 import { inboundTransportIssues, masqueInboundIssues, outboundTransportIssues } from "./validate-masque-xdrive.js";
+import { parityReleaseFor, xrayRuleFeatures } from "./xray-features.js";
 import type { Client, Inbound, InboundPort, Issue, Profile, RawPatch, RoutingRule, ValidateOptions, ValidationResult, XrayPortList } from "./types.js";
 
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -518,6 +519,7 @@ function validateLocalInbound(inbound: Inbound, inboundIndex: number): Issue[] {
 }
 
 function semanticIssues(profile: Profile, options: ValidateOptions): Issue[] {
+  const features = xrayRuleFeatures(parityReleaseFor(options.xrayVersion));
   return [
     ...validateInboundTags(profile),
     ...validateOutboundTags(profile),
@@ -531,10 +533,10 @@ function semanticIssues(profile: Profile, options: ValidateOptions): Issue[] {
       ...validateClients(inbound, index),
       ...validateReality(inbound, index),
       ...validateFallbacks(inbound, index),
-      ...inboundTransportIssues(inbound, index),
+      ...inboundTransportIssues(inbound, index, features),
       ...(inbound.protocol === "masque" ? masqueInboundIssues(inbound, index) : [])
     ]),
-    ...(profile.outbounds ?? []).flatMap((outbound, index) => outboundTransportIssues(outbound, index))
+    ...(profile.outbounds ?? []).flatMap((outbound, index) => outboundTransportIssues(outbound, index, features))
   ];
 }
 

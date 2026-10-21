@@ -217,7 +217,7 @@ const intRangeSchema = z.union([
   z.string().regex(/^-?\d+(?:--?\d+)?$/)
 ]);
 
-/** Xray XmuxConfig as raw JSON, shared by XHTTP `extra.xmux` and the masque transport. */
+/** Xray XmuxConfig as raw JSON, shared by XHTTP `extra.xmux` and the masque and xdrive transports. */
 const xmuxSchema = z.record(jsonValueSchema);
 
 export const xhttpExtraSchema = z.object({
@@ -349,7 +349,8 @@ export const xdriveTransportSchema = z.object({
   concurrency: z.number().int().min(0).max(4294967295).optional(),
   eagerWindowMs: z.number().int().min(0).max(4294967295).optional(),
   holeTimeoutMs: z.number().int().min(0).max(4294967295).optional(),
-  template: jsonObjectSchema.optional()
+  template: jsonObjectSchema.optional(),
+  xmux: xmuxSchema.optional()
 }).strict();
 
 export const masqueWarpSchema = z.object({
