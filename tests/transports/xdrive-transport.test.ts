@@ -87,6 +87,45 @@ describe("XDrive transport model", () => {
     expect((built.config.inbounds?.[0]?.streamSettings as JsonObject).xdriveSettings).toEqual({ service: "template", template: { put } });
   });
 
+  describe("xmux", () => {
+    const xmux = { maxConcurrency: "16-32", cMaxReuseTimes: 64, hMaxRequestTimes: "600-900", hMaxReusableSecs: "1800-3000", hKeepAlivePeriod: 30 };
+    const raw = { inbounds: [vlessInbound({ network: "xdrive", security: "tls", tlsSettings: { serverName: "www.googleapis.com" }, xdriveSettings: { ...driveSettings, xmux } })] };
+    const xdriveSettings = (built: { readonly config: { readonly inbounds?: readonly { readonly streamSettings?: unknown }[] } }) =>
+      (built.config.inbounds?.[0]?.streamSettings as JsonObject).xdriveSettings;
+
+    it("round-trips XDrive xmux on the inbound transport byte for byte", () => {
+      const { imported, built } = rebuildWithoutSource(raw);
+      expect(imported.profile.inbounds[0]).toMatchObject({ transport: { type: "xdrive", xmux } });
+      expect(built.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+      expect(built.config.inbounds).toEqual(raw.inbounds);
+    });
+
+    it("keeps XDrive xmux when the imported inbound is renamed", () => {
+      // A tag change skips the source merge, so only the model can carry xmux.
+      const built = editAndBuild(raw, (inbound) => ({ ...inbound, tag: "vless-xdrive-renamed" }) as Inbound);
+      expect(built.config.inbounds?.[0]?.tag).toBe("vless-xdrive-renamed");
+      expect(xdriveSettings(built)).toEqual({ ...driveSettings, xmux });
+    });
+
+    it("removes xmux keys and a whole xmux deleted in the model instead of keeping the imported ones", () => {
+      const withXmux = (next: Record<string, string | number> | undefined) => (inbound: Inbound) => {
+        const { xmux: _imported, ...transport } = (inbound as Extract<Inbound, { protocol: "vless" }>).transport as XDriveTransport;
+        return { ...inbound, transport: next ? { ...transport, xmux: next } : transport } as Inbound;
+      };
+      expect(xdriveSettings(editAndBuild(raw, withXmux({ maxConnections: 2 })))).toEqual({ ...driveSettings, xmux: { maxConnections: 2 } });
+      expect(xdriveSettings(editAndBuild(raw, withXmux(undefined)))).toEqual(driveSettings);
+    });
+
+    it("keeps XDrive xmux on an edited VLESS outbound", () => {
+      const outboundSettings = { address: "www.googleapis.com", port: 443, id: vlessClient.id, encryption: vlessEncryptionPair.encryption };
+      const streamSettings = { network: "xdrive", security: "tls", xdriveSettings: { ...driveSettings, xmux } };
+      const outboundRaw = { outbounds: [{ tag: "drive-out", protocol: "vless", settings: outboundSettings, streamSettings, mux: { enabled: true } }] };
+      const built = editOutboundAndBuild(outboundRaw, (outbound) => ({ ...outbound, tag: "drive-out-2" }) as Outbound);
+      expect(built.issues.filter((issue) => issue.severity === "error")).toEqual([]);
+      expect(built.config.outbounds?.[0]?.streamSettings).toEqual(streamSettings);
+    });
+  });
+
   it("keeps a VLESS outbound with an XDrive stream editable and unchanged", () => {
     const outboundSettings = { address: "www.googleapis.com", port: 443, id: vlessClient.id, encryption: vlessEncryptionPair.encryption };
     const streamSettings = { network: "xdrive", security: "tls", tlsSettings: { serverName: "www.googleapis.com" }, xdriveSettings: driveSettings };

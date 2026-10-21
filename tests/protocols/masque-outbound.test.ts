@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { createDefaultOutbound, getOutboundFieldVisibility, validateOutboundDraft } from "../../src/index.js";
+import { createDefaultOutbound, getOutboundFieldVisibility, getXrayParityReleases, validateOutboundDraft, xrayParityManifest } from "../../src/index.js";
 import type { CreateDefaultOutboundOptions, JsonObject, Outbound, ProxyOutbound, StreamSettings } from "../../src/index.js";
 import { warpKeys } from "../helpers/masque-keys.js";
 import { editOutboundAndBuild, rebuildWithoutSource } from "../helpers/profile-round-trip.js";
@@ -54,6 +54,14 @@ describe("MASQUE outbound", () => {
   it("warns about mux for nodes on older releases but does not block it", () => {
     expect(codes(out({ mux: { enabled: true } }))).toEqual(["warning XCK_SEMANTIC_MASQUE_MUX_UNSUPPORTED /mux/enabled"]);
     expect(codes(out({ mux: { enabled: false } }))).toEqual([]);
+  });
+
+  it("names the first downloadable release that accepts mux, not a withdrawn one", () => {
+    const withdrawn: readonly string[] = xrayParityManifest.source.withdrawnTags;
+    const first = getXrayParityReleases().find((release) => !withdrawn.includes(release.tag) && release.structs.MasqueConfig?.some((field) => field.json === "xmux"))!;
+    expect(withdrawn).not.toContain(first.tag);
+    const message = validateOutboundDraft(out({ mux: { enabled: true } })).find((issue) => issue.code === "XCK_SEMANTIC_MASQUE_MUX_UNSUPPORTED")?.message;
+    expect(message).toBe(`"mux" on MASQUE outbounds needs Xray ${first.tag} or newer on every node; earlier downloadable releases refuse it.`);
   });
 
   it("requires IP remoteDNS", () => {

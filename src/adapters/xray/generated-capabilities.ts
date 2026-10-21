@@ -14,10 +14,11 @@ export const generatedXrayReleaseTags = [
   "v26.7.28",
   "v26.9.8",
   "v26.9.30",
-  "v26.10.17"
+  "v26.10.17",
+  "v26.10.21"
 ] as const;
-export const latestGeneratedXrayReleaseTag = "v26.10.17" as const;
-export const latestGeneratedXrayVersion = "26.10.17" as const;
+export const latestGeneratedXrayReleaseTag = "v26.10.21" as const;
+export const latestGeneratedXrayVersion = "26.10.21" as const;
 
 export const generatedXrayCapabilitiesByTag = {
   "v25.10.15": {
@@ -3947,6 +3948,409 @@ export const generatedXrayCapabilitiesByTag = {
       "xtls": {
         "supported": false,
         "removed": "26.10.17",
+        "replacement": "xtls-rprx-vision with TLS or REALITY"
+      }
+    }
+  },
+  "v26.10.21": {
+    "adapterId": "xray@26.10",
+    "xrayVersionRange": ">=26.10.0 <26.11.0",
+    "latestTestedVersion": "26.10.21",
+    "protocols": [
+      "blackhole",
+      "block",
+      "direct",
+      "dns",
+      "dokodemo-door",
+      "freedom",
+      "http",
+      "hysteria",
+      "loopback",
+      "masque",
+      "mixed",
+      "shadowsocks",
+      "socks",
+      "trojan",
+      "tun",
+      "tunnel",
+      "vless",
+      "vmess",
+      "wireguard"
+    ],
+    "transports": [
+      "grpc",
+      "httpupgrade",
+      "hysteria",
+      "kcp",
+      "masque",
+      "mkcp",
+      "raw",
+      "splithttp",
+      "tcp",
+      "websocket",
+      "ws",
+      "xdrive",
+      "xhttp"
+    ],
+    "securities": [
+      "none",
+      "reality",
+      "tls"
+    ],
+    "fingerprints": [
+      "360",
+      "android",
+      "chrome",
+      "edge",
+      "firefox",
+      "hello360_11_0",
+      "hello360_7_5",
+      "hello360_auto",
+      "helloandroid_11_okhttp",
+      "hellochrome_100",
+      "hellochrome_100_psk",
+      "hellochrome_102",
+      "hellochrome_106_shuffle",
+      "hellochrome_112_psk_shuf",
+      "hellochrome_114_padding_psk_shuf",
+      "hellochrome_115_pq",
+      "hellochrome_115_pq_psk",
+      "hellochrome_120",
+      "hellochrome_120_pq",
+      "hellochrome_131",
+      "hellochrome_133",
+      "hellochrome_58",
+      "hellochrome_62",
+      "hellochrome_70",
+      "hellochrome_72",
+      "hellochrome_83",
+      "hellochrome_87",
+      "hellochrome_96",
+      "hellochrome_auto",
+      "helloedge_106",
+      "helloedge_85",
+      "helloedge_auto",
+      "hellofirefox_102",
+      "hellofirefox_105",
+      "hellofirefox_120",
+      "hellofirefox_148",
+      "hellofirefox_55",
+      "hellofirefox_56",
+      "hellofirefox_63",
+      "hellofirefox_65",
+      "hellofirefox_99",
+      "hellofirefox_auto",
+      "hellogolang",
+      "helloios_11_1",
+      "helloios_12_1",
+      "helloios_13",
+      "helloios_14",
+      "helloios_auto",
+      "helloqq_11_1",
+      "helloqq_auto",
+      "hellorandomized",
+      "hellorandomizedalpn",
+      "hellorandomizednoalpn",
+      "hellosafari_16_0",
+      "hellosafari_26_3",
+      "hellosafari_auto",
+      "ios",
+      "qq",
+      "random",
+      "randomized",
+      "randomizednoalpn",
+      "safari",
+      "unsafe"
+    ],
+    "alpn": [
+      "h3",
+      "h2",
+      "http/1.1"
+    ],
+    "removedFeatures": [
+      {
+        "feature": "noise = { ... }",
+        "replacement": "noises = [ { ... } ]"
+      },
+      {
+        "feature": "HTTP transport (without header padding, etc.)",
+        "replacement": "XHTTP stream-one H2 & H3"
+      },
+      {
+        "feature": "Legacy XTLS",
+        "replacement": "xtls-rprx-vision with TLS or REALITY"
+      },
+      {
+        "feature": "QUIC transport (without web service, etc.)",
+        "replacement": "XHTTP stream-one H3"
+      },
+      {
+        "feature": "\"allowInsecure\"",
+        "replacement": "\"pinnedPeerCertSha256\"(pcs) and \"verifyPeerCertByName\"(vcn)"
+      },
+      {
+        "feature": "Flow for Trojan"
+      },
+      {
+        "feature": "\"legacy reverse\"",
+        "replacement": "\"VLESS Reverse Proxy\""
+      },
+      {
+        "feature": "Global transport config",
+        "replacement": "streamSettings in inbounds and outbounds"
+      },
+      {
+        "feature": "outbound \"proxySettings\"",
+        "replacement": "\"streamSettings.sockopt.dialerProxy\""
+      }
+    ],
+    "deprecatedFeatures": [
+      {
+        "feature": "\"nonIPQuery\" and \"blockTypes\"",
+        "replacement": "\"rules\""
+      },
+      {
+        "feature": "Shadowsocks (with no Forward Secrecy, etc.)",
+        "replacement": "VLESS Encryption"
+      },
+      {
+        "feature": "gRPC transport (with unnecessary costs, etc.)",
+        "replacement": "XHTTP stream-up H2"
+      },
+      {
+        "feature": "HTTPUpgrade transport (with ALPN http/1.1, etc.)",
+        "replacement": "XHTTP H2 & H3"
+      },
+      {
+        "feature": "WebSocket transport (with ALPN http/1.1, etc.)",
+        "replacement": "XHTTP H2 & H3"
+      },
+      {
+        "feature": "\"host\" in \"headers\"",
+        "replacement": "independent \"host\""
+      },
+      {
+        "feature": "\"service\": \"Google Drive\"",
+        "replacement": "\"service\": \"google-drive\""
+      },
+      {
+        "feature": "Trojan (with no Flow, etc.)",
+        "replacement": "VLESS with Flow & Seed"
+      },
+      {
+        "feature": "VMess (with no Forward Secrecy, etc.)",
+        "replacement": "VLESS Encryption"
+      }
+    ],
+    "compatibilityMatrix": {
+      "allowInsecure": {
+        "supported": false,
+        "removed": "26.10.21",
+        "replacement": "\"pinnedPeerCertSha256\"(pcs) and \"verifyPeerCertByName\"(vcn)"
+      },
+      "api": {
+        "supported": true
+      },
+      "blackhole": {
+        "supported": true
+      },
+      "block": {
+        "supported": true
+      },
+      "burstObservatory": {
+        "supported": true
+      },
+      "direct": {
+        "supported": true
+      },
+      "dns": {
+        "supported": true
+      },
+      "dns legacy nonIPQuery blockTypes": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "\"rules\""
+      },
+      "dokodemo-door": {
+        "supported": true
+      },
+      "env": {
+        "supported": true
+      },
+      "fakeDns": {
+        "supported": true
+      },
+      "freedom": {
+        "supported": true
+      },
+      "freedom noise": {
+        "supported": false,
+        "removed": "26.10.21",
+        "replacement": "noises = [ { ... } ]"
+      },
+      "geodata": {
+        "supported": true
+      },
+      "global transport": {
+        "supported": false,
+        "removed": "26.10.21",
+        "replacement": "streamSettings in inbounds and outbounds"
+      },
+      "grpc": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "XHTTP stream-up H2"
+      },
+      "http": {
+        "supported": true
+      },
+      "http-transport": {
+        "supported": false,
+        "removed": "26.10.21",
+        "replacement": "XHTTP stream-one H2 & H3"
+      },
+      "httpupgrade": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "XHTTP H2 & H3"
+      },
+      "hysteria": {
+        "supported": true
+      },
+      "inbounds": {
+        "supported": true
+      },
+      "kcp": {
+        "supported": true
+      },
+      "log": {
+        "supported": true
+      },
+      "loopback": {
+        "supported": true
+      },
+      "masque": {
+        "supported": true
+      },
+      "metrics": {
+        "supported": true
+      },
+      "mixed": {
+        "supported": true
+      },
+      "mkcp": {
+        "supported": true
+      },
+      "none": {
+        "supported": true
+      },
+      "observatory": {
+        "supported": true
+      },
+      "outbounds": {
+        "supported": true
+      },
+      "policy": {
+        "supported": true
+      },
+      "proxySettings": {
+        "supported": false,
+        "removed": "26.10.21",
+        "replacement": "\"streamSettings.sockopt.dialerProxy\""
+      },
+      "quic": {
+        "supported": false,
+        "removed": "26.10.21",
+        "replacement": "XHTTP stream-one H3"
+      },
+      "raw": {
+        "supported": true
+      },
+      "reality": {
+        "supported": true
+      },
+      "reverse": {
+        "supported": true
+      },
+      "routing": {
+        "supported": true
+      },
+      "shadowsocks": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "VLESS Encryption"
+      },
+      "socks": {
+        "supported": true
+      },
+      "splithttp": {
+        "supported": true
+      },
+      "stats": {
+        "supported": true
+      },
+      "tcp": {
+        "supported": true
+      },
+      "tls": {
+        "supported": true
+      },
+      "transport": {
+        "supported": true
+      },
+      "trojan": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "VLESS with Flow & Seed"
+      },
+      "trojan flow": {
+        "supported": false,
+        "removed": "26.10.21"
+      },
+      "tun": {
+        "supported": true
+      },
+      "tunnel": {
+        "supported": true
+      },
+      "version": {
+        "supported": true
+      },
+      "vless": {
+        "supported": true
+      },
+      "vmess": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "VLESS Encryption"
+      },
+      "websocket": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "XHTTP H2 & H3"
+      },
+      "wireguard": {
+        "supported": true
+      },
+      "ws": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "XHTTP H2 & H3"
+      },
+      "xdrive": {
+        "supported": true
+      },
+      "xhttp": {
+        "supported": true
+      },
+      "xhttp headers host": {
+        "supported": true,
+        "deprecated": true,
+        "replacement": "independent \"host\""
+      },
+      "xtls": {
+        "supported": false,
+        "removed": "26.10.21",
         "replacement": "xtls-rprx-vision with TLS or REALITY"
       }
     }

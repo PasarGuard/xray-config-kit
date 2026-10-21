@@ -12,6 +12,7 @@ import {
 } from "../../src/index.js";
 import type { Inbound, JsonObject, Outbound, Profile, XDriveTransport, XrayConfig } from "../../src/index.js";
 import { testXrayConfig } from "../../src/node/index.js";
+import { acceptedIpRules, rejectedIpRules } from "../helpers/ip-rules.js";
 import { warpKeys } from "../helpers/masque-keys.js";
 import { latestGeneratedRelease } from "../helpers/xray-releases.js";
 
@@ -23,13 +24,15 @@ const xrayVersion = process.env.XRAY_VERSION;
 // VLESS Encryption, no flow, one port, mux) are code that parity data cannot show; they arrived in that same xmux release,
 // so their negative control needs both XDriveConfig and the xmux marker. The "google-drive" service spelling is also code
 // that parity data cannot show; older releases reject it, so that test runs only on the newest generated release. Without
-// XRAY_VERSION the MASQUE and XDrive tests skip; the maybeIt tests need only XRAY_BINARY and then validate against the
-// newest generated parity data.
+// XRAY_VERSION the MASQUE, XDrive and finalmask filter tests skip; the maybeIt tests need only XRAY_BINARY and then validate against the
+// newest generated parity data. An "xmux" field on XDriveConfig marks the release that added XDrive xmux and XDrive over
+// h3 (one Xray change), so the h3 rules share that gate. A "filter" entry in the finalmask loaders marks the filter mask.
 const binaryRelease = binaryPath && xrayVersion ? resolveXrayParityRelease({ xrayVersion }).release : undefined;
 const hasMasque = binaryRelease?.inboundProtocols.some((entry) => entry.protocol === "masque") === true;
 const hasXDrive = binaryRelease?.structs.XDriveConfig !== undefined;
 const hasWarp = binaryRelease?.structs.MasqueWarpConfig !== undefined;
 const hasMasqueXmux = binaryRelease?.structs.MasqueConfig?.some((field) => field.json === "xmux") === true;
+const hasXDriveXmux = binaryRelease?.structs.XDriveConfig?.some((field) => field.json === "xmux") === true;
 const maybeIt = binaryPath ? it : it.skip;
 const masqueIt = hasMasque ? it : it.skip;
 const xdriveIt = hasXDrive ? it : it.skip;
@@ -37,6 +40,14 @@ const xdriveRulesIt = hasXDrive && hasMasqueXmux ? it : it.skip;
 const xdriveNewestIt = hasXDrive && binaryRelease?.tag === latestGeneratedRelease.tag ? it : it.skip;
 const warpIt = hasMasque && hasWarp ? it : it.skip;
 const xmuxIt = hasMasque && hasMasqueXmux ? it : it.skip;
+const xdriveXmuxIt = hasXDriveXmux ? it : it.skip;
+const maskLoaders = binaryRelease ? Object.entries(binaryRelease.jsonLoaders).filter(([name]) => name.endsWith("maskLoader")) : [];
+const hasFinalmaskFilter = maskLoaders.some(([, entries]) => entries.some((entry) => entry.protocol === "filter"));
+const filterIt = hasFinalmaskFilter ? it : it.skip;
+const beforeFilterIt = maskLoaders.length > 0 && !hasFinalmaskFilter ? it : it.skip;
+const xdriveH3It = hasXDriveXmux ? it : it.skip;
+// The release with MASQUE xmux but without XDrive xmux knows "google-drive" but not the h3 rules.
+const xdriveBeforeH3It = hasMasqueXmux && hasXDrive && !hasXDriveXmux ? it : it.skip;
 
 const key32 = "OEQIJdY9VnmJ78XX_hyUZueFyqvtdmCWY8e4NJ6B-lk";
 const publicKey32 = "0UsWoTj6Ad7JKR_FsQ9p_r05ZXhtRSnWlw53kpwgT34";
@@ -48,6 +59,12 @@ function buildOrThrow(profile: Profile): XrayConfig {
     throw new Error(buildErrors.map((issue) => `${issue.code} ${issue.path}: ${issue.message}`).join("\n"));
   }
   return built.config;
+}
+
+/** Runs `xray run -test` and returns whether it accepted the config, with its output. */
+async function xrayVerdict(config: XrayConfig | JsonObject): Promise<{ readonly ok: boolean; readonly output: string }> {
+  const result = await testXrayConfig(config, { binaryPath, timeoutMs: 30_000 });
+  return { ok: result.ok, output: result.stdout + result.stderr };
 }
 
 async function expectXrayAccepts(config: XrayConfig | JsonObject): Promise<void> {
@@ -97,6 +114,13 @@ describe("real Xray binary", () => {
       ]
     });
 
+    await expectXrayAccepts(buildOrThrow(profile));
+  });
+
+  // Runs for every release with the geo files from its release zip, which have category-ir but not geosite:ir.
+  maybeIt("accepts the regional-ir-direct preset with the stock geo files", async () => {
+    const profile = createProfile({ presets: ["regional-ir-direct"], outbounds: [{ protocol: "freedom", tag: "direct", settings: {} }] });
+    expect(profile.routing?.rules?.flatMap((rule) => rule.domain ?? [])).toEqual(["geosite:category-ir"]);
     await expectXrayAccepts(buildOrThrow(profile));
   });
 
@@ -210,5 +234,121 @@ describe("real Xray binary: MASQUE and XDrive", () => {
     const result = await testXrayConfig(built.config, { binaryPath, timeoutMs: 30_000 });
     expect(result.ok).toBe(false);
     expect(result.stdout + result.stderr).toContain("maxConnections cannot be specified together with maxConcurrency");
+  });
+
+  describe("XDrive xmux", () => {
+    const localTransport = (xmux: JsonObject): XDriveTransport => ({ type: "xdrive", service: "local", remoteFolder: join(tmpdir(), "xck-xdrive-binary"), xmux: xmux as XDriveTransport["xmux"] });
+    const accepted = [{}, { maxConcurrency: "16-32" }, { maxConnections: 4, hMaxReusableSecs: "1800-3000", hKeepAlivePeriod: 30 }, { maxConnections: 0, maxConcurrency: "16-32" },
+      { maxConnections: "-3--1", maxConcurrency: 8 }, { cMaxReuseTimes: 64, hMaxRequestTimes: "600-900" }];
+    const conflicts = [{ maxConnections: 2, maxConcurrency: "16-32" }, { maxConnections: "1-3", maxConcurrency: 16 }, { maxConnections: "-1-2", maxConcurrency: "4" }];
+
+    xdriveXmuxIt("accepts every XDrive xmux the kit accepts, on the inbound and the outbound", async () => {
+      const { decryption, encryption } = (await generateVlessEncryption()).x25519;
+      for (const xmux of accepted) {
+        const outbound: Outbound = {
+          protocol: "vless",
+          tag: "vless-xdrive-out",
+          settings: { address: "www.googleapis.com", port: 443, id: "11111111-1111-4111-8111-111111111111", encryption },
+          streamSettings: { network: "xdrive", security: "tls", tlsSettings: { serverName: "www.googleapis.com" },
+            xdriveSettings: { service: "google-drive", remoteFolder: "1AbCdEf", secrets: ["id", "secret", "refresh"], xmux } },
+          mux: { enabled: true }
+        };
+        const verdict = await xrayVerdict(buildOrThrow(createProfile({ inbounds: [xdriveInbound(decryption, localTransport(xmux))], outbounds: [outbound] })));
+        expect(verdict.ok, `${JSON.stringify(xmux)}: ${verdict.output}`).toBe(true);
+      }
+    });
+
+    xdriveXmuxIt("rejects XDrive xmux with both maxConnections and maxConcurrency exactly like the kit does", async () => {
+      const { decryption } = (await generateVlessEncryption()).x25519;
+      for (const xmux of conflicts) {
+        const built = buildXrayConfig(createProfile({ inbounds: [xdriveInbound(decryption, localTransport(xmux))] }), { xrayVersion, mode: "permissive" });
+        expect(built.issues.map((issue) => issue.code), JSON.stringify(xmux)).toContain("XCK_SEMANTIC_XDRIVE_XMUX_CONFLICT");
+        const verdict = await xrayVerdict(built.config);
+        expect(verdict.ok, JSON.stringify(xmux)).toBe(false);
+        expect(verdict.output).toContain("maxConnections cannot be specified together with maxConcurrency");
+      }
+    });
+  });
+
+  describe("XDrive over h3", () => {
+    const drive = { service: "google-drive", remoteFolder: "1AbCdEf", secrets: ["id", "secret", "refresh"] };
+    const noise = { type: "noise", settings: { noise: [{ rand: "50-100" }] } };
+    const salamander = { type: "salamander", settings: { password: "p" } };
+    const h3Outbound = (encryption: string, finalmask: JsonObject): Outbound => ({
+      protocol: "vless",
+      tag: "vless-xdrive-h3",
+      settings: { address: "www.googleapis.com", port: 443, id: "11111111-1111-4111-8111-111111111111", encryption },
+      streamSettings: { network: "xdrive", security: "tls", tlsSettings: { serverName: "www.googleapis.com", alpn: ["h3"] }, xdriveSettings: drive, finalmask },
+      mux: { enabled: true }
+    });
+    const expectBothReject = async (profile: Profile, code: string, xrayText: string) => {
+      const built = buildXrayConfig(profile, { xrayVersion, mode: "permissive" });
+      expect(built.issues.map((issue) => issue.code)).toContain(code);
+      const verdict = await xrayVerdict(built.config);
+      expect(verdict.ok).toBe(false);
+      expect(verdict.output).toContain(xrayText);
+    };
+
+    xdriveH3It("accepts the noise udp mask and bbr congestion to Google Drive over h3", async () => {
+      const { encryption } = (await generateVlessEncryption()).x25519;
+      await expectXrayAccepts(buildOrThrow(createProfile({ outbounds: [h3Outbound(encryption, { udp: [noise], quicParams: { congestion: "bbr" } })] })));
+    });
+
+    xdriveH3It("rejects another udp mask to Google Drive over h3 exactly like the kit does, on both sides", async () => {
+      const { decryption, encryption } = (await generateVlessEncryption()).x25519;
+      const text = 'over h3 to Google Drive the only "udp" mask that works is "noise"';
+      await expectBothReject(createProfile({ outbounds: [h3Outbound(encryption, { udp: [noise, salamander] })] }), "XCK_SEMANTIC_XDRIVE_H3_UDP_MASK", text);
+      const inbound = { ...xdriveInbound(decryption, { type: "xdrive", ...drive }), security: { type: "tls", serverName: "drive.example.com", alpn: ["h3"] },
+        streamAdvanced: { finalmask: { udp: [salamander] } } } as Inbound;
+      await expectBothReject(createProfile({ inbounds: [inbound] }), "XCK_SEMANTIC_XDRIVE_H3_UDP_MASK", text);
+    });
+
+    xdriveBeforeH3It("accepts any udp mask and brutal over h3 before XDrive h3, and the kit does not flag them", async () => {
+      const { encryption } = (await generateVlessEncryption()).x25519;
+      const profile = createProfile({ outbounds: [h3Outbound(encryption, { udp: [salamander], quicParams: { congestion: "brutal", brutalUp: "10 mbps" } })] });
+      const built = buildXrayConfig(profile, { xrayVersion, mode: "permissive" });
+      expect(built.issues.map((issue) => issue.code).filter((code) => code.startsWith("XCK_SEMANTIC_XDRIVE_H3"))).toEqual([]);
+      await expectXrayAccepts(built.config);
+    });
+
+    xdriveH3It("rejects brutal congestion over h3 exactly like the kit does", async () => {
+      const { encryption } = (await generateVlessEncryption()).x25519;
+      for (const congestion of ["brutal", "force-brutal"]) {
+        await expectBothReject(createProfile({ outbounds: [h3Outbound(encryption, { quicParams: { congestion, brutalUp: "10 mbps" } })] }),
+          "XCK_SEMANTIC_XDRIVE_H3_CONGESTION", "brutal is for Hysteria servers");
+      }
+    });
+  });
+});
+
+describe("real Xray binary: finalmask filter", () => {
+  const filterInbound = (finalmask: JsonObject): Inbound => ({
+    ...createDefaultInboundForProtocol({ protocol: "vless", tag: "vless-filter", port: 8445, security: "none" }),
+    streamAdvanced: { finalmask }
+  }) as Inbound;
+  const filter = (settings: JsonObject) => ({ type: "filter", settings });
+
+  filterIt("accepts tcp and udp filter masks with every IP rule the kit accepts", async () => {
+    const finalmask = { tcp: [filter({ blockedSourceIPs: acceptedIpRules })], udp: [filter({ allowedSourceIPs: acceptedIpRules })] };
+    await expectXrayAccepts(buildOrThrow(createProfile({ inbounds: [filterInbound(finalmask)] })));
+  });
+
+  filterIt("rejects each IP rule exactly like the kit does", async () => {
+    for (const rule of rejectedIpRules) {
+      const built = buildXrayConfig(createProfile({ inbounds: [filterInbound({ tcp: [filter({ blockedSourceIPs: [rule] })] })] }), { xrayVersion, mode: "permissive" });
+      expect(built.issues.map((issue) => issue.code), JSON.stringify(rule)).toContain("XCK_SEMANTIC_FINALMASK_FILTER_IP_RULE");
+      const verdict = await xrayVerdict(built.config);
+      expect(verdict.ok, JSON.stringify(rule)).toBe(false);
+      expect(verdict.output).toContain('invalid "blockedSourceIPs"');
+    }
+  });
+
+  beforeFilterIt("rejects the filter mask before Xray added it, and so does the kit", async () => {
+    const built = buildXrayConfig(createProfile({ inbounds: [filterInbound({ tcp: [filter({ blockedSourceIPs: ["192.0.2.0/24"] })] })] }), { xrayVersion, mode: "permissive" });
+    expect(built.issues.map((issue) => issue.code)).toContain("XCK_SEMANTIC_FINALMASK_FILTER_UNSUPPORTED");
+    expect(validateStrictXrayConfig(built.config, { xrayVersion }).issues.map((issue) => issue.code)).toContain("XCK_XRAY_STRICT_UNKNOWN_FINALMASK");
+    const verdict = await xrayVerdict(built.config);
+    expect(verdict.ok).toBe(false);
+    expect(verdict.output).toContain("unknown config id: filter");
   });
 });

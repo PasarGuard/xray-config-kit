@@ -91,6 +91,15 @@ describe("strict MASQUE and XDrive JSON", () => {
     expect(summary(result.issues)).toEqual(["XCK_XRAY_STRICT_UNKNOWN_FIELD error /outbounds/1/streamSettings/masqueSettings/warp"]);
   });
 
+  it("accepts xdriveSettings.xmux only from the release that reads it", () => {
+    const inbound = config.inbounds[1]!;
+    const xmux = { maxConcurrency: "16-32", hMaxReusableSecs: "1800-3000" };
+    const withXmux = { inbounds: [{ ...inbound, streamSettings: { ...inbound.streamSettings, xdriveSettings: { ...inbound.streamSettings.xdriveSettings, xmux } } }] };
+    expect(validateStrictXrayConfig(withXmux, { releaseTag: latestGeneratedRelease.tag }).issues).toEqual([]);
+    expect(summary(validateStrictXrayConfig(withXmux, { releaseTag: "v26.10.17" }).issues))
+      .toEqual(["XCK_XRAY_STRICT_UNKNOWN_FIELD error /inbounds/1/streamSettings/xdriveSettings/xmux"]);
+  });
+
   it("still rejects other unknown MASQUE server settings", () => {
     const inbound = { ...config.inbounds[0]!, settings: { ...config.inbounds[0]!.settings, pool: [] } };
     const result = validateStrictXrayConfig({ inbounds: [inbound] }, { releaseTag: latestGeneratedRelease.tag });

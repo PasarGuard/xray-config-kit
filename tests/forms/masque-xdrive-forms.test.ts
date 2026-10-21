@@ -61,7 +61,7 @@ describe("MASQUE and XDrive form helpers", () => {
     expect(caps.protocolOrder).toContain("masque");
     expect(caps.transports).toMatchObject({ masque: true, xdrive: true });
     expect(caps.transportSettingsFieldOrderByType.masque).toEqual(["host", "path", "user", "pass", "headers", "warp", "xmux"]);
-    expect(caps.transportSettingsFieldOrderByType.xdrive).toEqual(["remoteFolder", "service", "secrets", "segmentBytes", "flushIntervalMs", "pollIntervalMs", "maxPollIntervalMs", "sessionTtlSeconds", "concurrency", "eagerWindowMs", "holeTimeoutMs", "template"]);
+    expect(caps.transportSettingsFieldOrderByType.xdrive).toEqual(["remoteFolder", "service", "secrets", "segmentBytes", "flushIntervalMs", "pollIntervalMs", "maxPollIntervalMs", "sessionTtlSeconds", "concurrency", "eagerWindowMs", "holeTimeoutMs", "template", "xmux"]);
     expect(caps.settingsFieldOrderByProtocol.masque).toEqual(["users", "clients", "address", "mtu"]);
     expect(caps.transportsByProtocol.masque).toEqual(["masque"]);
     expect(caps.transportsByProtocol.vless).toEqual(["tcp", "grpc", "xhttp", "ws", "httpupgrade", "kcp", "xdrive"]);

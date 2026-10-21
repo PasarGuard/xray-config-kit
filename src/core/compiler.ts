@@ -196,7 +196,7 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
   ["httpupgradeSettings", new Set(["path", "host", "headers", "acceptProxyProtocol"])],
   ["kcpSettings", new Set(["mtu", "tti", "uplinkCapacity", "downlinkCapacity", "cwndMultiplier", "maxSendingWindow"])],
   ["hysteriaSettings", new Set(["version", "auth", "udpIdleTimeout", "masquerade", "udpmasks", "ignoreClientBandwidth"])],
-  ["xdriveSettings", new Set(["remoteFolder", "service", "secrets", "segmentBytes", "flushIntervalMs", "pollIntervalMs", "maxPollIntervalMs", "sessionTtlSeconds", "concurrency", "eagerWindowMs", "holeTimeoutMs", "template"])],
+  ["xdriveSettings", new Set(["remoteFolder", "service", "secrets", "segmentBytes", "flushIntervalMs", "pollIntervalMs", "maxPollIntervalMs", "sessionTtlSeconds", "concurrency", "eagerWindowMs", "holeTimeoutMs", "template", "xmux"])],
   ["masqueSettings", new Set(["host", "path", "user", "pass", "headers", "warp", "xmux"])],
   ["warp", new Set(["privateKey", "publicKey", "address"])],
   ["sniffing", new Set(["enabled", "destOverride", "domainsExcluded", "ipsExcluded", "metadataOnly", "routeOnly"])],
@@ -215,7 +215,7 @@ const knownSourceFieldsByParent = new Map<string, ReadonlySet<string>>([
 
 /** Children replaced as a whole on merge, so keys removed in the model do not survive from the source. */
 const wholesaleChildrenByParent: ReadonlyMap<string, ReadonlySet<string>> = new Map([
-  ["xdriveSettings", new Set(["template"])],
+  ["xdriveSettings", new Set(["template", "xmux"])],
   ["masqueSettings", new Set(["headers", "xmux"])]
 ]);
 
@@ -521,7 +521,8 @@ function compileXDrive(transport: XDriveTransport): JsonObject {
     concurrency: transport.concurrency,
     eagerWindowMs: transport.eagerWindowMs,
     holeTimeoutMs: transport.holeTimeoutMs,
-    template: transport.template
+    template: transport.template,
+    xmux: transport.xmux
   });
 }
 

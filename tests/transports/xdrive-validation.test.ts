@@ -9,7 +9,7 @@ import {
   XDRIVE_LIMITS,
   XDRIVE_SERVICES
 } from "../../src/index.js";
-import type { Inbound, Issue, StreamSettings, XDriveTransport } from "../../src/index.js";
+import type { Inbound, Issue, JsonObject, JsonValue, StreamAdvanced, StreamSettings, XDriveTransport } from "../../src/index.js";
 import { vlessEncryptionPair } from "../helpers/vless-encryption.js";
 
 const inbound = (transport: Partial<XDriveTransport>): Inbound => ({
@@ -99,6 +99,96 @@ describe("XDrive validation", () => {
       .toEqual(["error XCK_SEMANTIC_XDRIVE_GOOGLE_DRIVE_SECRETS /streamSettings/xdriveSettings/secrets"]);
     expect(codes(validateOutboundDraft(outbound({ network: "xdrive", security: "tls", xdriveSettings: { service: "local" } }))))
       .toEqual(["error XCK_SEMANTIC_XDRIVE_REMOTE_FOLDER_REQUIRED /streamSettings/xdriveSettings/remoteFolder"]);
+  });
+
+  describe("xmux", () => {
+    const conflicts: Record<string, JsonValue>[] = [{ maxConnections: 2, maxConcurrency: "16-32" }, { maxConnections: "1-3", maxConcurrency: 16 }, { maxConnections: "-1-2", maxConcurrency: "4" }];
+    const accepted: Record<string, JsonValue>[] = [{}, { maxConcurrency: "16-32" }, { maxConnections: 4, hMaxReusableSecs: "1800-3000", hKeepAlivePeriod: 30 }, { maxConnections: 0, maxConcurrency: "16-32" },
+      { maxConnections: "-3--1", maxConcurrency: 8 }, { cMaxReuseTimes: 64, hMaxRequestTimes: "600-900" }];
+
+    it("rejects maxConnections with maxConcurrency on the inbound transport, as Xray does", () => {
+      for (const xmux of conflicts) {
+        expect(codes(validateInboundDraft(inbound({ xmux }))), JSON.stringify(xmux)).toEqual(["error XCK_SEMANTIC_XDRIVE_XMUX_CONFLICT /transport/xmux"]);
+      }
+      expect(validateInboundDraft(inbound({ xmux: conflicts[0] })).find((issue) => issue.code === "XCK_SEMANTIC_XDRIVE_XMUX_CONFLICT")?.message)
+        .toBe("XDrive xmux cannot set both maxConnections and maxConcurrency.");
+    });
+
+    it("accepts xmux on both sides, including an empty one that takes Xray's defaults", () => {
+      for (const xmux of accepted) {
+        expect(codes(validateInboundDraft(inbound({ xmux }))), JSON.stringify(xmux)).toEqual([]);
+        expect(codes(validateOutboundDraft(outbound({ network: "xdrive", security: "tls", xdriveSettings: { service: "local", remoteFolder: "/srv/xdrive", xmux } }))), JSON.stringify(xmux)).toEqual([]);
+      }
+    });
+
+    it("rejects the conflict on outbounds, including a stale xdriveSettings block that Xray still builds", () => {
+      const xmux = conflicts[0]!;
+      expect(codes(validateOutboundDraft(outbound({ network: "xdrive", security: "tls", xdriveSettings: { service: "local", remoteFolder: "/srv/xdrive", xmux } }))))
+        .toEqual(["error XCK_SEMANTIC_XDRIVE_XMUX_CONFLICT /streamSettings/xdriveSettings/xmux"]);
+      expect(codes(validateOutboundDraft(outbound({ network: "tcp", xdriveSettings: { service: "local", xmux } }))))
+        .toEqual(["error XCK_SEMANTIC_XDRIVE_XMUX_CONFLICT /streamSettings/xdriveSettings/xmux"]);
+    });
+
+    it("skips the conflict for releases that ignore XDrive xmux", () => {
+      const xmux = conflicts[0]!;
+      expect(codes(validateInboundDraft(inbound({ xmux }), { xrayVersion: "26.10.17" }))).toEqual([]);
+      expect(codes(validateOutboundDraft(outbound({ network: "xdrive", security: "tls", xdriveSettings: { service: "local", remoteFolder: "/srv/xdrive", xmux } }), { xrayVersion: "26.10.17" }))).toEqual([]);
+    });
+  });
+
+  describe("XDrive over h3", () => {
+    const drive = { service: "google-drive", remoteFolder: "1AbC", secrets: ["id", "secret", "refresh"] };
+    const noise = { type: "noise", settings: { noise: [{ rand: "50-100" }] } };
+    const salamander = { type: "salamander", settings: { password: "p" } };
+    const h3Inbound = (alpn: ("h2" | "h3" | "http/1.1")[], transport: Partial<XDriveTransport>, streamAdvanced: StreamAdvanced): Inbound =>
+      ({ ...inbound({ ...drive, ...transport }), security: { type: "tls", serverName: "drive.example.com", alpn }, streamAdvanced }) as Inbound;
+    const h3Outbound = (tlsSettings: JsonObject, finalmask: JsonObject | undefined, service = "google-drive") => outbound({
+      network: "xdrive", security: "tls", tlsSettings, xdriveSettings: { ...drive, service }, ...(finalmask ? { finalmask } : {})
+    } as StreamSettings);
+
+    it("allows only the noise udp mask to Google Drive over h3, for both service spellings", () => {
+      for (const service of ["google-drive", "Google Drive"]) {
+        expect(codes(validateInboundDraft(h3Inbound(["h3"], { service }, { finalmask: { udp: [noise, salamander] } })))).toEqual(["error XCK_SEMANTIC_XDRIVE_H3_UDP_MASK /streamAdvanced/finalmask/udp/1/type"]);
+        expect(codes(validateInboundDraft(h3Inbound(["h3"], { service }, { finalmask: { udp: [noise, { ...noise, type: "Noise" }] } })))).toEqual([]);
+      }
+      expect(validateInboundDraft(h3Inbound(["h3"], {}, { finalmask: { udp: [salamander] } })).find((issue) => issue.code === "XCK_SEMANTIC_XDRIVE_H3_UDP_MASK")?.message)
+        .toBe('XDrive over h3 to Google Drive only works with the "noise" udp mask, not "salamander".');
+    });
+
+    it("leaves udp masks alone without h3-only alpn or for other services", () => {
+      const finalmask = { udp: [salamander] };
+      expect(codes(validateInboundDraft(h3Inbound(["h3", "h2"], {}, { finalmask })))).toEqual([]);
+      expect(codes(validateInboundDraft(h3Inbound(["h2"], {}, { finalmask })))).toEqual([]);
+      expect(codes(validateInboundDraft(h3Inbound(["h3"], { service: "local", remoteFolder: "/srv/xdrive", secrets: undefined }, { finalmask })))).toEqual([]);
+      expect(codes(validateInboundDraft(h3Inbound(["h3"], { service: "template", remoteFolder: undefined, secrets: undefined, template: { flatten: true } }, { finalmask })))).toEqual([]);
+    });
+
+    it("rejects brutal congestion over h3 for every service, from modelled or raw quicParams", () => {
+      expect(codes(validateInboundDraft(h3Inbound(["h3"], {}, { quicParams: { congestion: "brutal", brutalUp: "10 mbps" } }))))
+        .toEqual(["error XCK_SEMANTIC_XDRIVE_H3_CONGESTION /streamAdvanced/quicParams/congestion"]);
+      expect(codes(validateInboundDraft(h3Inbound(["h3"], { service: "local", remoteFolder: "/srv/xdrive", secrets: undefined }, { finalmask: { quicParams: { congestion: "Force-Brutal" } } }))))
+        .toEqual(["error XCK_SEMANTIC_XDRIVE_H3_CONGESTION /streamAdvanced/finalmask/quicParams/congestion"]);
+      expect(codes(validateInboundDraft(h3Inbound(["h3"], {}, { quicParams: { congestion: "bbr" } })))).toEqual([]);
+      expect(codes(validateInboundDraft(h3Inbound(["h3", "h2"], {}, { quicParams: { congestion: "brutal" } })))).toEqual([]);
+      expect(validateInboundDraft(h3Inbound(["h3"], {}, { quicParams: { congestion: "brutal" } })).find((issue) => issue.code === "XCK_SEMANTIC_XDRIVE_H3_CONGESTION")?.message)
+        .toBe('XDrive over h3 cannot use "brutal" congestion; brutal is for Hysteria servers.');
+    });
+
+    it("checks outbound streams, including an alpn string", () => {
+      expect(codes(validateOutboundDraft(h3Outbound({ alpn: ["h3"] }, { udp: [salamander], quicParams: { congestion: "brutal" } })))).toEqual([
+        "error XCK_SEMANTIC_XDRIVE_H3_UDP_MASK /streamSettings/finalmask/udp/0/type",
+        "error XCK_SEMANTIC_XDRIVE_H3_CONGESTION /streamSettings/finalmask/quicParams/congestion"
+      ]);
+      expect(codes(validateOutboundDraft(h3Outbound({ alpn: "h3" }, { udp: [salamander] }, "Google Drive")))).toEqual(["error XCK_SEMANTIC_XDRIVE_H3_UDP_MASK /streamSettings/finalmask/udp/0/type"]);
+      expect(codes(validateOutboundDraft(h3Outbound({ alpn: ["h3"] }, { udp: [noise], quicParams: { congestion: "bbr" } })))).toEqual([]);
+      expect(codes(validateOutboundDraft(h3Outbound({ alpn: "h3,h2" }, { udp: [salamander], quicParams: { congestion: "brutal" } })))).toEqual([]);
+      expect(codes(validateOutboundDraft(h3Outbound({ alpn: ["h3"] }, undefined)))).toEqual([]);
+    });
+
+    it("skips the h3 rules for releases without XDrive h3", () => {
+      expect(codes(validateInboundDraft(h3Inbound(["h3"], {}, { finalmask: { udp: [salamander] }, quicParams: { congestion: "brutal" } }), { xrayVersion: "26.10.17" }))).toEqual([]);
+      expect(codes(validateOutboundDraft(h3Outbound({ alpn: ["h3"] }, { udp: [salamander], quicParams: { congestion: "brutal" } }), { xrayVersion: "26.10.17" }))).toEqual([]);
+    });
   });
 
   it("rejects XDrive when the selected Xray predates it and keeps REALITY off XDrive", () => {

@@ -121,7 +121,8 @@ export const presetCatalog: Record<PresetName, PresetDefinition> = {
       routing: {
         domainStrategy: "IPIfNonMatch",
         rules: [
-          { type: "field", domain: ["geosite:ir"], outboundTag: "direct" },
+          // geosite:ir exists only in third-party geosite files; the geosite.dat in Xray release zips has category-ir.
+          { type: "field", domain: ["geosite:category-ir"], outboundTag: "direct" },
           { type: "field", ip: ["geoip:ir"], outboundTag: "direct" }
         ]
       }

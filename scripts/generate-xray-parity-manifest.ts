@@ -10,6 +10,12 @@ export type XrayParityGeneratorConfig = {
     readonly pathEnv?: string;
   };
   readonly releases: readonly string[];
+  /**
+   * Releases from `releases` whose GitHub release and tag were deleted upstream.
+   * Their parity data is still generated (nodes may still run them), but the
+   * CI matrix leaves them out because their binaries can no longer be downloaded.
+   */
+  readonly withdrawnReleases?: readonly string[];
   readonly outputs: {
     readonly manifest: string;
     readonly types?: string;
@@ -25,6 +31,7 @@ type NormalizedConfig = {
   readonly sourcePathEnv: string;
   readonly xrayRoot: string;
   readonly releases: readonly string[];
+  readonly withdrawnReleases: readonly string[];
   readonly manifestOutput: string;
   readonly typesOutput?: string;
   readonly capabilitiesOutput?: string;
@@ -110,6 +117,14 @@ async function loadConfig(): Promise<NormalizedConfig> {
     throw new Error("Xray parity config must define outputs.manifest.");
   }
 
+  const releases = config.releases.map(normalizeTag);
+  const withdrawnReleases = (config.withdrawnReleases ?? []).map(normalizeTag);
+  for (const release of withdrawnReleases) {
+    if (release === "latest" || !releases.includes(release)) {
+      throw new Error(`Withdrawn Xray release ${release} must be a pinned entry of releases.`);
+    }
+  }
+
   const sourcePathEnv = config.source?.pathEnv ?? "XRAY_CORE_DIR";
   const configuredRoot = config.source?.directory ?? process.env[sourcePathEnv];
   if (!configuredRoot) {
@@ -121,7 +136,8 @@ async function loadConfig(): Promise<NormalizedConfig> {
     sourceRepo: config.source?.repo ?? "XTLS/Xray-core",
     sourcePathEnv,
     xrayRoot: resolve(configuredRoot),
-    releases: config.releases.map(normalizeTag),
+    releases,
+    withdrawnReleases,
     manifestOutput: resolve(repoRoot, config.outputs.manifest),
     typesOutput: config.outputs.types ? resolve(repoRoot, config.outputs.types) : undefined,
     capabilitiesOutput: config.outputs.capabilities ? resolve(repoRoot, config.outputs.capabilities) : undefined,
@@ -531,9 +547,13 @@ function generatedCapabilitiesContent(releases: readonly ReleaseManifest[], conf
     + `export const generatedXrayCapabilitiesByTag = ${JSON.stringify(capabilities, null, 2)} as const satisfies Record<string, XrayCapabilities>;\n`;
 }
 
-function ciMatrixContent(config: NormalizedConfig): string {
+// Concrete generated tags, oldest first, so CI and the release workflow test downloadable binaries the parity data
+// covers ("latest" is already resolved here). Withdrawn releases have no binary to download.
+function ciMatrixContent(tags: readonly string[], config: NormalizedConfig): string {
   return `${JSON.stringify({
-    include: config.releases.map((release) => ({ "xray-release": release }))
+    include: tags
+      .filter((tag) => !config.withdrawnReleases.includes(tag))
+      .map((tag) => ({ "xray-release": tag }))
   }, null, 2)}\n`;
 }
 
@@ -572,7 +592,8 @@ const manifest = {
     config: asRelativePath(config.configPath),
     releaseInputs: config.releases,
     selectedTags,
-    tags
+    tags,
+    withdrawnTags: config.withdrawnReleases
   },
   releases
 };
@@ -580,5 +601,5 @@ const manifest = {
 writeGeneratedFile(config.manifestOutput, generatedManifestContent(manifest, config));
 if (config.typesOutput) writeGeneratedFile(config.typesOutput, generatedTypesContent(config));
 if (config.capabilitiesOutput) writeGeneratedFile(config.capabilitiesOutput, generatedCapabilitiesContent(releases, config));
-if (config.ciMatrixOutput) writeGeneratedFile(config.ciMatrixOutput, ciMatrixContent(config));
+if (config.ciMatrixOutput) writeGeneratedFile(config.ciMatrixOutput, ciMatrixContent(tags, config));
 if (config.testHelpersOutput) writeGeneratedFile(config.testHelpersOutput, generatedTestHelpersContent(releases, config));

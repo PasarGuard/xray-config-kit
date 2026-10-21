@@ -334,7 +334,8 @@ function parseTransport(streamSettings: JsonObject | undefined): Transport | und
       concurrency: asNumber(settings.concurrency),
       eagerWindowMs: asNumber(settings.eagerWindowMs),
       holeTimeoutMs: asNumber(settings.holeTimeoutMs),
-      template: isJsonObject(settings.template) ? settings.template : undefined
+      template: isJsonObject(settings.template) ? settings.template : undefined,
+      xmux: isJsonObject(settings.xmux) ? settings.xmux as Record<string, JsonValue> : undefined
     };
   }
   if (network === "masque") {

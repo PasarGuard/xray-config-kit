@@ -6,6 +6,8 @@ import { escapePointerSegment, isJsonObject } from "./json.js";
 import { expandMasquePathTemplate, MASQUE_LIMITS, XDRIVE_GOOGLE_DRIVE_SERVICES, XDRIVE_LIMITS, XDRIVE_SERVICES } from "./masque-xdrive.js";
 import { parsePortSegment } from "./ports.js";
 import type { Inbound, InboundPort, Issue, JsonObject, MasqueInbound, Outbound, ProxyOutbound } from "./types.js";
+import { firstAvailableRelease, hasStructField } from "./xray-features.js";
+import type { XrayRuleFeatures } from "./xray-features.js";
 
 /** httpguts.ValidHeaderFieldName: an RFC 7230 token. */
 const headerNamePattern = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
@@ -14,6 +16,12 @@ const headerValueControlPattern = /[\u0000-\u0008\u000A-\u001F\u007F]/;
 const pemKeyPattern = /^-----BEGIN [A-Z0-9 ]+-----[\s\S]+-----END [A-Z0-9 ]+-----$/;
 const base64KeyPattern = /^[A-Za-z0-9+/]+={0,2}$/;
 const quotedXdriveServices = XDRIVE_SERVICES.map((service) => `"${service}"`);
+/**
+ * The release to install for "mux" on MASQUE outbounds: the first downloadable one that accepts it. Xray allowed it in
+ * the change that added MasqueConfig.xmux, and that release (v26.10.17) was withdrawn upstream.
+ */
+const masqueMuxRelease = firstAvailableRelease((release) => hasStructField(release, "MasqueConfig", "xmux"));
+const masqueMuxReleaseText = masqueMuxRelease ? `Xray ${masqueMuxRelease.tag} or newer` : "a newer Xray release";
 /** The XDrive services as message text: `"local", "Google Drive", "google-drive", or "template"`. */
 const xdriveServiceChoices = `${quotedXdriveServices.slice(0, -1).join(", ")}, or ${quotedXdriveServices.at(-1)}`;
 
@@ -37,6 +45,14 @@ function int32RangeUpperBound(value: unknown): number | undefined {
   if (!match) return undefined;
   const left = Number(match[1]);
   return match[2] === undefined ? left : Math.max(left, Number(match[2]));
+}
+
+/** Mirrors Xray's XmuxConfig check (XHTTP, MASQUE, XDrive): maxConnections and maxConcurrency cannot both be set. */
+function hasXmuxConflict(xmux: unknown): boolean {
+  if (!isJsonObject(xmux)) return false;
+  const maxConnections = int32RangeUpperBound(xmux.maxConnections) ?? 0;
+  const maxConcurrency = int32RangeUpperBound(xmux.maxConcurrency) ?? 0;
+  return maxConnections > 0 && maxConcurrency > 0;
 }
 
 /** Mirrors decodeWarpKey: a PEM block or standard base64 DER, after trimming. */
@@ -183,19 +199,15 @@ export function masqueSettingsIssues(settings: JsonObject, path: string, side: "
     issues.push(...masqueWarpIssues(settings.warp, `${path}/warp`));
   }
 
-  if (isJsonObject(settings.xmux)) {
-    const maxConnections = int32RangeUpperBound(settings.xmux.maxConnections) ?? 0;
-    const maxConcurrency = int32RangeUpperBound(settings.xmux.maxConcurrency) ?? 0;
-    if (maxConnections > 0 && maxConcurrency > 0) {
-      issues.push(makeIssue({
-        code: "XCK_SEMANTIC_MASQUE_XMUX_CONFLICT",
-        severity: "error",
-        category: "semantic",
-        path: `${path}/xmux`,
-        message: "MASQUE xmux cannot set both maxConnections and maxConcurrency.",
-        suggestion: "Keep one of maxConnections or maxConcurrency, or set the other to 0."
-      }));
-    }
+  if (hasXmuxConflict(settings.xmux)) {
+    issues.push(makeIssue({
+      code: "XCK_SEMANTIC_MASQUE_XMUX_CONFLICT",
+      severity: "error",
+      category: "semantic",
+      path: `${path}/xmux`,
+      message: "MASQUE xmux cannot set both maxConnections and maxConcurrency.",
+      suggestion: "Keep one of maxConnections or maxConcurrency, or set the other to 0."
+    }));
   }
 
   if (side === "server") {
@@ -409,7 +421,7 @@ export function masqueOutboundIssues(outbound: ProxyOutbound, outboundIndex: num
       severity: "warning",
       category: "semantic",
       path: `${base}/mux/enabled`,
-      message: "Xray v26.10.10 and older refuse \"mux\" on MASQUE outbounds; keep it off for nodes on those releases."
+      message: `"mux" on MASQUE outbounds needs ${masqueMuxReleaseText} on every node; earlier downloadable releases refuse it.`
     }));
   }
 
@@ -441,9 +453,9 @@ export function masqueOutboundIssues(outbound: ProxyOutbound, outboundIndex: num
 /**
  * Checks one XDrive settings object (an inbound `transport` or an outbound `xdriveSettings` block) found at `path`.
  * `selected` is false for a stale block on a stream that runs another transport: Xray's XDriveConfig.Build checks
- * only the service, secrets and template, and remoteFolder is checked only when the transport runs.
+ * only the service, secrets, template and xmux, and remoteFolder is checked only when the transport runs.
  */
-export function xdriveSettingsIssues(settings: JsonObject, path: string, selected: boolean): Issue[] {
+export function xdriveSettingsIssues(settings: JsonObject, path: string, selected: boolean, features: XrayRuleFeatures): Issue[] {
   const issues: Issue[] = [];
   const service = typeof settings.service === "string" ? settings.service : "";
   // No warning for either Google Drive spelling: the kit cannot know which Xray release the other side runs.
@@ -490,6 +502,18 @@ export function xdriveSettingsIssues(settings: JsonObject, path: string, selecte
     }));
   }
 
+  // Releases without XDrive xmux ignore the key, so the conflict only matters where Xray reads it.
+  if (features.xdriveXmux && hasXmuxConflict(settings.xmux)) {
+    issues.push(makeIssue({
+      code: "XCK_SEMANTIC_XDRIVE_XMUX_CONFLICT",
+      severity: "error",
+      category: "semantic",
+      path: `${path}/xmux`,
+      message: "XDrive xmux cannot set both maxConnections and maxConcurrency.",
+      suggestion: "Keep one of maxConnections or maxConcurrency, or set the other to 0."
+    }));
+  }
+
   if (typeof settings.segmentBytes === "number" && settings.segmentBytes > XDRIVE_LIMITS.segmentBytes) {
     issues.push(makeIssue({
       code: "XCK_SEMANTIC_XDRIVE_SEGMENT_BYTES_CAPPED",
@@ -511,6 +535,98 @@ export function xdriveSettingsIssues(settings: JsonObject, path: string, selecte
   }
 
   return issues;
+}
+
+/** Xray's StringList: an array, or a string split at ",". */
+function stringList(value: unknown): unknown[] | undefined {
+  if (Array.isArray(value)) return value;
+  return typeof value === "string" ? value.split(",") : undefined;
+}
+
+/** Xray runs XDrive over h3 when TLS alpn is exactly ["h3"]. */
+function isH3OnlyAlpn(alpn: unknown): boolean {
+  const list = stringList(alpn);
+  return list !== undefined && list.length === 1 && list[0] === "h3";
+}
+
+type XDriveH3Stream = {
+  /** XDrive service, for the Google Drive mask rule. */
+  readonly service: unknown;
+  /** finalmask.udp entries and their pointer. */
+  readonly udpMasks: unknown;
+  readonly udpMasksPath: string;
+  /** finalmask.quicParams.congestion and its pointer. */
+  readonly congestion: unknown;
+  readonly congestionPath: string;
+};
+
+/**
+ * Mirrors the XDrive h3 checks in Xray's StreamConfig.Build (infra/conf/transport_internet.go). They run only when the
+ * stream has a finalmask block: to Google Drive the only udp mask that works over h3 is "noise", and brutal congestion
+ * is for Hysteria servers.
+ */
+function xdriveH3Issues(stream: XDriveH3Stream): Issue[] {
+  const issues: Issue[] = [];
+  if (typeof stream.service === "string" && XDRIVE_GOOGLE_DRIVE_SERVICES.has(stream.service) && Array.isArray(stream.udpMasks)) {
+    stream.udpMasks.forEach((mask, maskIndex) => {
+      const type = isJsonObject(mask) ? mask.type : undefined;
+      if (typeof type !== "string" || type.toLowerCase() === "noise") return;
+      issues.push(makeIssue({
+        code: "XCK_SEMANTIC_XDRIVE_H3_UDP_MASK",
+        severity: "error",
+        category: "semantic",
+        path: `${stream.udpMasksPath}/${maskIndex}/type`,
+        message: `XDrive over h3 to Google Drive only works with the "noise" udp mask, not "${type}".`,
+        suggestion: "Remove the other udp masks, or use a TLS alpn other than [\"h3\"]."
+      }));
+    });
+  }
+  const congestion = typeof stream.congestion === "string" ? stream.congestion.toLowerCase() : undefined;
+  if (congestion === "brutal" || congestion === "force-brutal") {
+    issues.push(makeIssue({
+      code: "XCK_SEMANTIC_XDRIVE_H3_CONGESTION",
+      severity: "error",
+      category: "semantic",
+      path: stream.congestionPath,
+      message: `XDrive over h3 cannot use "${congestion}" congestion; brutal is for Hysteria servers.`,
+      suggestion: "Use \"bbr\" or \"reno\"."
+    }));
+  }
+  return issues;
+}
+
+function xdriveInboundH3Issues(inbound: Inbound, base: string): Issue[] {
+  if (inbound.protocol === "unmanaged" || !("transport" in inbound) || inbound.transport?.type !== "xdrive") return [];
+  const security = "security" in inbound ? inbound.security : undefined;
+  if (security?.type !== "tls" || !isH3OnlyAlpn(security.alpn)) return [];
+  const advanced = inbound.streamAdvanced;
+  // The compiler writes finalmask when either the raw block or the modelled quicParams is set.
+  if (!advanced?.finalmask && !advanced?.quicParams) return [];
+  const finalmask = advanced.finalmask ?? {};
+  const rawQuic = isJsonObject(finalmask.quicParams) ? finalmask.quicParams : undefined;
+  return xdriveH3Issues({
+    service: inbound.transport.service,
+    udpMasks: finalmask.udp,
+    udpMasksPath: `${base}/streamAdvanced/finalmask/udp`,
+    congestion: advanced.quicParams ? advanced.quicParams.congestion : rawQuic?.congestion,
+    congestionPath: advanced.quicParams ? `${base}/streamAdvanced/quicParams/congestion` : `${base}/streamAdvanced/finalmask/quicParams/congestion`
+  });
+}
+
+function xdriveOutboundH3Issues(stream: JsonObject | undefined, base: string): Issue[] {
+  const tlsSettings = isJsonObject(stream?.tlsSettings) ? stream.tlsSettings : undefined;
+  if (String(stream?.security ?? "").toLowerCase() !== "tls" || !isH3OnlyAlpn(tlsSettings?.alpn)) return [];
+  const finalmask = isJsonObject(stream?.finalmask) ? stream.finalmask : undefined;
+  if (!finalmask) return [];
+  const xdriveSettings = isJsonObject(stream?.xdriveSettings) ? stream.xdriveSettings : undefined;
+  const quicParams = isJsonObject(finalmask.quicParams) ? finalmask.quicParams : undefined;
+  return xdriveH3Issues({
+    service: xdriveSettings?.service,
+    udpMasks: finalmask.udp,
+    udpMasksPath: `${base}/streamSettings/finalmask/udp`,
+    congestion: quicParams?.congestion,
+    congestionPath: `${base}/streamSettings/finalmask/quicParams/congestion`
+  });
 }
 
 function xdriveProtocolIssue(path: string): Issue {
@@ -673,7 +789,7 @@ function xdriveOutboundIssues(outbound: Exclude<Outbound, { protocol: "unmanaged
   return issues;
 }
 
-export function inboundTransportIssues(inbound: Inbound, inboundIndex: number): Issue[] {
+export function inboundTransportIssues(inbound: Inbound, inboundIndex: number, features: XrayRuleFeatures): Issue[] {
   const transport = inbound.protocol !== "unmanaged" && "transport" in inbound ? inbound.transport : undefined;
   const base = `/inbounds/${inboundIndex + 1}`;
   if (inbound.protocol !== "masque" && transport?.type === "masque") {
@@ -686,10 +802,14 @@ export function inboundTransportIssues(inbound: Inbound, inboundIndex: number): 
     })];
   }
   if (transport?.type !== "xdrive") return [];
-  return [...xdriveSettingsIssues(transport, `${base}/transport`, true), ...xdriveInboundIssues(inbound, base)];
+  return [
+    ...xdriveSettingsIssues(transport, `${base}/transport`, true, features),
+    ...xdriveInboundIssues(inbound, base),
+    ...(features.xdriveH3 ? xdriveInboundH3Issues(inbound, base) : [])
+  ];
 }
 
-export function outboundTransportIssues(outbound: Outbound, outboundIndex: number): Issue[] {
+export function outboundTransportIssues(outbound: Outbound, outboundIndex: number, features: XrayRuleFeatures): Issue[] {
   if (outbound.protocol === "unmanaged") return [];
   const base = `/outbounds/${outboundIndex + 1}`;
   const stream = outbound.streamSettings as JsonObject | undefined;
@@ -716,9 +836,10 @@ export function outboundTransportIssues(outbound: Outbound, outboundIndex: numbe
   const xdriveSettings = stream?.xdriveSettings;
   const xdrivePath = `${base}/streamSettings/xdriveSettings`;
   const xdriveSelected = transportName(stream) === "xdrive";
-  if (isJsonObject(xdriveSettings)) issues.push(...xdriveSettingsIssues(xdriveSettings, xdrivePath, xdriveSelected));
-  else if (xdriveSelected) issues.push(...xdriveSettingsIssues({}, xdrivePath, true));
+  if (isJsonObject(xdriveSettings)) issues.push(...xdriveSettingsIssues(xdriveSettings, xdrivePath, xdriveSelected, features));
+  else if (xdriveSelected) issues.push(...xdriveSettingsIssues({}, xdrivePath, true, features));
   if (xdriveSelected) issues.push(...xdriveOutboundIssues(outbound, base, stream));
+  if (xdriveSelected && features.xdriveH3) issues.push(...xdriveOutboundH3Issues(stream, base));
 
   return issues;
 }
