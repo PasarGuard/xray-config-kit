@@ -931,7 +931,8 @@ export function getOutboundFieldVisibility(draft: Outbound, capabilities: Outbou
   return {
     settings: Object.keys(capabilities.settingsFields[draft.protocol] ?? {}).length > 0 || "settings" in draft,
     streamSettings: capabilities.envelopeFields.streamSettings === true,
-    // Mux stays hidden by default for MASQUE outbounds because Xray v26.10.10 and older refuse it (XCK_SEMANTIC_MASQUE_MUX_UNSUPPORTED warns).
+    // Mux stays hidden by default for MASQUE outbounds: Xray releases before v26.10.17 refuse it and v26.10.17 was withdrawn
+    // (XCK_SEMANTIC_MASQUE_MUX_UNSUPPORTED warns and names the release to install).
     mux: capabilities.envelopeFields.mux === true && draft.protocol !== "masque",
     proxySettings: capabilities.envelopeFields.proxySettings === true,
     raw: true

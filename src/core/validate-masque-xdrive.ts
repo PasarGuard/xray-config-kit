@@ -6,6 +6,7 @@ import { escapePointerSegment, isJsonObject } from "./json.js";
 import { expandMasquePathTemplate, MASQUE_LIMITS, XDRIVE_GOOGLE_DRIVE_SERVICES, XDRIVE_LIMITS, XDRIVE_SERVICES } from "./masque-xdrive.js";
 import { parsePortSegment } from "./ports.js";
 import type { Inbound, InboundPort, Issue, JsonObject, MasqueInbound, Outbound, ProxyOutbound } from "./types.js";
+import { firstAvailableRelease, hasStructField } from "./xray-features.js";
 import type { XrayRuleFeatures } from "./xray-features.js";
 
 /** httpguts.ValidHeaderFieldName: an RFC 7230 token. */
@@ -15,6 +16,12 @@ const headerValueControlPattern = /[\u0000-\u0008\u000A-\u001F\u007F]/;
 const pemKeyPattern = /^-----BEGIN [A-Z0-9 ]+-----[\s\S]+-----END [A-Z0-9 ]+-----$/;
 const base64KeyPattern = /^[A-Za-z0-9+/]+={0,2}$/;
 const quotedXdriveServices = XDRIVE_SERVICES.map((service) => `"${service}"`);
+/**
+ * The release to install for "mux" on MASQUE outbounds: the first downloadable one that accepts it. Xray allowed it in
+ * the change that added MasqueConfig.xmux, and that release (v26.10.17) was withdrawn upstream.
+ */
+const masqueMuxRelease = firstAvailableRelease((release) => hasStructField(release, "MasqueConfig", "xmux"));
+const masqueMuxReleaseText = masqueMuxRelease ? `Xray ${masqueMuxRelease.tag} or newer` : "a newer Xray release";
 /** The XDrive services as message text: `"local", "Google Drive", "google-drive", or "template"`. */
 const xdriveServiceChoices = `${quotedXdriveServices.slice(0, -1).join(", ")}, or ${quotedXdriveServices.at(-1)}`;
 
@@ -414,7 +421,7 @@ export function masqueOutboundIssues(outbound: ProxyOutbound, outboundIndex: num
       severity: "warning",
       category: "semantic",
       path: `${base}/mux/enabled`,
-      message: "Xray v26.10.10 and older refuse \"mux\" on MASQUE outbounds; keep it off for nodes on those releases."
+      message: `"mux" on MASQUE outbounds needs ${masqueMuxReleaseText} on every node; older releases refuse it.`
     }));
   }
 
