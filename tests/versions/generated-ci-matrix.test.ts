@@ -13,12 +13,13 @@ describe("generated Xray CI matrix", () => {
     const matrix = await Bun.file(new URL("../../.github/xray-ci-matrix.json", import.meta.url)).json() as XrayCiMatrix;
     const matrixReleases = matrix.include.map((item) => item["xray-release"]);
     const withdrawn: readonly string[] = parityConfig.withdrawnReleases;
+    const generatedTags: readonly string[] = xrayParityManifest.source.tags;
 
     // Withdrawn releases have no downloadable binary, so CI skips them while parity data keeps them.
     expect(matrixReleases).toEqual(parityConfig.releases.filter((release) => !withdrawn.includes(release)));
     for (const release of withdrawn) {
       expect(matrixReleases).not.toContain(release);
-      expect(xrayParityManifest.source.tags).toContain(release);
+      expect(generatedTags).toContain(release);
     }
     expect(matrixReleases).toContain("latest");
     expect(xrayParityManifest.source.releaseInputs).toEqual(parityConfig.releases);

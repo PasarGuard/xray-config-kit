@@ -9,7 +9,7 @@ import {
   XDRIVE_LIMITS,
   XDRIVE_SERVICES
 } from "../../src/index.js";
-import type { Inbound, Issue, JsonObject, StreamSettings, XDriveTransport } from "../../src/index.js";
+import type { Inbound, Issue, JsonObject, JsonValue, StreamAdvanced, StreamSettings, XDriveTransport } from "../../src/index.js";
 import { vlessEncryptionPair } from "../helpers/vless-encryption.js";
 
 const inbound = (transport: Partial<XDriveTransport>): Inbound => ({
@@ -102,8 +102,8 @@ describe("XDrive validation", () => {
   });
 
   describe("xmux", () => {
-    const conflicts = [{ maxConnections: 2, maxConcurrency: "16-32" }, { maxConnections: "1-3", maxConcurrency: 16 }, { maxConnections: "-1-2", maxConcurrency: "4" }];
-    const accepted = [{}, { maxConcurrency: "16-32" }, { maxConnections: 4, hMaxReusableSecs: "1800-3000", hKeepAlivePeriod: 30 }, { maxConnections: 0, maxConcurrency: "16-32" },
+    const conflicts: Record<string, JsonValue>[] = [{ maxConnections: 2, maxConcurrency: "16-32" }, { maxConnections: "1-3", maxConcurrency: 16 }, { maxConnections: "-1-2", maxConcurrency: "4" }];
+    const accepted: Record<string, JsonValue>[] = [{}, { maxConcurrency: "16-32" }, { maxConnections: 4, hMaxReusableSecs: "1800-3000", hKeepAlivePeriod: 30 }, { maxConnections: 0, maxConcurrency: "16-32" },
       { maxConnections: "-3--1", maxConcurrency: 8 }, { cMaxReuseTimes: 64, hMaxRequestTimes: "600-900" }];
 
     it("rejects maxConnections with maxConcurrency on the inbound transport, as Xray does", () => {
@@ -140,7 +140,7 @@ describe("XDrive validation", () => {
     const drive = { service: "google-drive", remoteFolder: "1AbC", secrets: ["id", "secret", "refresh"] };
     const noise = { type: "noise", settings: { noise: [{ rand: "50-100" }] } };
     const salamander = { type: "salamander", settings: { password: "p" } };
-    const h3Inbound = (alpn: ("h2" | "h3" | "http/1.1")[], transport: Partial<XDriveTransport>, streamAdvanced: Inbound["streamAdvanced"]): Inbound =>
+    const h3Inbound = (alpn: ("h2" | "h3" | "http/1.1")[], transport: Partial<XDriveTransport>, streamAdvanced: StreamAdvanced): Inbound =>
       ({ ...inbound({ ...drive, ...transport }), security: { type: "tls", serverName: "drive.example.com", alpn }, streamAdvanced }) as Inbound;
     const h3Outbound = (tlsSettings: JsonObject, finalmask: JsonObject | undefined, service = "google-drive") => outbound({
       network: "xdrive", security: "tls", tlsSettings, xdriveSettings: { ...drive, service }, ...(finalmask ? { finalmask } : {})

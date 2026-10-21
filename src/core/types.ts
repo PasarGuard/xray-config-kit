@@ -904,6 +904,7 @@ export type StreamSettings = {
   readonly xdriveSettings?: JsonObject;
   readonly masqueSettings?: JsonObject;
   readonly sockopt?: SocketConfig;
+  readonly finalmask?: JsonObject;
 };
 
 // Union type for all outbound settings
