@@ -34,7 +34,12 @@ export function xrayRuleFeatures(release: XrayParityRelease): XrayRuleFeatures {
   return { xdriveXmux, xdriveH3: xdriveXmux, finalmaskFilter: hasFinalmaskType(release, "filter") };
 }
 
-/** The parity release used for `xrayVersion`: the newest generated one when no version is given or it is too new. */
+/**
+ * The parity release used for `xrayVersion`: the newest generated one when no version is given or it is too new.
+ * Otherwise it is the release resolveXrayParityRelease picks, which the adapter and strict validation use too. That
+ * includes the oldest generated release for a version it cannot parse (validateProfile then warns with
+ * XCK_XRAY_PARITY_VERSION_APPROXIMATED), so one validation never mixes two releases.
+ */
 export function parityReleaseFor(xrayVersion: string | undefined): XrayParityRelease {
   const resolved = resolveXrayParityRelease({ xrayVersion });
   return resolved.release ?? resolveXrayParityRelease().release!;

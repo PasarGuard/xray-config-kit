@@ -4,7 +4,7 @@ import type { Inbound, Issue, JsonObject, Outbound } from "../../src/index.js";
 import { xrayIpRuleProblem } from "../../src/core/validate-finalmask.js";
 import { acceptedIpRules, rejectedIpRules } from "../helpers/ip-rules.js";
 import { rebuildWithoutSource } from "../helpers/profile-round-trip.js";
-import { latestGeneratedRelease } from "../helpers/xray-releases.js";
+import { latestGeneratedRelease, oldestGeneratedRelease } from "../helpers/xray-releases.js";
 
 const filterMask = (settings: JsonValueLike) => ({ type: "filter", settings });
 type JsonValueLike = JsonObject | string | null;
@@ -81,6 +81,17 @@ describe("finalmask filter", () => {
     ]);
     expect(validateOutboundDraft(outbound(finalmask), { xrayVersion: "26.9.30" }).find((issue) => issue.code === "XCK_SEMANTIC_FINALMASK_FILTER_UNSUPPORTED")?.message)
       .toBe(`The finalmask "filter" mask needs Xray ${firstFilterRelease.tag} or newer.`);
+  });
+
+  it("uses the release the kit reports for an xrayVersion it cannot parse", () => {
+    // resolveXrayParityRelease places such a version at the oldest generated release and warns. The semantic rules use
+    // that release too, like the adapter checks and strict validation, instead of the newest data.
+    const finalmask = { tcp: [filterMask({ blockedSourceIPs: ["192.0.2.0/24"] })] };
+    const issues = validateInboundDraft(inbound(finalmask), { xrayVersion: "abc" });
+    expect(issues.find((issue) => issue.code === "XCK_XRAY_PARITY_VERSION_APPROXIMATED")?.message)
+      .toBe(`Xray abc is not generated exactly; using ${oldestGeneratedRelease.tag} parity data.`);
+    expect(codes(issues)).toEqual(codes(validateInboundDraft(inbound(finalmask), { xrayVersion: oldestGeneratedRelease.version })));
+    expect(codes(issues)).toEqual(["error XCK_SEMANTIC_FINALMASK_FILTER_UNSUPPORTED /streamAdvanced/finalmask/tcp/0/type"]);
   });
 
   it("keeps filter masks through import and build", () => {
