@@ -9,7 +9,7 @@ import {
   XDRIVE_LIMITS,
   XDRIVE_SERVICES
 } from "../../src/index.js";
-import type { Inbound, Issue, StreamSettings, XDriveTransport } from "../../src/index.js";
+import type { Inbound, Issue, JsonObject, StreamSettings, XDriveTransport } from "../../src/index.js";
 import { vlessEncryptionPair } from "../helpers/vless-encryption.js";
 
 const inbound = (transport: Partial<XDriveTransport>): Inbound => ({
@@ -133,6 +133,61 @@ describe("XDrive validation", () => {
       const xmux = conflicts[0]!;
       expect(codes(validateInboundDraft(inbound({ xmux }), { xrayVersion: "26.10.17" }))).toEqual([]);
       expect(codes(validateOutboundDraft(outbound({ network: "xdrive", security: "tls", xdriveSettings: { service: "local", remoteFolder: "/srv/xdrive", xmux } }), { xrayVersion: "26.10.17" }))).toEqual([]);
+    });
+  });
+
+  describe("XDrive over h3", () => {
+    const drive = { service: "google-drive", remoteFolder: "1AbC", secrets: ["id", "secret", "refresh"] };
+    const noise = { type: "noise", settings: { noise: [{ rand: "50-100" }] } };
+    const salamander = { type: "salamander", settings: { password: "p" } };
+    const h3Inbound = (alpn: ("h2" | "h3" | "http/1.1")[], transport: Partial<XDriveTransport>, streamAdvanced: Inbound["streamAdvanced"]): Inbound =>
+      ({ ...inbound({ ...drive, ...transport }), security: { type: "tls", serverName: "drive.example.com", alpn }, streamAdvanced }) as Inbound;
+    const h3Outbound = (tlsSettings: JsonObject, finalmask: JsonObject | undefined, service = "google-drive") => outbound({
+      network: "xdrive", security: "tls", tlsSettings, xdriveSettings: { ...drive, service }, ...(finalmask ? { finalmask } : {})
+    } as StreamSettings);
+
+    it("allows only the noise udp mask to Google Drive over h3, for both service spellings", () => {
+      for (const service of ["google-drive", "Google Drive"]) {
+        expect(codes(validateInboundDraft(h3Inbound(["h3"], { service }, { finalmask: { udp: [noise, salamander] } })))).toEqual(["error XCK_SEMANTIC_XDRIVE_H3_UDP_MASK /streamAdvanced/finalmask/udp/1/type"]);
+        expect(codes(validateInboundDraft(h3Inbound(["h3"], { service }, { finalmask: { udp: [noise, { ...noise, type: "Noise" }] } })))).toEqual([]);
+      }
+      expect(validateInboundDraft(h3Inbound(["h3"], {}, { finalmask: { udp: [salamander] } })).find((issue) => issue.code === "XCK_SEMANTIC_XDRIVE_H3_UDP_MASK")?.message)
+        .toBe('XDrive over h3 to Google Drive only works with the "noise" udp mask, not "salamander".');
+    });
+
+    it("leaves udp masks alone without h3-only alpn or for other services", () => {
+      const finalmask = { udp: [salamander] };
+      expect(codes(validateInboundDraft(h3Inbound(["h3", "h2"], {}, { finalmask })))).toEqual([]);
+      expect(codes(validateInboundDraft(h3Inbound(["h2"], {}, { finalmask })))).toEqual([]);
+      expect(codes(validateInboundDraft(h3Inbound(["h3"], { service: "local", remoteFolder: "/srv/xdrive", secrets: undefined }, { finalmask })))).toEqual([]);
+      expect(codes(validateInboundDraft(h3Inbound(["h3"], { service: "template", remoteFolder: undefined, secrets: undefined, template: { flatten: true } }, { finalmask })))).toEqual([]);
+    });
+
+    it("rejects brutal congestion over h3 for every service, from modelled or raw quicParams", () => {
+      expect(codes(validateInboundDraft(h3Inbound(["h3"], {}, { quicParams: { congestion: "brutal", brutalUp: "10 mbps" } }))))
+        .toEqual(["error XCK_SEMANTIC_XDRIVE_H3_CONGESTION /streamAdvanced/quicParams/congestion"]);
+      expect(codes(validateInboundDraft(h3Inbound(["h3"], { service: "local", remoteFolder: "/srv/xdrive", secrets: undefined }, { finalmask: { quicParams: { congestion: "Force-Brutal" } } }))))
+        .toEqual(["error XCK_SEMANTIC_XDRIVE_H3_CONGESTION /streamAdvanced/finalmask/quicParams/congestion"]);
+      expect(codes(validateInboundDraft(h3Inbound(["h3"], {}, { quicParams: { congestion: "bbr" } })))).toEqual([]);
+      expect(codes(validateInboundDraft(h3Inbound(["h3", "h2"], {}, { quicParams: { congestion: "brutal" } })))).toEqual([]);
+      expect(validateInboundDraft(h3Inbound(["h3"], {}, { quicParams: { congestion: "brutal" } })).find((issue) => issue.code === "XCK_SEMANTIC_XDRIVE_H3_CONGESTION")?.message)
+        .toBe('XDrive over h3 cannot use "brutal" congestion; brutal is for Hysteria servers.');
+    });
+
+    it("checks outbound streams, including an alpn string", () => {
+      expect(codes(validateOutboundDraft(h3Outbound({ alpn: ["h3"] }, { udp: [salamander], quicParams: { congestion: "brutal" } })))).toEqual([
+        "error XCK_SEMANTIC_XDRIVE_H3_UDP_MASK /streamSettings/finalmask/udp/0/type",
+        "error XCK_SEMANTIC_XDRIVE_H3_CONGESTION /streamSettings/finalmask/quicParams/congestion"
+      ]);
+      expect(codes(validateOutboundDraft(h3Outbound({ alpn: "h3" }, { udp: [salamander] }, "Google Drive")))).toEqual(["error XCK_SEMANTIC_XDRIVE_H3_UDP_MASK /streamSettings/finalmask/udp/0/type"]);
+      expect(codes(validateOutboundDraft(h3Outbound({ alpn: ["h3"] }, { udp: [noise], quicParams: { congestion: "bbr" } })))).toEqual([]);
+      expect(codes(validateOutboundDraft(h3Outbound({ alpn: "h3,h2" }, { udp: [salamander], quicParams: { congestion: "brutal" } })))).toEqual([]);
+      expect(codes(validateOutboundDraft(h3Outbound({ alpn: ["h3"] }, undefined)))).toEqual([]);
+    });
+
+    it("skips the h3 rules for releases without XDrive h3", () => {
+      expect(codes(validateInboundDraft(h3Inbound(["h3"], {}, { finalmask: { udp: [salamander] }, quicParams: { congestion: "brutal" } }), { xrayVersion: "26.10.17" }))).toEqual([]);
+      expect(codes(validateOutboundDraft(h3Outbound({ alpn: ["h3"] }, { udp: [salamander], quicParams: { congestion: "brutal" } }), { xrayVersion: "26.10.17" }))).toEqual([]);
     });
   });
 

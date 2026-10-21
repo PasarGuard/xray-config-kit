@@ -40,6 +40,9 @@ const xdriveNewestIt = hasXDrive && binaryRelease?.tag === latestGeneratedReleas
 const warpIt = hasMasque && hasWarp ? it : it.skip;
 const xmuxIt = hasMasque && hasMasqueXmux ? it : it.skip;
 const xdriveXmuxIt = hasXDriveXmux ? it : it.skip;
+const xdriveH3It = hasXDriveXmux ? it : it.skip;
+// The release with MASQUE xmux but without XDrive xmux knows "google-drive" but not the h3 rules.
+const xdriveBeforeH3It = hasMasqueXmux && hasXDrive && !hasXDriveXmux ? it : it.skip;
 
 const key32 = "OEQIJdY9VnmJ78XX_hyUZueFyqvtdmCWY8e4NJ6B-lk";
 const publicKey32 = "0UsWoTj6Ad7JKR_FsQ9p_r05ZXhtRSnWlw53kpwgT34";
@@ -251,6 +254,56 @@ describe("real Xray binary: MASQUE and XDrive", () => {
         const verdict = await xrayVerdict(built.config);
         expect(verdict.ok, JSON.stringify(xmux)).toBe(false);
         expect(verdict.output).toContain("maxConnections cannot be specified together with maxConcurrency");
+      }
+    });
+  });
+
+  describe("XDrive over h3", () => {
+    const drive = { service: "google-drive", remoteFolder: "1AbCdEf", secrets: ["id", "secret", "refresh"] };
+    const noise = { type: "noise", settings: { noise: [{ rand: "50-100" }] } };
+    const salamander = { type: "salamander", settings: { password: "p" } };
+    const h3Outbound = (encryption: string, finalmask: JsonObject): Outbound => ({
+      protocol: "vless",
+      tag: "vless-xdrive-h3",
+      settings: { address: "www.googleapis.com", port: 443, id: "11111111-1111-4111-8111-111111111111", encryption },
+      streamSettings: { network: "xdrive", security: "tls", tlsSettings: { serverName: "www.googleapis.com", alpn: ["h3"] }, xdriveSettings: drive, finalmask },
+      mux: { enabled: true }
+    });
+    const expectBothReject = async (profile: Profile, code: string, xrayText: string) => {
+      const built = buildXrayConfig(profile, { xrayVersion, mode: "permissive" });
+      expect(built.issues.map((issue) => issue.code)).toContain(code);
+      const verdict = await xrayVerdict(built.config);
+      expect(verdict.ok).toBe(false);
+      expect(verdict.output).toContain(xrayText);
+    };
+
+    xdriveH3It("accepts the noise udp mask and bbr congestion to Google Drive over h3", async () => {
+      const { encryption } = (await generateVlessEncryption()).x25519;
+      await expectXrayAccepts(buildOrThrow(createProfile({ outbounds: [h3Outbound(encryption, { udp: [noise], quicParams: { congestion: "bbr" } })] })));
+    });
+
+    xdriveH3It("rejects another udp mask to Google Drive over h3 exactly like the kit does, on both sides", async () => {
+      const { decryption, encryption } = (await generateVlessEncryption()).x25519;
+      const text = 'over h3 to Google Drive the only "udp" mask that works is "noise"';
+      await expectBothReject(createProfile({ outbounds: [h3Outbound(encryption, { udp: [noise, salamander] })] }), "XCK_SEMANTIC_XDRIVE_H3_UDP_MASK", text);
+      const inbound = { ...xdriveInbound(decryption, { type: "xdrive", ...drive }), security: { type: "tls", serverName: "drive.example.com", alpn: ["h3"] },
+        streamAdvanced: { finalmask: { udp: [salamander] } } } as Inbound;
+      await expectBothReject(createProfile({ inbounds: [inbound] }), "XCK_SEMANTIC_XDRIVE_H3_UDP_MASK", text);
+    });
+
+    xdriveBeforeH3It("accepts any udp mask and brutal over h3 before XDrive h3, and the kit does not flag them", async () => {
+      const { encryption } = (await generateVlessEncryption()).x25519;
+      const profile = createProfile({ outbounds: [h3Outbound(encryption, { udp: [salamander], quicParams: { congestion: "brutal", brutalUp: "10 mbps" } })] });
+      const built = buildXrayConfig(profile, { xrayVersion, mode: "permissive" });
+      expect(built.issues.map((issue) => issue.code).filter((code) => code.startsWith("XCK_SEMANTIC_XDRIVE_H3"))).toEqual([]);
+      await expectXrayAccepts(built.config);
+    });
+
+    xdriveH3It("rejects brutal congestion over h3 exactly like the kit does", async () => {
+      const { encryption } = (await generateVlessEncryption()).x25519;
+      for (const congestion of ["brutal", "force-brutal"]) {
+        await expectBothReject(createProfile({ outbounds: [h3Outbound(encryption, { quicParams: { congestion, brutalUp: "10 mbps" } })] }),
+          "XCK_SEMANTIC_XDRIVE_H3_CONGESTION", "brutal is for Hysteria servers");
       }
     });
   });

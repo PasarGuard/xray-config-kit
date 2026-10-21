@@ -530,6 +530,98 @@ export function xdriveSettingsIssues(settings: JsonObject, path: string, selecte
   return issues;
 }
 
+/** Xray's StringList: an array, or a string split at ",". */
+function stringList(value: unknown): unknown[] | undefined {
+  if (Array.isArray(value)) return value;
+  return typeof value === "string" ? value.split(",") : undefined;
+}
+
+/** Xray runs XDrive over h3 when TLS alpn is exactly ["h3"]. */
+function isH3OnlyAlpn(alpn: unknown): boolean {
+  const list = stringList(alpn);
+  return list !== undefined && list.length === 1 && list[0] === "h3";
+}
+
+type XDriveH3Stream = {
+  /** XDrive service, for the Google Drive mask rule. */
+  readonly service: unknown;
+  /** finalmask.udp entries and their pointer. */
+  readonly udpMasks: unknown;
+  readonly udpMasksPath: string;
+  /** finalmask.quicParams.congestion and its pointer. */
+  readonly congestion: unknown;
+  readonly congestionPath: string;
+};
+
+/**
+ * Mirrors the XDrive h3 checks in Xray's StreamConfig.Build (infra/conf/transport_internet.go). They run only when the
+ * stream has a finalmask block: to Google Drive the only udp mask that works over h3 is "noise", and brutal congestion
+ * is for Hysteria servers.
+ */
+function xdriveH3Issues(stream: XDriveH3Stream): Issue[] {
+  const issues: Issue[] = [];
+  if (typeof stream.service === "string" && XDRIVE_GOOGLE_DRIVE_SERVICES.has(stream.service) && Array.isArray(stream.udpMasks)) {
+    stream.udpMasks.forEach((mask, maskIndex) => {
+      const type = isJsonObject(mask) ? mask.type : undefined;
+      if (typeof type !== "string" || type.toLowerCase() === "noise") return;
+      issues.push(makeIssue({
+        code: "XCK_SEMANTIC_XDRIVE_H3_UDP_MASK",
+        severity: "error",
+        category: "semantic",
+        path: `${stream.udpMasksPath}/${maskIndex}/type`,
+        message: `XDrive over h3 to Google Drive only works with the "noise" udp mask, not "${type}".`,
+        suggestion: "Remove the other udp masks, or use a TLS alpn other than [\"h3\"]."
+      }));
+    });
+  }
+  const congestion = typeof stream.congestion === "string" ? stream.congestion.toLowerCase() : undefined;
+  if (congestion === "brutal" || congestion === "force-brutal") {
+    issues.push(makeIssue({
+      code: "XCK_SEMANTIC_XDRIVE_H3_CONGESTION",
+      severity: "error",
+      category: "semantic",
+      path: stream.congestionPath,
+      message: `XDrive over h3 cannot use "${congestion}" congestion; brutal is for Hysteria servers.`,
+      suggestion: "Use \"bbr\" or \"reno\"."
+    }));
+  }
+  return issues;
+}
+
+function xdriveInboundH3Issues(inbound: Inbound, base: string): Issue[] {
+  if (inbound.protocol === "unmanaged" || !("transport" in inbound) || inbound.transport?.type !== "xdrive") return [];
+  const security = "security" in inbound ? inbound.security : undefined;
+  if (security?.type !== "tls" || !isH3OnlyAlpn(security.alpn)) return [];
+  const advanced = inbound.streamAdvanced;
+  // The compiler writes finalmask when either the raw block or the modelled quicParams is set.
+  if (!advanced?.finalmask && !advanced?.quicParams) return [];
+  const finalmask = advanced.finalmask ?? {};
+  const rawQuic = isJsonObject(finalmask.quicParams) ? finalmask.quicParams : undefined;
+  return xdriveH3Issues({
+    service: inbound.transport.service,
+    udpMasks: finalmask.udp,
+    udpMasksPath: `${base}/streamAdvanced/finalmask/udp`,
+    congestion: advanced.quicParams ? advanced.quicParams.congestion : rawQuic?.congestion,
+    congestionPath: advanced.quicParams ? `${base}/streamAdvanced/quicParams/congestion` : `${base}/streamAdvanced/finalmask/quicParams/congestion`
+  });
+}
+
+function xdriveOutboundH3Issues(stream: JsonObject | undefined, base: string): Issue[] {
+  const tlsSettings = isJsonObject(stream?.tlsSettings) ? stream.tlsSettings : undefined;
+  if (String(stream?.security ?? "").toLowerCase() !== "tls" || !isH3OnlyAlpn(tlsSettings?.alpn)) return [];
+  const finalmask = isJsonObject(stream?.finalmask) ? stream.finalmask : undefined;
+  if (!finalmask) return [];
+  const xdriveSettings = isJsonObject(stream?.xdriveSettings) ? stream.xdriveSettings : undefined;
+  const quicParams = isJsonObject(finalmask.quicParams) ? finalmask.quicParams : undefined;
+  return xdriveH3Issues({
+    service: xdriveSettings?.service,
+    udpMasks: finalmask.udp,
+    udpMasksPath: `${base}/streamSettings/finalmask/udp`,
+    congestion: quicParams?.congestion,
+    congestionPath: `${base}/streamSettings/finalmask/quicParams/congestion`
+  });
+}
+
 function xdriveProtocolIssue(path: string): Issue {
   return makeIssue({
     code: "XCK_SEMANTIC_XDRIVE_PROTOCOL",
@@ -703,7 +795,11 @@ export function inboundTransportIssues(inbound: Inbound, inboundIndex: number, f
     })];
   }
   if (transport?.type !== "xdrive") return [];
-  return [...xdriveSettingsIssues(transport, `${base}/transport`, true, features), ...xdriveInboundIssues(inbound, base)];
+  return [
+    ...xdriveSettingsIssues(transport, `${base}/transport`, true, features),
+    ...xdriveInboundIssues(inbound, base),
+    ...(features.xdriveH3 ? xdriveInboundH3Issues(inbound, base) : [])
+  ];
 }
 
 export function outboundTransportIssues(outbound: Outbound, outboundIndex: number, features: XrayRuleFeatures): Issue[] {
@@ -736,6 +832,7 @@ export function outboundTransportIssues(outbound: Outbound, outboundIndex: numbe
   if (isJsonObject(xdriveSettings)) issues.push(...xdriveSettingsIssues(xdriveSettings, xdrivePath, xdriveSelected, features));
   else if (xdriveSelected) issues.push(...xdriveSettingsIssues({}, xdrivePath, true, features));
   if (xdriveSelected) issues.push(...xdriveOutboundIssues(outbound, base, stream));
+  if (xdriveSelected && features.xdriveH3) issues.push(...xdriveOutboundH3Issues(stream, base));
 
   return issues;
 }
